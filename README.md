@@ -1,0 +1,56 @@
+# Baileys Python
+
+`Baileys-python` is the product package for a native Python implementation of
+the WhatsApp Web protocol surface provided by Node Baileys.
+
+This repository is being built from the proven feasibility work in
+`../baileys-python-test`. The spike remains the lab/reference; this package is
+the production implementation target.
+
+## Current State
+
+Phase 0 is bootstrapped:
+
+- installable Python package under `src/baileys`
+- generated WAProto and WABinary token package data
+- proven crypto, Noise, Signal, WABinary, media, pairing-code, retry, USync, and
+  saved-auth client modules copied from the spike
+- offline parity tests and minimal public API tests
+- examples for saved-auth login and pairing-code request
+- compatibility matrix in `docs/compatibility-matrix.md`
+- live/proof scripts under `scripts/`
+
+This is not full Baileys parity yet. It is the first product baseline for the
+full roadmap.
+
+## Install For Development
+
+```powershell
+& C:\Users\sagar\.conda\envs\baileys\python.exe -m pip install -e ".[dev]"
+```
+
+## Run Tests
+
+```powershell
+& C:\Users\sagar\.conda\envs\baileys\python.exe -m pytest -q
+```
+
+## Minimal Saved-Auth Login
+
+```python
+import asyncio
+from pathlib import Path
+from baileys import WhatsAppWebClient
+
+async def main():
+    async with WhatsAppWebClient(Path("auth/live_pair_creds.json")) as client:
+        success = await client.wait_for_success(timeout=60)
+        print(success.attrs)
+
+asyncio.run(main())
+```
+
+## Roadmap
+
+See `docs/roadmap.md` for the full implementation timeline and
+`docs/compatibility-matrix.md` for the public Baileys parity checklist.

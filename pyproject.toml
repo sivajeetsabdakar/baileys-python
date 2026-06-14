@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "baileys-python"
+version = "0.1.0a0"
+description = "Async Python implementation of the WhatsApp Web protocol inspired by Baileys."
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+license = { text = "MIT" }
+authors = [{ name = "Baileys Python contributors" }]
+keywords = ["whatsapp", "baileys", "websocket", "asyncio"]
+dependencies = [
+    "aiohttp",
+    "cryptography",
+    "protobuf",
+    "qrcode[pil]",
+    "signal-protocol",
+    "websockets",
+    "xeddsa",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "build", "twine"]
+proto = ["grpcio-tools"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+baileys = ["generated/*.json", "generated/*.proto"]
