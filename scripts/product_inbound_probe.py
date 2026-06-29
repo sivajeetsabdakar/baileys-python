@@ -44,6 +44,8 @@ async def main() -> int:
     parser.add_argument("--creds-path", default=str(ROOT / "auth" / "product_qr_creds.json"))
     parser.add_argument("--timeout", type=float, default=120)
     parser.add_argument("--require-text", action="store_true", help="ignore non-text upserts until a text message arrives")
+    parser.add_argument("--require-group", action="store_true", help="ignore upserts unless the remote JID is a group")
+    parser.add_argument("--group-jid", help="only accept messages from this group JID")
     args = parser.parse_args()
 
     creds_path = Path(args.creds_path).resolve()
@@ -62,6 +64,11 @@ async def main() -> int:
     def on_upsert(payload: MessageUpsert) -> None:
         print(f"MESSAGES_UPSERT {message_summary(payload)}", flush=True)
         if args.require_text and message_text(payload) is None:
+            return
+        remote_jid = payload.messages[0].key.remote_jid
+        if args.require_group and not str(remote_jid or "").endswith("@g.us"):
+            return
+        if args.group_jid and remote_jid != args.group_jid:
             return
         if not future.done():
             future.set_result(payload)

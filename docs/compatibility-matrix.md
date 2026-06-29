@@ -21,7 +21,7 @@ Legend:
 | Auth | Credential models | Done | Typed wrappers round-trip existing auth dicts and preserve unknown future fields. |
 | Auth | Credential generation | Done | Registration payload, key material, QR pairing, and pair-success credential persistence are wired through product auth state and covered by tests/live QR proof. |
 | Auth | QR pairing | Done | Product `WhatsAppClient.connect_for_qr_pairing()` live-proven: QR refs, scan, `pair-success`, device signature, and saved creds. |
-| Auth | Pairing-code flow | Partial | Request and success-finalization paths are wired and offline-tested; live completion depends on account capability and remains pending. |
+| Auth | Pairing-code flow | Done | Request, callback finish, `pair-success`, credential persistence, and saved reconnect are live-proven through the product pairing-code probe. |
 | Auth | Saved auth login/reconnect | Done | Product QR probe live-proved saved reconnect through `WhatsAppClient.connect_and_wait()` after QR pairing. |
 | Auth | Multi-file auth state | Partial | Storage interfaces, JSON credential store, directory signal-key store, and `useMultiFileAuthState` alias added; production transactions still needed in later auth hardening. |
 | Auth | Signal key store and transactions | Partial | JSON hydration/export exists; production store API needed. |
@@ -35,7 +35,7 @@ Legend:
 | Socket | Keepalive/reconnect | Done | Saved-auth reconnect is live-proven; receive loop handles server pings and automatic retry/backoff for retryable disconnects, keepalive failures, and exhausted reconnect attempts. |
 | Socket | Logout/disconnect reasons | Done | `logout()` sends `remove-companion-device`, clears saved auth by default, and emits `loggedOut`; `stream:error`, `failure`, transport errors, and intentional logout map to deterministic `DisconnectReason` values. |
 | Inbound | Binary node dispatcher | Done | Classifier plus socket dispatch covers message, receipt, notification, call, dirty, offline, failure, stream-error, server ping, IQ, ACK, and unknown-node observability. |
-| Inbound | Message decrypt | Partial | 1:1 pkmsg/msg live-proven through product `messages.upsert`; group skmsg is offline-proven. Broader message/content processors still needed. |
+| Inbound | Message decrypt | Partial | 1:1 pkmsg/msg and group text are live-proven through product `messages.upsert`; broader message/content processors still needed. |
 | Inbound | Retry receipts | Partial | Retry receipt parsing, retry count limiting, session-bundle injection, `messages.retry` / `messages.retry_error` events, and resend hook are wired; full `relayMessage` replay/cache parity still needed. |
 | Inbound | Receipts/acks | Done | Baileys-compatible ACK builder added, socket auto-ACKs message/receipt/notification/call nodes, direct receipts emit `messages.update` status changes, group/status receipts emit `message-receipt.update`, and retry receipts route separately. |
 | Inbound | Notifications/calls/offline nodes | Done | Typed notification, dirty/app-state, offline, and call dispatch emits stable events while preserving raw node observability for unknown cases. |
@@ -50,10 +50,10 @@ Legend:
 | Chats | Presence/status/profile/privacy/blocklist/chat modify | Todo | Not ported. |
 | History | History sync/app-state/LTHash/MAC validation | Partial | Key derivation exists; full sync pipeline needed. |
 | Store | In-memory store and buffered events | Done | Bindable `InMemoryStore` tracks messages, chats, contacts, message updates, per-user receipts, and reactions from inbound events; durable stores are a later extension. |
-| Groups | Metadata/create/participants/invites/settings | Todo | Only group probing exists. |
+| Groups | Metadata/create/participants/invites/settings | Todo | Live group inbound message proof exists; group management APIs are not ported yet. |
 | Communities | Community APIs | Todo | Not ported. |
 | Business | Profile/catalog/products/orders | Todo | Not ported. |
 | Newsletters | MEX/newsletter APIs/events | Todo | Not ported. |
 | Tooling | Package install/tests/examples | Done | Product bootstrap provides baseline install, tests, and generated-artifact check modes. |
-| Tooling | Live test harness | Partial | Spike probes copied into product `scripts/`; product QR/reconnect probe added; pytest-style live suite still needed. |
+| Tooling | Live test harness | Partial | Product scripts cover QR pairing, pairing-code linking, saved reconnect, inbound 1:1/group proof, and timed soak checks; pytest-style live suite still needed. |
 | Docs | Migration guide/API docs | Todo | README and matrix only. |

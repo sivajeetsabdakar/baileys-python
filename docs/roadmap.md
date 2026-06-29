@@ -92,8 +92,9 @@ tests are stable.
 - Covered query timeout cleanup, deterministic disconnect mapping, intentional
   logout, auth clearing, reconnect exhaustion, keepalive failure handling, and
   credential persistence behavior with offline tests.
-- Pairing-code live completion remains account-gated and is tracked separately
-  from the QR flow, which has already passed live verification.
+- Added `scripts/product_pairing_code_probe.py` and live-proved pairing-code
+  completion through server `pair-success`, product credential persistence, and
+  saved reconnect.
 
 ## Phase 3 Delivered
 
@@ -128,14 +129,29 @@ tests are stable.
 - Expanded the in-memory store to consume `messages.update`,
   `message-receipt.update`, and reaction payloads derived from
   `messages.upsert`.
-- Live 1:1 inbound text remains proven through the product inbound probe. Group
-  inbound live proof is pending a dedicated test group, while group sender-key
-  handling remains covered by offline vectors.
+- Live 1:1 inbound text remains proven through the product inbound probe.
+- Live group inbound text is proven through the same product inbound probe using
+  `--require-group`; the run received a sender-key distribution message and a
+  decrypted group text message.
+
+## Live Harness
+
+- `scripts/product_qr_pairing_probe.py` covers QR pairing and saved reconnect.
+- `scripts/product_pairing_code_probe.py` covers phone-number pairing-code
+  linking and saved credential persistence.
+- `scripts/product_inbound_probe.py` covers live 1:1 and group inbound message
+  proof.
+- `scripts/product_soak_probe.py` keeps a saved-auth product socket online for
+  timed reconnect/receive-loop checks.
 
 ## Current Verification
 
 - Offline compile check passes for `src`, `scripts`, and `examples`.
 - Offline test suite passes with 91 tests.
 - WABinary token and WAProto generated artifact checks pass.
+- Product pairing-code saved reconnect passes against the dedicated test
+  account.
+- A short saved-auth soak passes with pending message processing and no
+  decrypt, retry, or ACK errors.
 - Public docs are kept to relative repository paths and avoid local machine
   setup details.
