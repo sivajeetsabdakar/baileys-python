@@ -6,12 +6,10 @@ from typing import Iterable
 from signal_protocol import address, curve, identity_key, session, state, storage
 
 from baileys.auth_store import build_signal_store, export_session, prefixed_public
+from baileys.defaults import S_WHATSAPP_NET
 from baileys.message_send import jid_decode
 from baileys.socket_nodes import find_child, node_content_bytes
 from baileys.wabinary import BinaryNode
-
-
-S_WHATSAPP_NET = "s.whatsapp.net"
 
 
 @dataclass(frozen=True)

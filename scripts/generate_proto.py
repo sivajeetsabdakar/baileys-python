@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+import argparse
 from pathlib import Path
 import re
-
-from grpc_tools import protoc
+import tempfile
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -44,32 +44,73 @@ def make_proto_google_compatible(proto_text: str) -> str:
     return "\n".join(output) + "\n"
 
 
-def main() -> int:
+def write_local_proto(generated_dir: Path) -> Path:
     if not SOURCE_PROTO.exists():
         raise SystemExit(f"Missing source proto: {SOURCE_PROTO}")
 
-    GENERATED_DIR.mkdir(parents=True, exist_ok=True)
-    (GENERATED_DIR / "__init__.py").write_text("", encoding="utf-8")
-
-    local_proto = GENERATED_DIR / "WAProto.proto"
+    generated_dir.mkdir(parents=True, exist_ok=True)
+    (generated_dir / "__init__.py").write_text("", encoding="utf-8")
+    local_proto = generated_dir / "WAProto.proto"
     proto_text = SOURCE_PROTO.read_text(encoding="utf-8")
     # Baileys uses protobufjs, which accepts proto3 enums whose first value is
     # not zero. Google's Python protoc rejects those as open-enum violations.
     # Keep proto3 semantics, but add a local zero placeholder only in the copied
-    # generated proto used by this spike.
+    # generated proto used by this package.
     local_proto.write_text(make_proto_google_compatible(proto_text), encoding="utf-8")
+    return local_proto
+
+
+def compile_proto(generated_dir: Path, local_proto: Path) -> None:
+    try:
+        from grpc_tools import protoc
+    except ImportError as exc:
+        raise SystemExit("grpcio-tools is required: python -m pip install -e .[proto]") from exc
 
     result = protoc.main(
         [
             "grpc_tools.protoc",
-            f"-I{GENERATED_DIR}",
-            f"--python_out={GENERATED_DIR}",
+            f"-I{generated_dir}",
+            f"--python_out={generated_dir}",
             str(local_proto),
         ]
     )
     if result != 0:
         raise SystemExit(result)
 
+
+def check_generated_artifacts() -> int:
+    with tempfile.TemporaryDirectory(prefix="baileys-proto-check-") as tmp:
+        check_dir = Path(tmp)
+        local_proto = write_local_proto(check_dir)
+        compile_proto(check_dir, local_proto)
+
+        expected = {
+            "WAProto.proto": local_proto.read_bytes(),
+            "WAProto_pb2.py": (check_dir / "WAProto_pb2.py").read_bytes(),
+        }
+        for name, expected_bytes in expected.items():
+            current_path = GENERATED_DIR / name
+            if not current_path.exists():
+                print(f"missing generated artifact: {current_path}")
+                return 1
+            if current_path.read_bytes() != expected_bytes:
+                print(f"generated artifact is out of date: {current_path}")
+                return 1
+
+    print(f"checked {GENERATED_DIR / 'WAProto_pb2.py'}")
+    return 0
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Generate Python WAProto artifacts from Node Baileys.")
+    parser.add_argument("--check", action="store_true", help="fail if generated proto artifacts are out of date")
+    args = parser.parse_args()
+
+    if args.check:
+        return check_generated_artifacts()
+
+    local_proto = write_local_proto(GENERATED_DIR)
+    compile_proto(GENERATED_DIR, local_proto)
     print(f"generated {GENERATED_DIR / 'WAProto_pb2.py'}")
     return 0
 

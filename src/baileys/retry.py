@@ -5,9 +5,10 @@ from dataclasses import dataclass
 from signal_protocol import address, curve, identity_key, session, state
 
 from baileys.auth_store import build_signal_store, export_session, prefixed_public, unb64
+from baileys.defaults import KEY_BUNDLE_TYPE
 from baileys.message_send import jid_decode, signed_device_identity_node
 from baileys.prekeys import xmpp_pre_key, xmpp_signed_pre_key
-from baileys.registration import KEY_BUNDLE_TYPE, encode_big_endian
+from baileys.registration import encode_big_endian
 from baileys.socket_nodes import find_child, node_content_bytes
 from baileys.wabinary import BinaryNode
 

@@ -21,6 +21,7 @@ captures/
 *.pid
 *.tmp
 live_pair_qr.png
+product_qr.png
 rustup-init.exe
 vs_BuildTools.exe
 .env

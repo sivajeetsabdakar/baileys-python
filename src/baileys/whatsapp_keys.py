@@ -3,22 +3,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from .crypto import hkdf
+from .defaults import MEDIA_HKDF_KEY_MAPPING
 
 
 APP_STATE_INFO = b"WhatsApp Mutation Keys"
-
-MEDIA_HKDF_KEY_MAPPING = {
-    "audio": "Audio",
-    "document": "Document",
-    "gif": "Video",
-    "image": "Image",
-    "ppic": "",
-    "product": "Image",
-    "ptt": "Audio",
-    "sticker": "Image",
-    "video": "Video",
-}
-
 
 @dataclass(frozen=True)
 class AppStateKeys:
@@ -62,4 +50,3 @@ def derive_media_keys(media_key: bytes, media_type: str) -> MediaKeys:
         cipher_key=expanded[16:48],
         mac_key=expanded[48:80],
     )
-

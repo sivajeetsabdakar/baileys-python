@@ -14,9 +14,9 @@ Baileys names such as `sendMessage`, `relayMessage`, `groupMetadata`,
 | Phase | Target | Status |
 | --- | --- | --- |
 | 0 | Product repo bootstrap | Done |
-| 1 | Protocol foundation | Seeded from spike |
-| 2 | Auth and socket lifecycle | Seeded baseline |
-| 3 | Event/store and inbound pipeline | Not started |
+| 1 | Protocol foundation | Done |
+| 2 | Auth and socket lifecycle | Done |
+| 3 | Event/store and inbound pipeline | Done |
 | 4 | Outbound messages and media breadth | Not started |
 | 5 | Chats, profile, privacy, groups | Not started |
 | 6 | History and app-state completeness | Not started |
@@ -38,3 +38,104 @@ tests are stable.
 - Compatibility matrix created against Node Baileys `7.0.0-rc13`.
 - Baseline verification: editable install, example execution, compile check,
   and offline tests.
+
+## Phase 1 Delivered
+
+- Added central protocol defaults for versioning, WebSocket origin, Noise intro,
+  JID servers, key-bundle constants, prekey thresholds, and media mapping names.
+- Added shared JID utilities with encode/decode, normalization,
+  phone-number-to-JID, Baileys-compatible aliases, hosted/LID domain typing,
+  device transfer, same-user comparison, and classifier helpers.
+- Added typed auth credential wrappers that round-trip existing JSON auth dicts
+  and preserve unknown future fields.
+- Added auth-state storage interfaces, JSON credentials, directory signal-key
+  storage, and the `useMultiFileAuthState` compatibility alias.
+- Added check modes for WAProto and WABinary generated artifacts.
+- Added offline vectors for WABinary tokenized nodes, packed nibble/hex,
+  AD/FB/interop JIDs, compressed frames, crypto, media/app-state key
+  derivation, pairing-code key wrapping, Noise intro, Signal sessions, and
+  group sender keys.
+- Added public socket facade with `WhatsAppClient`, `make_socket`,
+  `makeWASocket`, async event emitter, and query correlation primitives.
+- Added saved-auth lifecycle helpers, receive-loop dispatch, server-ping
+  auto-reply, pairing-code request builders, and QR payload helpers.
+- Added QR-first registration socket path that emits QR payloads,
+  acknowledges `pair-device`, and finalizes `pair-success` into saved
+  credentials.
+- Added `scripts/product_qr_pairing_probe.py` to exercise QR pairing and
+  saved reconnect through the product `WhatsAppClient` API.
+- Rewired registration, client, Noise, prekey, retry, session assertion, and
+  USync helpers to use shared foundation modules while keeping old imports
+  compatible.
+
+## Phase 2 Delivered
+
+- Live-proved the product QR pairing flow through
+  `scripts/product_qr_pairing_probe.py --open --scan-timeout 180 --reconnect-check`.
+- Confirmed `WhatsAppClient.connect_for_qr_pairing()` receives QR refs, emits a
+  QR payload, finalizes `pair-success`, persists
+  `auth/product_qr_creds.json`, and reconnects through saved auth.
+- Live reconnect success returned server attrs including `lid`,
+  `companion_enc_static`, and success timestamp fields.
+- Added product socket methods for prekey digest, prekey upload, and signed
+  prekey rotation with Baileys-style aliases `digestKeyBundle`,
+  `uploadPreKeys`, and `rotateSignedPreKey`.
+- Added login-time prekey maintenance using server prekey count, low-count
+  upload, bounded retry/backoff, and non-fatal `prekeys.update` failure events.
+- Added Baileys-compatible logout and disconnect reason handling for
+  `stream:error`, `failure`, and intentional logout close events.
+- Added configurable automatic reconnect policy with bounded backoff,
+  retryable disconnect filtering, receive-loop continuation, keepalive failure
+  scheduling, and observable reconnect events.
+- Hardened pairing-code request and pair-success finalization through the same
+  `WhatsAppClient` and `AuthState` paths used by QR pairing.
+- Covered query timeout cleanup, deterministic disconnect mapping, intentional
+  logout, auth clearing, reconnect exhaustion, keepalive failure handling, and
+  credential persistence behavior with offline tests.
+- Pairing-code live completion remains account-gated and is tracked separately
+  from the QR flow, which has already passed live verification.
+
+## Phase 3 Delivered
+
+- Added initial inbound `messages.upsert` payloads for decrypted message nodes.
+- Added `MessageKey`, `WAMessage`, and `MessageUpsert` public types with a
+  `to_web_message_info()` bridge to generated WAProto.
+- Socket dispatch now emits `messages.upsert` for supported encrypted message
+  nodes and `messages.decrypt_error` for decrypt failures.
+- Added `scripts/product_inbound_probe.py` to live-test inbound
+  `messages.upsert` using saved product QR credentials.
+- Live-proved inbound text decrypt and event emission with
+  `scripts/product_inbound_probe.py --require-text`; WhatsApp delivered the
+  sender as a LID JID and emitted multiple text `messages.upsert` payloads.
+- Added Baileys-compatible ACK stanza construction and automatic socket ACKs
+  for inbound message, receipt, notification, and call nodes.
+- Added basic inbound receipt processing that emits `message-receipt.update`.
+- Added retry receipt parsing, retry count limiting, session-bundle injection,
+  `messages.retry` / `messages.retry_error` events, and an overridable resend
+  hook for later `relayMessage` parity.
+- Added receipt status mapping so direct receipts emit `messages.update` and
+  group/status receipts emit per-user `message-receipt.update` timestamps.
+- Added basic outbound `send_receipt` and `read_messages` helpers plus
+  Baileys-style aliases.
+- Added a bindable `InMemoryStore` and default `client.store` that tracks
+  messages, chats, and contacts from `messages.upsert`, with
+  `makeInMemoryStore` compatibility alias.
+- Added typed notification, dirty/app-state, offline, and call dispatch events
+  so important inbound stanzas have stable event surfaces in addition to raw
+  node events.
+- Kept unknown or unsupported notification/offline nodes observable without
+  crashing the receive path.
+- Expanded the in-memory store to consume `messages.update`,
+  `message-receipt.update`, and reaction payloads derived from
+  `messages.upsert`.
+- Live 1:1 inbound text remains proven through the product inbound probe. Group
+  inbound live proof is pending a dedicated test group, while group sender-key
+  handling remains covered by offline vectors.
+
+## Current Verification
+
+- Offline compile check passes for `src`, `scripts`, and `examples`.
+- Offline test suite passes with 91 tests.
+- WABinary token and WAProto generated artifact checks pass.
+- Public docs are kept to relative repository paths and avoid local machine
+  setup details.

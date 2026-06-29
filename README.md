@@ -9,7 +9,7 @@ the production implementation target.
 
 ## Current State
 
-Phase 0 is bootstrapped:
+The product package is bootstrapped and QR auth is live-proven:
 
 - installable Python package under `src/baileys`
 - generated WAProto and WABinary token package data
@@ -19,6 +19,8 @@ Phase 0 is bootstrapped:
 - examples for saved-auth login and pairing-code request
 - compatibility matrix in `docs/compatibility-matrix.md`
 - live/proof scripts under `scripts/`
+- product QR pairing plus saved reconnect through
+  `scripts/product_qr_pairing_probe.py`
 
 This is not full Baileys parity yet. It is the first product baseline for the
 full roadmap.
@@ -26,13 +28,13 @@ full roadmap.
 ## Install For Development
 
 ```powershell
-& C:\Users\sagar\.conda\envs\baileys\python.exe -m pip install -e ".[dev]"
+python -m pip install -e ".[dev]"
 ```
 
 ## Run Tests
 
 ```powershell
-& C:\Users\sagar\.conda\envs\baileys\python.exe -m pytest -q
+python -m pytest -q
 ```
 
 ## Minimal Saved-Auth Login
@@ -52,5 +54,5 @@ asyncio.run(main())
 
 ## Roadmap
 
-See `docs/roadmap.md` for the full implementation timeline and
+See `docs/roadmap.md` for the implementation timeline and
 `docs/compatibility-matrix.md` for the public Baileys parity checklist.

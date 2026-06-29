@@ -4,12 +4,11 @@ from dataclasses import dataclass
 import os
 
 from .crypto import aes_decrypt_gcm, aes_encrypt_gcm, hkdf, sha256
+from .defaults import NOISE_MODE, NOISE_WA_HEADER
 from .generated import WAProto_pb2 as proto
 from .signal_crypto import SignalKeyPair, public_from_private, shared_key, sign, verify
 
 
-NOISE_MODE = b"Noise_XX_25519_AESGCM_SHA256\x00\x00\x00\x00"
-NOISE_WA_HEADER = bytes([87, 65, 6, 3])
 WA_CERT_SERIAL = 0
 WA_CERT_PUBLIC_KEY = bytes.fromhex("142375574d0a587166aae71ebe516437c4a28b73e3695c6ce1f7f9545da8ee6b")
 

@@ -4,19 +4,10 @@ import time
 from dataclasses import dataclass
 from typing import Iterable
 
-from baileys.message_send import jid_encode
+from baileys.defaults import S_WHATSAPP_NET
+from baileys.jid import JidParts, is_lid as is_lid_user, is_pn as is_pn_user, jid_decode, jid_encode, jid_normalized_user
 from baileys.socket_nodes import find_child
 from baileys.wabinary import BinaryNode
-
-
-S_WHATSAPP_NET = "s.whatsapp.net"
-
-
-@dataclass(frozen=True)
-class JidParts:
-    user: str
-    server: str
-    device: int | None
 
 
 @dataclass(frozen=True)
@@ -41,25 +32,7 @@ class TagGenerator:
 
 
 def jid_decode_full(jid: str) -> JidParts:
-    left, server = jid.split("@", 1)
-    if ":" in left:
-        user, device = left.split(":", 1)
-        return JidParts(user=user, server=server, device=int(device))
-    return JidParts(user=left, server=server, device=None)
-
-
-def jid_normalized_user(jid: str) -> str:
-    parts = jid_decode_full(jid)
-    server = "s.whatsapp.net" if parts.server == "c.us" else parts.server
-    return jid_encode(parts.user, server)
-
-
-def is_lid_user(jid: str) -> bool:
-    return jid.endswith("@lid") or jid.endswith("@hosted.lid")
-
-
-def is_pn_user(jid: str) -> bool:
-    return jid.endswith("@s.whatsapp.net") or jid.endswith("@hosted")
+    return jid_decode(jid)
 
 
 def usync_devices_query_node(jids: Iterable[str], tag_id: str) -> BinaryNode:

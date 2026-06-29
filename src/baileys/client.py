@@ -8,6 +8,7 @@ import websockets
 
 from baileys.auth_store import load_creds, save_creds, unb64
 from baileys.crypto import decompress_if_required
+from baileys.defaults import DEFAULT_ORIGIN, DEFAULT_USER_AGENT, WA_WEBSOCKET_URL
 from baileys.generated import WAProto_pb2 as proto
 from baileys.noise import NoiseHandshake, generate_noise_key_pair
 from baileys.registration import build_login_payload
@@ -15,11 +16,6 @@ from baileys.routing import websocket_url_with_routing
 from baileys.signal_crypto import SignalKeyPair
 from baileys.socket_nodes import SocketNodeKind, classify_node, find_child, node_content_bytes, server_ping_reply
 from baileys.wabinary import BinaryNode, decode_binary_node, encode_binary_node
-
-
-WA_WEBSOCKET_URL = "wss://web.whatsapp.com/ws/chat"
-DEFAULT_ORIGIN = "https://web.whatsapp.com"
-DEFAULT_USER_AGENT = "Mozilla/5.0 baileys-python-test"
 
 
 class WhatsAppWebClient:

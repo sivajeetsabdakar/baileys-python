@@ -8,21 +8,11 @@ from typing import Iterable
 import aiohttp
 
 from baileys.crypto import aes_decrypt_cbc, aes_encrypt_cbc, hmac_sign, sha256
+from baileys.defaults import DEFAULT_ORIGIN, MEDIA_PATH_MAP, S_WHATSAPP_NET
 from baileys.generated import WAProto_pb2 as proto
 from baileys.socket_nodes import find_child
 from baileys.wabinary import BinaryNode
 from baileys.whatsapp_keys import derive_media_keys
-
-
-S_WHATSAPP_NET = "s.whatsapp.net"
-DEFAULT_ORIGIN = "https://web.whatsapp.com"
-MEDIA_PATH_MAP = {
-    "image": "/mms/image",
-    "video": "/mms/video",
-    "audio": "/mms/audio",
-    "document": "/mms/document",
-    "sticker": "/mms/image",
-}
 
 
 @dataclass(frozen=True)

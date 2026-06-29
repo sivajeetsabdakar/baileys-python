@@ -4,12 +4,10 @@ import base64
 import os
 
 from .crypto import md5
+from .defaults import KEY_BUNDLE_TYPE, VERSION
 from .generated import WAProto_pb2 as proto
+from .jid import jid_decode
 from .signal_crypto import SignalKeyPair, public_from_private, sign
-
-
-VERSION = (2, 3000, 1035194821)
-KEY_BUNDLE_TYPE = b"\x05"
 
 
 def encode_big_endian(value: int, length: int = 4) -> bytes:
@@ -98,11 +96,8 @@ def build_registration_payload() -> tuple[bytes, dict[str, bytes | int]]:
 
 
 def parse_jid_device(jid: str) -> tuple[int, int | None]:
-    left = jid.split("@", 1)[0]
-    if ":" in left:
-        user, device = left.split(":", 1)
-        return int(user), int(device)
-    return int(left), None
+    parts = jid_decode(jid)
+    return int(parts.user), parts.device or None
 
 
 def build_login_payload(user_jid: str) -> bytes:

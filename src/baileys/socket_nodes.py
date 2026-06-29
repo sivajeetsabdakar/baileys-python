@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 from enum import Enum
+import time
 
 from baileys.wabinary import BinaryNode
 
 
 S_WHATSAPP_NET = "s.whatsapp.net"
+TIME_MS_DAY = 24 * 60 * 60 * 1000
+TIME_MS_WEEK = 7 * TIME_MS_DAY
 
 
 class SocketNodeKind(str, Enum):
@@ -18,6 +21,7 @@ class SocketNodeKind(str, Enum):
     DIRTY = "dirty"
     MESSAGE = "message"
     RECEIPT = "receipt"
+    CALL = "call"
     ACK = "ack"
     NOTIFICATION = "notification"
     IQ_RESULT = "iq_result"
@@ -64,6 +68,8 @@ def classify_node(node: BinaryNode) -> SocketNodeKind:
         return SocketNodeKind.MESSAGE
     if node.tag == "receipt":
         return SocketNodeKind.RECEIPT
+    if node.tag == "call":
+        return SocketNodeKind.CALL
     if node.tag == "ack":
         if node.attrs.get("error"):
             return SocketNodeKind.IQ_ERROR
@@ -109,3 +115,36 @@ def server_ping_reply(node: BinaryNode) -> BinaryNode:
 
 def offline_batch_node() -> BinaryNode:
     return BinaryNode("ib", {}, [BinaryNode("offline_batch", {"count": "100"})])
+
+
+def passive_active_node(tag_id: str) -> BinaryNode:
+    return BinaryNode(
+        "iq",
+        {"to": S_WHATSAPP_NET, "xmlns": "passive", "type": "set", "id": tag_id},
+        [BinaryNode("active", {})],
+    )
+
+
+def unified_session_id(server_time_offset_ms: int) -> str:
+    now_ms = int(time.time() * 1000) + server_time_offset_ms
+    return str((now_ms + 3 * TIME_MS_DAY) % TIME_MS_WEEK)
+
+
+def unified_session_node(server_time_offset_ms: int) -> BinaryNode:
+    return BinaryNode("ib", {}, [BinaryNode("unified_session", {"id": unified_session_id(server_time_offset_ms)})])
+
+
+def client_ping_node(tag_id: str) -> BinaryNode:
+    return BinaryNode(
+        "iq",
+        {"id": tag_id, "to": S_WHATSAPP_NET, "type": "get", "xmlns": "w:p"},
+        [BinaryNode("ping", {})],
+    )
+
+
+def logout_node(jid: str, tag_id: str) -> BinaryNode:
+    return BinaryNode(
+        "iq",
+        {"to": S_WHATSAPP_NET, "type": "set", "id": tag_id, "xmlns": "md"},
+        [BinaryNode("remove-companion-device", {"jid": jid, "reason": "user_initiated"})],
+    )

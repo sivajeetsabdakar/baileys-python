@@ -3,20 +3,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from baileys.auth_store import b64, unb64
+from baileys.defaults import INITIAL_PREKEY_COUNT, KEY_BUNDLE_TYPE, MIN_PREKEY_COUNT, S_WHATSAPP_NET
 from baileys.registration import (
-    KEY_BUNDLE_TYPE,
     encode_big_endian,
     generate_signal_key_pair,
     signed_key_pair,
 )
 from baileys.signal_crypto import SignalKeyPair
 from baileys.wabinary import BinaryNode
-
-
-S_WHATSAPP_NET = "s.whatsapp.net"
-MIN_PREKEY_COUNT = 5
-INITIAL_PREKEY_COUNT = 812
-
 
 @dataclass(frozen=True)
 class PreKeyNodeResult:
@@ -28,6 +22,13 @@ class PreKeyNodeResult:
 class SignedPreKeyRotation:
     node: BinaryNode
     key_id: int
+
+
+@dataclass(frozen=True)
+class PreKeyMaintenanceResult:
+    server_count: int
+    uploaded: PreKeyNodeResult | None = None
+    reason: str | None = None
 
 
 def _with_id(attrs: dict[str, str], tag_id: str | None) -> dict[str, str]:
@@ -67,6 +68,22 @@ def digest_key_bundle_node(tag_id: str | None = None) -> BinaryNode:
         _with_id({"to": S_WHATSAPP_NET, "type": "get", "xmlns": "encrypt"}, tag_id),
         [BinaryNode("digest", {})],
     )
+
+
+def prekey_count_node(tag_id: str | None = None) -> BinaryNode:
+    return BinaryNode(
+        "iq",
+        _with_id({"to": S_WHATSAPP_NET, "type": "get", "xmlns": "encrypt"}, tag_id),
+        [BinaryNode("count", {})],
+    )
+
+
+def parse_prekey_count(node: BinaryNode) -> int:
+    if isinstance(node.content, list):
+        for child in node.content:
+            if child.tag == "count" and child.attrs.get("value") is not None:
+                return int(child.attrs["value"])
+    raise ValueError("encrypt/get count response missing count value")
 
 
 def generate_or_get_pre_keys(creds: dict, count: int) -> tuple[list[int], list[int]]:

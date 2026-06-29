@@ -10,6 +10,7 @@ from signal_protocol import address, protocol, session_cipher
 
 from baileys.auth_store import build_signal_store, export_session, unb64
 from baileys.generated import WAProto_pb2 as proto
+from baileys.jid import jid_decode_tuple
 from baileys.wabinary import BinaryNode
 
 
@@ -24,16 +25,13 @@ class OutboundMessage:
 
 
 def jid_decode(jid: str) -> tuple[str, str, int]:
-    left, server = jid.split("@", 1)
-    if ":" in left:
-        user, device = left.split(":", 1)
-        return user, server, int(device)
-    return left, server, 0
+    return jid_decode_tuple(jid)
 
 
 def jid_encode(user: str, server: str, device: int | None = None) -> str:
-    device_part = f":{device}" if device else ""
-    return f"{user}{device_part}@{server}"
+    from baileys.jid import jid_encode as _jid_encode
+
+    return _jid_encode(user, server, device)
 
 
 def protocol_address_for_jid(jid: str) -> address.ProtocolAddress:

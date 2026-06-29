@@ -1,18 +1,29 @@
 from __future__ import annotations
 
 import base64
+import hmac
 import os
 import re
 from dataclasses import dataclass
+from typing import Any
 
-from baileys.crypto import aes_decrypt_ctr, aes_encrypt_ctr, aes_encrypt_gcm, derive_pairing_code_key, hkdf
-from baileys.signal_crypto import SignalKeyPair, shared_key
+from baileys.auth_store import b64
+from baileys.crypto import aes_decrypt_ctr, aes_encrypt_ctr, aes_encrypt_gcm, derive_pairing_code_key, hkdf, hmac_sign
+from baileys.defaults import (
+    S_WHATSAPP_NET,
+    WA_ADV_ACCOUNT_SIG_PREFIX,
+    WA_ADV_DEVICE_SIG_PREFIX,
+    WA_ADV_HOSTED_ACCOUNT_SIG_PREFIX,
+)
+from baileys.generated import WAProto_pb2 as proto
+from baileys.signal_crypto import SignalKeyPair, shared_key, sign, verify
+from baileys.socket_nodes import find_child, node_content_bytes
 from baileys.wabinary import BinaryNode
 
 
 CROCKFORD_CHARACTERS = "123456789ABCDEFGHJKLMNPQRSTVWXYZ"
-S_WHATSAPP_NET = "s.whatsapp.net"
 LINK_CODE_KEY_BUNDLE_INFO = b"link_code_pairing_key_bundle_encryption_key"
+COMPANION_PLATFORM_CHROME = "1"
 
 
 @dataclass(frozen=True)
@@ -22,6 +33,34 @@ class PairingFinish:
     companion_shared_key: bytes
     identity_shared_key: bytes
     random: bytes
+
+
+@dataclass(frozen=True)
+class PairingCodeRequest:
+    node: BinaryNode
+    code: str
+    jid: str
+
+
+@dataclass(frozen=True)
+class PairDeviceRefs:
+    node: BinaryNode
+    refs: list[str]
+
+
+@dataclass(frozen=True)
+class QRPairingRequest:
+    node: BinaryNode
+    refs: list[str]
+    qr: str
+
+
+@dataclass(frozen=True)
+class PairSuccess:
+    reply: BinaryNode
+    credentials: dict[str, Any]
+    update: dict[str, str | None]
+    account: bytes
 
 
 def bytes_to_crockford(data: bytes) -> str:
@@ -56,6 +95,164 @@ def normalize_phone_number(phone_number: str) -> str:
 
 def phone_jid(phone_number: str) -> str:
     return f"{normalize_phone_number(phone_number)}@s.whatsapp.net"
+
+
+def build_pairing_qr_data(
+    *,
+    ref: str,
+    noise_key: bytes,
+    identity_key: bytes,
+    adv_secret_key: str,
+    platform_id: str = COMPANION_PLATFORM_CHROME,
+) -> str:
+    return "https://wa.me/settings/linked_devices#" + ",".join(
+        [
+            ref,
+            base64.b64encode(noise_key).decode("ascii"),
+            base64.b64encode(identity_key).decode("ascii"),
+            adv_secret_key,
+            platform_id,
+        ]
+    )
+
+
+def extract_pair_device_refs(node: BinaryNode) -> PairDeviceRefs:
+    pair_device = find_child(node, "pair-device")
+    if pair_device is None or not isinstance(pair_device.content, list):
+        return PairDeviceRefs(node=node, refs=[])
+    refs: list[str] = []
+    for child in pair_device.content:
+        if child.tag != "ref":
+            continue
+        content = node_content_bytes(child)
+        if content is not None:
+            refs.append(content.decode("utf-8"))
+    return PairDeviceRefs(node=node, refs=refs)
+
+
+def pair_device_ack_node(node: BinaryNode) -> BinaryNode:
+    attrs = {"to": S_WHATSAPP_NET, "type": "result"}
+    if node.attrs.get("id"):
+        attrs["id"] = node.attrs["id"]
+    return BinaryNode("iq", attrs)
+
+
+def encode_signed_device_identity(account: proto.ADVSignedDeviceIdentity) -> bytes:
+    reply_account = proto.ADVSignedDeviceIdentity()
+    reply_account.CopyFrom(account)
+    reply_account.ClearField("accountSignatureKey")
+    return reply_account.SerializeToString()
+
+
+def configure_successful_pairing(
+    stanza: BinaryNode,
+    *,
+    static_noise: SignalKeyPair,
+    meta: dict[str, Any],
+) -> PairSuccess:
+    pair_success_node = find_child(stanza, "pair-success")
+    device_identity_node = find_child(pair_success_node, "device-identity")
+    platform_node = find_child(pair_success_node, "platform")
+    device_node = find_child(pair_success_node, "device")
+    business_node = find_child(pair_success_node, "biz")
+    if pair_success_node is None or device_identity_node is None or device_node is None:
+        raise ValueError(f"missing pair-success/device-identity/device in {stanza!r}")
+
+    signed_hmac = proto.ADVSignedDeviceIdentityHMAC()
+    signed_hmac.ParseFromString(_required_node_bytes(device_identity_node))
+    hmac_prefix = b""
+    if signed_hmac.HasField("accountType") and signed_hmac.accountType == proto.ADVEncryptionType.HOSTED:
+        hmac_prefix = WA_ADV_HOSTED_ACCOUNT_SIG_PREFIX
+
+    expected_hmac = hmac_sign(hmac_prefix + signed_hmac.details, base64.b64decode(str(meta["adv_secret_key"])))
+    if not hmac.compare_digest(signed_hmac.hmac, expected_hmac):
+        raise ValueError("invalid pair-success ADV HMAC")
+
+    account = proto.ADVSignedDeviceIdentity()
+    account.ParseFromString(signed_hmac.details)
+
+    device_identity = proto.ADVDeviceIdentity()
+    device_identity.ParseFromString(account.details)
+
+    account_prefix = (
+        WA_ADV_HOSTED_ACCOUNT_SIG_PREFIX
+        if device_identity.HasField("deviceType") and device_identity.deviceType == proto.ADVEncryptionType.HOSTED
+        else WA_ADV_ACCOUNT_SIG_PREFIX
+    )
+    identity_public = bytes(meta["identity_public"])
+    account_message = account_prefix + account.details + identity_public
+    if not verify(account.accountSignatureKey, account_message, account.accountSignature):
+        raise ValueError("invalid pair-success account signature")
+
+    identity_private = bytes(meta["identity_private"])
+    device_message = WA_ADV_DEVICE_SIG_PREFIX + account.details + identity_public + account.accountSignatureKey
+    account.deviceSignature = sign(identity_private, device_message)
+    account_enc = encode_signed_device_identity(account)
+
+    reply = BinaryNode(
+        "iq",
+        {"to": S_WHATSAPP_NET, "type": "result", "id": stanza.attrs["id"]},
+        [
+            BinaryNode(
+                "pair-device-sign",
+                {},
+                [
+                    BinaryNode(
+                        "device-identity",
+                        {"key-index": str(device_identity.keyIndex)},
+                        account_enc,
+                    )
+                ],
+            )
+        ],
+    )
+    update = {
+        "jid": device_node.attrs.get("jid"),
+        "lid": device_node.attrs.get("lid"),
+        "platform": platform_node.attrs.get("name") if platform_node else None,
+        "business_name": business_node.attrs.get("name") if business_node else None,
+    }
+    return PairSuccess(
+        reply=reply,
+        credentials=credentials_from_pair_success(static_noise=static_noise, meta=meta, account=account, update=update),
+        update=update,
+        account=account.SerializeToString(),
+    )
+
+
+def credentials_from_pair_success(
+    *,
+    static_noise: SignalKeyPair,
+    meta: dict[str, Any],
+    account: proto.ADVSignedDeviceIdentity,
+    update: dict[str, str | None],
+) -> dict[str, Any]:
+    return {
+        "noise_private": b64(static_noise.private),
+        "noise_public": b64(static_noise.public),
+        "identity_private": b64(bytes(meta["identity_private"])),
+        "identity_public": b64(bytes(meta["identity_public"])),
+        "signed_pre_key_private": b64(bytes(meta["signed_pre_key_private"])),
+        "signed_pre_key_public": b64(bytes(meta["signed_pre_key_public"])),
+        "signed_pre_key_signature": b64(bytes(meta["signed_pre_key_signature"])),
+        "signed_pre_key_id": int(meta["signed_pre_key_id"]),
+        "registration_id": int(meta["registration_id"]),
+        "adv_secret_key": str(meta["adv_secret_key"]),
+        "account": b64(account.SerializeToString()),
+        "me": {
+            "id": update["jid"],
+            "lid": update["lid"],
+            "name": update["business_name"],
+        },
+        "platform": update["platform"],
+    }
+
+
+def _required_node_bytes(node: BinaryNode | None) -> bytes:
+    content = node_content_bytes(node)
+    if content is None:
+        raise ValueError("missing node bytes")
+    return content
 
 
 def generate_pairing_key(
@@ -119,6 +316,36 @@ def pairing_code_hello_node(
                 ],
             )
         ],
+    )
+
+
+def pairing_code_request_node(
+    *,
+    phone_number: str,
+    tag_id: str,
+    companion_ephemeral_public: bytes,
+    noise_public: bytes,
+    pairing_code: str | None = None,
+    custom_pairing_code: str | None = None,
+    platform_id: str = "1",
+    platform_display: str = "Chrome (Windows)",
+    should_show_push_notification: bool = True,
+) -> PairingCodeRequest:
+    code = pairing_code or generate_pairing_code(custom_pairing_code)
+    jid = phone_jid(phone_number)
+    return PairingCodeRequest(
+        node=pairing_code_hello_node(
+            phone_number=phone_number,
+            tag_id=tag_id,
+            pairing_code=code,
+            companion_ephemeral_public=companion_ephemeral_public,
+            noise_public=noise_public,
+            platform_id=platform_id,
+            platform_display=platform_display,
+            should_show_push_notification=should_show_push_notification,
+        ),
+        code=code,
+        jid=jid,
     )
 
 

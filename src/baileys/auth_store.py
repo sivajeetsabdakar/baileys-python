@@ -7,8 +7,9 @@ from typing import Iterable
 
 from signal_protocol import address, curve, identity_key, sender_keys, state, storage
 
-
-SIGNAL_PUBLIC_PREFIX = b"\x05"
+from baileys.auth import AuthCredentials
+from baileys.auth_state import JsonCredentialStore
+from baileys.defaults import SIGNAL_PUBLIC_PREFIX
 
 
 def b64(data: bytes) -> str:
@@ -65,8 +66,16 @@ def load_creds(path: str | Path) -> dict:
     return json.loads(Path(path).read_text(encoding="utf-8"))
 
 
+def load_auth_credentials(path: str | Path) -> AuthCredentials:
+    return JsonCredentialStore(path).load_typed_credentials()
+
+
 def save_creds(path: str | Path, creds: dict) -> None:
     Path(path).write_text(json.dumps(creds, indent=2), encoding="utf-8")
+
+
+def save_auth_credentials(path: str | Path, creds: AuthCredentials) -> None:
+    JsonCredentialStore(path).save_typed_credentials(creds)
 
 
 def build_signal_store(creds: dict) -> storage.InMemSignalProtocolStore:

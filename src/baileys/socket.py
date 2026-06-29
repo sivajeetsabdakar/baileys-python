@@ -1,0 +1,1086 @@
+from __future__ import annotations
+
+import asyncio
+import copy
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any
+
+import websockets
+
+from .auth_state import AuthState, JsonCredentialStore, MultiFileAuthState
+from .client import WhatsAppWebClient
+from .disconnect import (
+    DisconnectError,
+    DisconnectReason,
+    disconnect_update,
+    failure_to_disconnect,
+    logged_out_disconnect,
+    stream_error_to_disconnect,
+)
+from .generated import WAProto_pb2 as proto
+from .noise import NoiseHandshake
+from .registration import build_registration_payload
+from .defaults import DEFAULT_ORIGIN, DEFAULT_USER_AGENT, INITIAL_PREKEY_COUNT, MIN_PREKEY_COUNT, WA_WEBSOCKET_URL
+from .events import EventEmitter
+from .noise import generate_noise_key_pair
+from .pairing_code import (
+    PairSuccess,
+    PairingCodeRequest,
+    QRPairingRequest,
+    build_pairing_qr_data,
+    configure_successful_pairing,
+    extract_pair_device_refs,
+    pair_device_ack_node,
+    pairing_code_request_node,
+)
+from .prekeys import (
+    PreKeyMaintenanceResult,
+    PreKeyNodeResult,
+    SignedPreKeyRotation,
+    build_prekey_upload_node,
+    digest_key_bundle_node,
+    parse_prekey_count,
+    prekey_count_node,
+    rotate_signed_pre_key_node,
+)
+from .query import QueryManager
+from .receipts import (
+    RetryOutcome,
+    RetryRequest,
+    aggregate_message_keys,
+    build_ack_node,
+    build_receipt_node,
+    can_ack_node,
+    parse_receipt_info,
+    parse_retry_request,
+)
+from .retry import RetrySessionBundle, inject_retry_session_from_receipt
+from .socket_nodes import (
+    SocketNodeKind,
+    classify_node,
+    client_ping_node,
+    logout_node,
+    offline_batch_node,
+    passive_active_node,
+    server_ping_reply,
+    unified_session_node,
+)
+from .store import InMemoryStore
+from .wabinary import BinaryNode
+from .messages import MessageKey, WAMessage, build_message_upsert
+from .notifications import (
+    CallInfo,
+    DirtyInfo,
+    NotificationInfo,
+    OfflineInfo,
+    parse_call_info,
+    parse_dirty_info,
+    parse_notification_info,
+    parse_offline_info,
+)
+
+
+@dataclass(frozen=True)
+class ReconnectPolicy:
+    enabled: bool = True
+    max_attempts: int = 5
+    initial_delay: float = 1
+    max_delay: float = 30
+    multiplier: float = 2
+    retry_status_codes: tuple[int, ...] = (
+        int(DisconnectReason.connectionClosed),
+        int(DisconnectReason.connectionLost),
+        int(DisconnectReason.restartRequired),
+        int(DisconnectReason.unavailableService),
+    )
+
+    def delay_for_attempt(self, attempt: int) -> float:
+        if attempt <= 1:
+            return self.initial_delay
+        return min(self.initial_delay * (self.multiplier ** (attempt - 1)), self.max_delay)
+
+    def should_reconnect(self, error: Exception | None) -> bool:
+        if not self.enabled or self.max_attempts <= 0:
+            return False
+        if error is None:
+            return False
+        if isinstance(error, DisconnectError):
+            return int(error.status_code) in self.retry_status_codes
+        return True
+
+
+@dataclass(frozen=True)
+class SocketConfig:
+    websocket_url: str = WA_WEBSOCKET_URL
+    origin: str = DEFAULT_ORIGIN
+    user_agent: str = DEFAULT_USER_AGENT
+    use_routing_info: bool = True
+    auto_ack: bool = True
+    auto_prekey_maintenance: bool = True
+    reconnect_policy: ReconnectPolicy = field(default_factory=ReconnectPolicy)
+    max_msg_retry_count: int = 5
+
+
+class WhatsAppClient:
+    def __init__(
+        self,
+        auth: AuthState | MultiFileAuthState | str | Path,
+        *,
+        websocket_url: str = WA_WEBSOCKET_URL,
+        origin: str = DEFAULT_ORIGIN,
+        user_agent: str = DEFAULT_USER_AGENT,
+        use_routing_info: bool = True,
+        auto_ack: bool = True,
+        auto_prekey_maintenance: bool = True,
+        auto_reconnect: bool = True,
+        reconnect_max_attempts: int = 5,
+        reconnect_initial_delay: float = 1,
+        reconnect_max_delay: float = 30,
+        reconnect_multiplier: float = 2,
+        max_msg_retry_count: int = 5,
+    ) -> None:
+        self.auth_state = _coerce_auth_state(auth)
+        self.config = SocketConfig(
+            websocket_url=websocket_url,
+            origin=origin,
+            user_agent=user_agent,
+            use_routing_info=use_routing_info,
+            auto_ack=auto_ack,
+            auto_prekey_maintenance=auto_prekey_maintenance,
+            reconnect_policy=ReconnectPolicy(
+                enabled=auto_reconnect,
+                max_attempts=reconnect_max_attempts,
+                initial_delay=reconnect_initial_delay,
+                max_delay=reconnect_max_delay,
+                multiplier=reconnect_multiplier,
+            ),
+            max_msg_retry_count=max_msg_retry_count,
+        )
+        self.ev = EventEmitter()
+        self.events = self.ev
+        self.store = InMemoryStore()
+        self.store.bind(self.ev)
+        self.queries = QueryManager()
+        self._web: WhatsAppWebClient | None = None
+        self._receive_task: Any = None
+        self._closing = False
+        self._qr_static_noise: Any = None
+        self._qr_meta: dict[str, Any] | None = None
+        self._keepalive_task: Any = None
+        self._reconnect_task: Any = None
+        self._last_disconnect_error: DisconnectError | None = None
+        self._server_time_offset_ms = 0
+        self._message_retry_counts: dict[tuple[str, str | None], int] = {}
+
+    @property
+    def creds(self) -> dict[str, Any]:
+        return self.auth_state.credentials
+
+    @property
+    def websocket_url(self) -> str:
+        return self.config.websocket_url
+
+    @property
+    def origin(self) -> str:
+        return self.config.origin
+
+    async def __aenter__(self) -> "WhatsAppClient":
+        await self.connect()
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb) -> None:
+        await self.close()
+
+    async def connect(self, *, open_timeout: float = 20, close_timeout: float = 5) -> None:
+        creds_path = _credential_path(self.auth_state)
+        if creds_path is None:
+            raise ValueError("connect currently requires AuthState backed by JsonCredentialStore")
+
+        await self.ev.emit("connection.update", {"connection": "connecting"})
+        web = WhatsAppWebClient(
+            creds_path,
+            websocket_url=self.config.websocket_url,
+            origin=self.config.origin,
+            user_agent=self.config.user_agent,
+            use_routing_info=self.config.use_routing_info,
+        )
+        try:
+            await web.connect(open_timeout=open_timeout, close_timeout=close_timeout)
+        except Exception as exc:
+            await self.ev.emit("connection.update", {"connection": "close", "last_disconnect": exc})
+            raise
+
+        self._web = web
+        self._closing = False
+        self._last_disconnect_error = None
+        if web.creds is not None:
+            self.auth_state.credentials = web.creds
+            await self.ev.emit("creds.update", self.auth_state.credentials)
+        await self.ev.emit("connection.update", {"connection": "open"})
+
+    async def connect_for_qr_pairing(
+        self,
+        *,
+        open_timeout: float = 20,
+        close_timeout: float = 5,
+        qr_timeout: float = 30,
+        ref_index: int = 0,
+        acknowledge_pair_device: bool = True,
+    ) -> QRPairingRequest:
+        creds_path = _credential_path(self.auth_state)
+        if creds_path is None:
+            raise ValueError("QR pairing currently requires AuthState backed by JsonCredentialStore")
+
+        await self.ev.emit("connection.update", {"connection": "connecting", "pairing": "qr"})
+        ephemeral = generate_noise_key_pair()
+        static_noise = generate_noise_key_pair()
+        noise = NoiseHandshake(ephemeral)
+        websocket = await websockets.connect(
+            self.config.websocket_url,
+            origin=self.config.origin,
+            open_timeout=open_timeout,
+            close_timeout=close_timeout,
+            ping_interval=None,
+            additional_headers={"User-Agent": self.config.user_agent},
+        )
+        try:
+            await websocket.send(noise.client_hello_frame())
+            response = await asyncio.wait_for(websocket.recv(), timeout=open_timeout)
+            if isinstance(response, str):
+                response = response.encode("latin1")
+            server_hello_payload = response[3 : 3 + int.from_bytes(response[:3], "big")]
+            info = noise.process_server_hello(server_hello_payload, static_noise)
+
+            registration_payload, meta = build_registration_payload()
+            finish = proto.HandshakeMessage()
+            finish.clientFinish.static = info.encrypted_static_key
+            finish.clientFinish.payload = noise.encrypt(registration_payload)
+            await websocket.send(noise.encode_frame(finish.SerializeToString()))
+            noise.finish_init()
+        except Exception as exc:
+            await websocket.close()
+            await self.ev.emit("connection.update", {"connection": "close", "last_disconnect": exc})
+            raise
+
+        web = WhatsAppWebClient(
+            creds_path,
+            websocket_url=self.config.websocket_url,
+            origin=self.config.origin,
+            user_agent=self.config.user_agent,
+            use_routing_info=False,
+        )
+        web.websocket = websocket
+        web.noise = noise
+        self._web = web
+        self._closing = False
+        self._last_disconnect_error = None
+        self._qr_static_noise = static_noise
+        self._qr_meta = meta
+
+        deadline = asyncio.get_running_loop().time() + qr_timeout
+        while True:
+            remaining = deadline - asyncio.get_running_loop().time()
+            if remaining <= 0:
+                raise TimeoutError("timed out waiting for pair-device refs")
+            nodes = await self.receive_nodes(timeout=min(30, remaining))
+            for node in nodes:
+                refs = extract_pair_device_refs(node)
+                if not refs.refs:
+                    continue
+                if acknowledge_pair_device:
+                    await self.send_node(pair_device_ack_node(node))
+                ref = refs.refs[ref_index]
+                qr = build_pairing_qr_data(
+                    ref=ref,
+                    noise_key=static_noise.public,
+                    identity_key=bytes(meta["identity_public"]),
+                    adv_secret_key=str(meta["adv_secret_key"]),
+                )
+                request = QRPairingRequest(node=node, refs=refs.refs, qr=qr)
+                await self.ev.emit("connection.update", {"connection": "qr", "qr": qr, "pairing_refs": refs.refs})
+                return request
+
+    async def connect_and_wait(
+        self,
+        *,
+        open_timeout: float = 20,
+        close_timeout: float = 5,
+        success_timeout: float = 60,
+        start_receive_loop: bool = False,
+        initialize: bool = True,
+    ) -> BinaryNode:
+        await self.connect(open_timeout=open_timeout, close_timeout=close_timeout)
+        node = await self.wait_for_success(timeout=success_timeout, initialize=initialize)
+        if start_receive_loop:
+            self.start_receive_loop()
+        return node
+
+    async def reconnect(
+        self,
+        *,
+        open_timeout: float = 20,
+        close_timeout: float = 5,
+        wait_for_success: bool = False,
+        success_timeout: float = 60,
+        start_receive_loop: bool = False,
+    ) -> BinaryNode | None:
+        await self.close()
+        if wait_for_success:
+            return await self.connect_and_wait(
+                open_timeout=open_timeout,
+                close_timeout=close_timeout,
+                success_timeout=success_timeout,
+                start_receive_loop=start_receive_loop,
+            )
+        await self.connect(open_timeout=open_timeout, close_timeout=close_timeout)
+        if start_receive_loop:
+            self.start_receive_loop()
+        return None
+
+    async def close(self, error: DisconnectError | None = None) -> None:
+        self._closing = True
+        self._last_disconnect_error = error
+        current_task = asyncio.current_task()
+        if self._reconnect_task is not None and self._reconnect_task is not current_task:
+            if not self._reconnect_task.done():
+                self._reconnect_task.cancel()
+                try:
+                    await self._reconnect_task
+                except asyncio.CancelledError:
+                    pass
+            self._reconnect_task = None
+        if self._receive_task is not current_task:
+            await self.stop_receive_loop()
+        else:
+            self._receive_task = None
+        if self._keepalive_task is not current_task:
+            await self.stop_keepalive_loop()
+        else:
+            self._keepalive_task = None
+        self.queries.cancel_all()
+        if self._web is not None:
+            close = getattr(self._web, "close", None)
+            if close is not None:
+                await close()
+            self._web = None
+        await self.ev.emit("connection.update", disconnect_update(error) if error is not None else {"connection": "close"})
+
+    async def logout(self, message: str = "Intentional Logout", *, clear_auth: bool = True) -> None:
+        jid = _me_id(self.auth_state.credentials)
+        if jid:
+            await self.send_node(logout_node(jid, self.queries.next_tag()))
+        if clear_auth:
+            await self._clear_credentials()
+        await self.close(logged_out_disconnect(message))
+
+    async def send_node(self, node: BinaryNode) -> None:
+        if self._web is None:
+            raise RuntimeError("client is not connected")
+        await self._web.send_node(node)
+
+    async def query(self, node: BinaryNode, *, timeout: float = 30, drive_receive: bool = False) -> BinaryNode:
+        tag_id = node.attrs.get("id")
+        if not tag_id:
+            tag_id = self.queries.next_tag()
+            node.attrs["id"] = tag_id
+
+        waiter = self.queries.create_waiter(tag_id)
+        try:
+            await self.send_node(node)
+            if drive_receive:
+                deadline = asyncio.get_running_loop().time() + timeout
+                while not waiter.done():
+                    remaining = deadline - asyncio.get_running_loop().time()
+                    if remaining <= 0:
+                        raise asyncio.TimeoutError()
+                    await self.receive_nodes(timeout=min(5, remaining))
+            return await self.queries.wait_for(tag_id, timeout=timeout)
+        except Exception:
+            if not waiter.done():
+                waiter.cancel()
+            self.queries.discard(tag_id)
+            raise
+
+    async def receive_nodes(self, timeout: float = 30) -> list[BinaryNode]:
+        if self._web is None:
+            raise RuntimeError("client is not connected")
+        nodes = await self._web.receive_nodes(timeout=timeout)
+        for node in nodes:
+            await self.dispatch_node(node)
+        return nodes
+
+    async def dispatch_node(self, node: BinaryNode) -> SocketNodeKind:
+        kind = classify_node(node)
+        if kind == SocketNodeKind.SERVER_PING:
+            await self.send_node(server_ping_reply(node))
+        elif kind == SocketNodeKind.OFFLINE_PREVIEW:
+            await self.send_node(offline_batch_node())
+            await self.dispatch_offline_node(node)
+        elif kind == SocketNodeKind.OFFLINE:
+            await self.dispatch_offline_node(node)
+        elif kind == SocketNodeKind.DIRTY:
+            await self.dispatch_dirty_node(node)
+        elif kind == SocketNodeKind.STREAM_ERROR:
+            await self.close(stream_error_to_disconnect(node))
+        elif kind == SocketNodeKind.FAILURE:
+            await self.close(failure_to_disconnect(node))
+        if self._qr_static_noise is not None and self._qr_meta is not None:
+            from .socket_nodes import find_child
+
+            if find_child(node, "pair-success") is not None:
+                await self.finalize_pair_success(node, static_noise=self._qr_static_noise, meta=self._qr_meta)
+        if kind == SocketNodeKind.MESSAGE:
+            await self.dispatch_message_node(node)
+        elif kind == SocketNodeKind.RECEIPT:
+            await self.dispatch_receipt_node(node)
+            await self.send_ack(node)
+        elif kind == SocketNodeKind.NOTIFICATION:
+            await self.dispatch_notification_node(node)
+            await self.send_ack(node)
+        elif kind == SocketNodeKind.CALL:
+            await self.dispatch_call_node(node)
+            await self.send_ack(node)
+        if not self.queries.resolve(node):
+            await self.ev.emit("node", node)
+            await self.ev.emit(f"node.{kind.value}", node)
+        return kind
+
+    async def dispatch_message_node(self, node: BinaryNode) -> None:
+        creds_path = _credential_path(self.auth_state)
+        try:
+            upsert = build_message_upsert(node, self.auth_state.credentials, persist_creds_path=creds_path)
+        except Exception as exc:
+            await self.send_ack(node, error_code=500)
+            await self.ev.emit("messages.decrypt_error", {"node": node, "error": exc})
+            return
+        if upsert is not None:
+            await self.send_ack(node)
+            await self.ev.emit("messages.upsert", upsert)
+
+    async def dispatch_notification_node(self, node: BinaryNode) -> NotificationInfo | None:
+        info = parse_notification_info(node)
+        if info is None:
+            await self.ev.emit("notifications.error", {"node": node, "reason": "invalid_notification"})
+            return None
+        await self.ev.emit("notifications.upsert", info)
+        await self.ev.emit(f"notifications.{info.category}", info)
+        return info
+
+    async def dispatch_dirty_node(self, node: BinaryNode) -> DirtyInfo | None:
+        info = parse_dirty_info(node)
+        if info is None:
+            await self.ev.emit("app-state.dirty_error", {"node": node, "reason": "missing_dirty_child"})
+            return None
+        await self.ev.emit("app-state.dirty", info)
+        return info
+
+    async def dispatch_offline_node(self, node: BinaryNode) -> OfflineInfo | None:
+        info = parse_offline_info(node)
+        if info is None:
+            await self.ev.emit("offline.error", {"node": node, "reason": "missing_offline_child"})
+            return None
+        event = "offline.preview" if info.preview else "offline.update"
+        await self.ev.emit(event, info)
+        if not info.preview:
+            await self.ev.emit("connection.update", {"connection": "open", "received_pending_notifications": True})
+        return info
+
+    async def dispatch_call_node(self, node: BinaryNode) -> CallInfo | None:
+        info = parse_call_info(node)
+        if info is None:
+            await self.ev.emit("calls.error", {"node": node, "reason": "invalid_call"})
+            return None
+        await self.ev.emit("calls.update", [info])
+        return info
+
+    async def dispatch_receipt_node(self, node: BinaryNode) -> None:
+        retry_request = parse_retry_request(node, self.auth_state.credentials)
+        if retry_request is not None:
+            await self.dispatch_retry_receipt_node(retry_request)
+            return
+
+        info = parse_receipt_info(node, self.auth_state.credentials)
+        if info is None or info.status is None:
+            return
+
+        if info.is_group_or_status and info.user_jid and info.receipt_timestamp_key:
+            updates = [
+                {
+                    "key": {
+                        "remote_jid": info.key.remote_jid,
+                        "id": message_id,
+                        "from_me": info.key.from_me,
+                        "participant": info.key.participant,
+                    },
+                    "receipt": {
+                        "user_jid": info.user_jid,
+                        info.receipt_timestamp_key: info.timestamp,
+                    },
+                }
+                for message_id in info.ids
+            ]
+            await self.ev.emit("message-receipt.update", updates)
+        else:
+            updates = [
+                {
+                    "key": {
+                        "remote_jid": info.key.remote_jid,
+                        "id": message_id,
+                        "from_me": info.key.from_me,
+                        "participant": info.key.participant,
+                    },
+                    "update": {
+                        "status": info.status,
+                        "message_timestamp": info.timestamp,
+                    },
+                }
+                for message_id in info.ids
+            ]
+            await self.ev.emit("messages.update", updates)
+
+    async def dispatch_retry_receipt_node(self, request: RetryRequest) -> RetryOutcome:
+        participant = request.key.participant
+        local_retry_count = self._increment_retry_count(request.key.id or "", participant)
+        bundle: RetrySessionBundle | None = None
+        if participant:
+            try:
+                bundle = inject_retry_session_from_receipt(self.auth_state.credentials, request.node, participant)
+            except Exception as exc:
+                await self.ev.emit("messages.retry_error", {"request": request, "error": exc, "stage": "session_bundle"})
+
+        will_retry = bool(request.key.from_me and local_retry_count <= self.config.max_msg_retry_count)
+        resent = False
+        reason = None
+        if not request.key.from_me:
+            reason = "not_from_me"
+        elif local_retry_count > self.config.max_msg_retry_count:
+            reason = "max_retries_exceeded"
+        else:
+            try:
+                resent = await self.resend_message_for_retry(request)
+                reason = "resent" if resent else "message_unavailable"
+            except Exception as exc:
+                reason = "resend_error"
+                await self.ev.emit("messages.retry_error", {"request": request, "error": exc, "stage": "resend"})
+
+        outcome = RetryOutcome(
+            request=request,
+            local_retry_count=local_retry_count,
+            will_retry=will_retry,
+            resent=resent,
+            reason=reason,
+            session_bundle=bundle,
+        )
+        await self.ev.emit("messages.retry", outcome)
+        if bundle is not None:
+            await self._commit_credentials(self.auth_state.credentials)
+        return outcome
+
+    async def resend_message_for_retry(self, request: RetryRequest) -> bool:
+        return False
+
+    async def send_ack(self, node: BinaryNode, *, error_code: int | None = None) -> bool:
+        if not self.config.auto_ack or not can_ack_node(node):
+            return False
+        try:
+            await self.send_node(build_ack_node(node, error_code=error_code, me_id=_me_id(self.auth_state.credentials)))
+        except Exception as exc:
+            await self.ev.emit("ack.error", {"node": node, "error": exc})
+            return False
+        return True
+
+    async def send_receipt(
+        self,
+        jid: str,
+        message_ids: list[str],
+        *,
+        participant: str | None = None,
+        receipt_type: str | None = None,
+    ) -> BinaryNode:
+        node = build_receipt_node(jid, message_ids, participant=participant, receipt_type=receipt_type)
+        await self.send_node(node)
+        return node
+
+    async def read_messages(self, keys: list[MessageKey | WAMessage]) -> list[BinaryNode]:
+        message_keys = [key.key if isinstance(key, WAMessage) else key for key in keys]
+        sent = []
+        for jid, participant, message_ids in aggregate_message_keys(message_keys):
+            sent.append(await self.send_receipt(jid, message_ids, participant=participant, receipt_type="read"))
+        return sent
+
+    def _increment_retry_count(self, message_id: str, participant: str | None) -> int:
+        key = (message_id, participant)
+        count = self._message_retry_counts.get(key, 0) + 1
+        self._message_retry_counts[key] = count
+        return count
+
+    def start_receive_loop(
+        self,
+        *,
+        timeout: float = 30,
+        keepalive_interval: float = 25,
+        initialize_reconnect: bool = True,
+    ) -> Any:
+        if self._receive_task is not None and not self._receive_task.done():
+            return self._receive_task
+
+        self.start_keepalive_loop(interval=keepalive_interval)
+        self._receive_task = asyncio.create_task(
+            self.receive_forever(
+                timeout=timeout,
+                keepalive_interval=keepalive_interval,
+                initialize_reconnect=initialize_reconnect,
+            )
+        )
+        return self._receive_task
+
+    def start_keepalive_loop(self, *, interval: float = 25) -> Any:
+        if self._keepalive_task is not None and not self._keepalive_task.done():
+            return self._keepalive_task
+        self._keepalive_task = asyncio.create_task(self.keepalive_forever(interval=interval))
+        return self._keepalive_task
+
+    async def stop_keepalive_loop(self) -> None:
+        task = self._keepalive_task
+        if task is None:
+            self._keepalive_task = None
+            return
+        if task.done():
+            try:
+                task.result()
+            except asyncio.CancelledError:
+                pass
+            except Exception:
+                pass
+            self._keepalive_task = None
+            return
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
+        finally:
+            self._keepalive_task = None
+
+    async def keepalive_forever(self, *, interval: float = 25) -> None:
+        try:
+            while not self._closing:
+                await asyncio.sleep(interval)
+                await self.send_node(client_ping_node(self.queries.next_tag()))
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            error = _coerce_disconnect_error(exc)
+            await self.close(error)
+            self._schedule_reconnect(error, receive_timeout=30, keepalive_interval=interval)
+
+    async def stop_receive_loop(self) -> None:
+        task = self._receive_task
+        if task is None:
+            self._receive_task = None
+            return
+        if task.done():
+            try:
+                task.result()
+            except asyncio.CancelledError:
+                pass
+            except Exception:
+                pass
+            self._receive_task = None
+            return
+        task.cancel()
+        try:
+            await task
+        except BaseException as exc:
+            if not isinstance(exc, asyncio.CancelledError):
+                raise
+        finally:
+            self._receive_task = None
+
+    async def receive_forever(
+        self,
+        *,
+        timeout: float = 30,
+        keepalive_interval: float = 25,
+        initialize_reconnect: bool = True,
+    ) -> None:
+        await self.ev.emit("connection.update", {"connection": "open", "is_receive_loop_running": True})
+        try:
+            while not self._closing:
+                try:
+                    await self.receive_nodes(timeout=timeout)
+                    if self._closing:
+                        if await self._reconnect_after_disconnect(
+                            self._last_disconnect_error,
+                            receive_timeout=timeout,
+                            keepalive_interval=keepalive_interval,
+                            initialize=initialize_reconnect,
+                        ):
+                            continue
+                        break
+                except TimeoutError:
+                    continue
+                except asyncio.TimeoutError:
+                    continue
+                except Exception as exc:
+                    error = _coerce_disconnect_error(exc)
+                    await self.close(error)
+                    if await self._reconnect_after_disconnect(
+                        error,
+                        receive_timeout=timeout,
+                        keepalive_interval=keepalive_interval,
+                        initialize=initialize_reconnect,
+                    ):
+                        continue
+                    break
+        except asyncio.CancelledError:
+            raise
+        finally:
+            if self._keepalive_task is not asyncio.current_task():
+                await self.stop_keepalive_loop()
+            if self._receive_task is asyncio.current_task():
+                self._receive_task = None
+            await self.ev.emit("connection.update", {"connection": "close", "is_receive_loop_running": False})
+
+    def _schedule_reconnect(
+        self,
+        error: DisconnectError | None,
+        *,
+        receive_timeout: float,
+        keepalive_interval: float,
+        initialize: bool = True,
+    ) -> None:
+        if self._reconnect_task is not None and not self._reconnect_task.done():
+            return
+        if not self.config.reconnect_policy.should_reconnect(error):
+            return
+        self._reconnect_task = asyncio.create_task(
+            self._reconnect_after_disconnect(
+                error,
+                receive_timeout=receive_timeout,
+                keepalive_interval=keepalive_interval,
+                initialize=initialize,
+                restart_receive_loop=True,
+            )
+        )
+
+    async def _reconnect_after_disconnect(
+        self,
+        error: DisconnectError | None,
+        *,
+        receive_timeout: float,
+        keepalive_interval: float,
+        initialize: bool = True,
+        restart_receive_loop: bool = False,
+    ) -> bool:
+        policy = self.config.reconnect_policy
+        if not policy.should_reconnect(error):
+            return False
+
+        for attempt in range(1, policy.max_attempts + 1):
+            delay = policy.delay_for_attempt(attempt)
+            await self.ev.emit(
+                "connection.update",
+                {
+                    "connection": "connecting",
+                    "reconnect": True,
+                    "attempt": attempt,
+                    "delay": delay,
+                    "last_disconnect": error,
+                },
+            )
+            if delay > 0:
+                await asyncio.sleep(delay)
+            try:
+                await self.connect_and_wait(initialize=initialize, start_receive_loop=False)
+            except Exception as exc:
+                error = _coerce_disconnect_error(exc)
+                await self.ev.emit(
+                    "connection.update",
+                    {
+                        "connection": "close",
+                        "reconnect": True,
+                        "attempt": attempt,
+                        "last_disconnect": error,
+                    },
+                )
+                continue
+
+            self._closing = False
+            self._last_disconnect_error = None
+            await self.ev.emit("connection.update", {"connection": "open", "reconnect": True, "attempt": attempt})
+            if restart_receive_loop:
+                self.start_receive_loop(timeout=receive_timeout, keepalive_interval=keepalive_interval)
+            else:
+                self._receive_task = asyncio.current_task()
+                self.start_keepalive_loop(interval=keepalive_interval)
+            return True
+
+        await self.ev.emit(
+            "connection.update",
+            {
+                "connection": "close",
+                "reconnect": False,
+                "reconnect_exhausted": True,
+                "last_disconnect": error,
+            },
+        )
+        return False
+
+    async def wait_for_success(
+        self,
+        timeout: float = 60,
+        *,
+        reply_to_pings: bool = True,
+        initialize: bool = True,
+    ) -> BinaryNode:
+        if self._web is None:
+            raise RuntimeError("client is not connected")
+        node = await self._web.wait_for_success(timeout=timeout, reply_to_pings=reply_to_pings)
+        if self._web.creds is not None:
+            self.auth_state.credentials = self._web.creds
+            await self.ev.emit("creds.update", self.auth_state.credentials)
+        if node.attrs.get("t"):
+            self._server_time_offset_ms = int(node.attrs["t"]) * 1000 - int(__import__("time").time() * 1000)
+        if initialize:
+            await self.initialize_session()
+        if initialize and self.config.auto_prekey_maintenance:
+            try:
+                await self.maintain_pre_keys(drive_receive=True)
+            except Exception as exc:
+                await self.ev.emit("prekeys.update", {"maintenance": "failed", "error": exc})
+        await self.ev.emit("connection.update", {"connection": "open", "received_pending_notifications": True})
+        return node
+
+    async def initialize_session(self) -> None:
+        await self.send_node(passive_active_node(self.queries.next_tag()))
+        await self.send_node(unified_session_node(self._server_time_offset_ms))
+
+    def build_pairing_code_request(
+        self,
+        phone_number: str,
+        *,
+        pairing_code: str | None = None,
+        custom_pairing_code: str | None = None,
+        companion_ephemeral_public: bytes | None = None,
+        noise_public: bytes | None = None,
+        tag_id: str | None = None,
+    ) -> PairingCodeRequest:
+        companion_public = companion_ephemeral_public or generate_noise_key_pair().public
+        noise = noise_public or generate_noise_key_pair().public
+        return pairing_code_request_node(
+            phone_number=phone_number,
+            tag_id=tag_id or self.queries.next_tag(),
+            companion_ephemeral_public=companion_public,
+            noise_public=noise,
+            pairing_code=pairing_code,
+            custom_pairing_code=custom_pairing_code,
+        )
+
+    async def request_pairing_code(
+        self,
+        phone_number: str,
+        *,
+        pairing_code: str | None = None,
+        custom_pairing_code: str | None = None,
+        companion_ephemeral_public: bytes | None = None,
+        noise_public: bytes | None = None,
+        timeout: float = 30,
+    ) -> PairingCodeRequest:
+        request = self.build_pairing_code_request(
+            phone_number,
+            pairing_code=pairing_code,
+            custom_pairing_code=custom_pairing_code,
+            companion_ephemeral_public=companion_ephemeral_public,
+            noise_public=noise_public,
+        )
+        await self.query(request.node, timeout=timeout)
+        await self.ev.emit("connection.update", {"pairing_code": request.code, "pairing_jid": request.jid})
+        return request
+
+    async def digest_key_bundle(self, *, timeout: float = 30) -> BinaryNode:
+        response = await self.query(digest_key_bundle_node(self.queries.next_tag()), timeout=timeout)
+        digest = _first_child(response, "digest")
+        if digest is None:
+            raise ValueError("encrypt/get digest response missing digest child")
+        return digest
+
+    async def count_pre_keys(self, *, timeout: float = 30, drive_receive: bool = False) -> int:
+        response = await self.query(prekey_count_node(self.queries.next_tag()), timeout=timeout, drive_receive=drive_receive)
+        return parse_prekey_count(response)
+
+    async def upload_pre_keys(
+        self,
+        count: int | None = None,
+        *,
+        timeout: float = 30,
+        retries: int = 0,
+        retry_delay: float = 1,
+        drive_receive: bool = False,
+    ) -> PreKeyNodeResult:
+        working_creds = copy.deepcopy(self.auth_state.credentials)
+        result = build_prekey_upload_node(working_creds, count=count or MIN_PREKEY_COUNT, tag_id=self.queries.next_tag())
+        last_error: Exception | None = None
+        for attempt in range(retries + 1):
+            try:
+                await self.query(result.node, timeout=timeout, drive_receive=drive_receive)
+                last_error = None
+                break
+            except Exception as exc:
+                last_error = exc
+                if attempt >= retries:
+                    break
+                await asyncio.sleep(min(retry_delay * (2**attempt), 10))
+        if last_error is not None:
+            raise last_error
+        await self._commit_credentials(working_creds)
+        await self.ev.emit("prekeys.update", {"uploaded": result.uploaded_ids})
+        return result
+
+    async def maintain_pre_keys(
+        self,
+        *,
+        timeout: float = 30,
+        retries: int = 3,
+        retry_delay: float = 1,
+        drive_receive: bool = False,
+    ) -> PreKeyMaintenanceResult:
+        server_count = await self.count_pre_keys(timeout=timeout, drive_receive=drive_receive)
+        upload_count = INITIAL_PREKEY_COUNT if server_count == 0 else MIN_PREKEY_COUNT
+        current_prekey_id = int(self.auth_state.credentials.get("next_pre_key_id", 1)) - 1
+        has_current_prekey = current_prekey_id <= 0 or str(current_prekey_id) in (
+            self.auth_state.credentials.get("pre_keys") or {}
+        )
+        should_upload = server_count <= upload_count or not has_current_prekey
+        if not should_upload:
+            result = PreKeyMaintenanceResult(server_count=server_count)
+            await self.ev.emit("prekeys.update", {"server_count": server_count, "maintenance": "ok"})
+            return result
+
+        reason = "server_count_zero" if server_count == 0 else "server_count_low"
+        if not has_current_prekey:
+            reason = "current_prekey_missing"
+        uploaded = await self.upload_pre_keys(
+            upload_count,
+            timeout=timeout,
+            retries=retries,
+            retry_delay=retry_delay,
+            drive_receive=drive_receive,
+        )
+        result = PreKeyMaintenanceResult(server_count=server_count, uploaded=uploaded, reason=reason)
+        await self.ev.emit(
+            "prekeys.update",
+            {"server_count": server_count, "maintenance": "uploaded", "reason": reason, "uploaded": uploaded.uploaded_ids},
+        )
+        return result
+
+    async def rotate_signed_pre_key(self, *, timeout: float = 30) -> SignedPreKeyRotation:
+        working_creds = copy.deepcopy(self.auth_state.credentials)
+        rotation = rotate_signed_pre_key_node(working_creds, self.queries.next_tag())
+        await self.query(rotation.node, timeout=timeout)
+        await self._commit_credentials(working_creds)
+        return rotation
+
+    async def _commit_credentials(self, credentials: dict[str, Any]) -> None:
+        self.auth_state.credentials = credentials
+        self.auth_state.save_credentials()
+        await self.ev.emit("creds.update", self.auth_state.credentials)
+
+    async def _clear_credentials(self) -> None:
+        self.auth_state.credentials = {}
+        if self.auth_state.credential_store is not None:
+            self.auth_state.save_credentials()
+        await self.ev.emit("creds.update", self.auth_state.credentials)
+
+    async def finalize_pair_success(
+        self,
+        node: BinaryNode,
+        *,
+        static_noise: Any,
+        meta: dict[str, Any],
+    ) -> PairSuccess:
+        success = configure_successful_pairing(node, static_noise=static_noise, meta=meta)
+        await self.send_node(success.reply)
+        self.auth_state.credentials = success.credentials
+        self.auth_state.save_credentials()
+        self._qr_static_noise = None
+        self._qr_meta = None
+        await self.ev.emit("creds.update", self.auth_state.credentials)
+        await self.ev.emit("connection.update", {"connection": "open", "pairing": "success", **success.update})
+        return success
+
+    # Baileys-style aliases for common public surface names.
+    sendNode = send_node
+    receiveNodes = receive_nodes
+    sendAck = send_ack
+    sendReceipt = send_receipt
+    readMessages = read_messages
+    resendMessageForRetry = resend_message_for_retry
+    waitForSuccess = wait_for_success
+    initializeSession = initialize_session
+    requestPairingCode = request_pairing_code
+    digestKeyBundle = digest_key_bundle
+    countPreKeys = count_pre_keys
+    uploadPreKeys = upload_pre_keys
+    maintainPreKeys = maintain_pre_keys
+    rotateSignedPreKey = rotate_signed_pre_key
+    DisconnectReason = DisconnectReason
+    ReconnectPolicy = ReconnectPolicy
+    connectAndWait = connect_and_wait
+    connectForQRPairing = connect_for_qr_pairing
+    finalizePairSuccess = finalize_pair_success
+
+
+def make_socket(
+    auth: AuthState | MultiFileAuthState | str | Path,
+    **kwargs: Any,
+) -> WhatsAppClient:
+    return WhatsAppClient(auth, **kwargs)
+
+
+makeWASocket = make_socket
+
+
+def _coerce_auth_state(auth: AuthState | MultiFileAuthState | str | Path) -> AuthState:
+    if isinstance(auth, AuthState):
+        return auth
+    if isinstance(auth, MultiFileAuthState):
+        return auth.load()
+    return AuthState.from_store(JsonCredentialStore(auth), allow_missing=True)
+
+
+def _credential_path(auth_state: AuthState) -> Path | None:
+    store = auth_state.credential_store
+    if isinstance(store, JsonCredentialStore):
+        return store.path
+    return None
+
+
+def _me_id(creds: dict[str, Any]) -> str | None:
+    me = creds.get("me") or {}
+    return me.get("id")
+
+
+def _optional_int(value: str | None) -> int | None:
+    return int(value) if value is not None else None
+
+
+def _first_child(node: BinaryNode, tag: str) -> BinaryNode | None:
+    if not isinstance(node.content, list):
+        return None
+    for child in node.content:
+        if child.tag == tag:
+            return child
+    return None
+
+
+def _coerce_disconnect_error(exc: Exception) -> DisconnectError:
+    if isinstance(exc, DisconnectError):
+        return exc
+    return DisconnectError(
+        "Connection Lost",
+        status_code=DisconnectReason.connectionLost,
+        reason="connection_lost",
+        data=exc,
+    )
