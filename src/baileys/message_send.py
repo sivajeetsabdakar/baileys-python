@@ -4,7 +4,7 @@ import hashlib
 import os
 import time
 from dataclasses import dataclass
-from typing import Iterable
+from typing import Any, Iterable
 
 from signal_protocol import address, protocol, session_cipher
 
@@ -22,6 +22,18 @@ class OutboundMessage:
     recipient_address: address.ProtocolAddress
     participant_jids: list[str]
     signal_types: dict[str, str]
+
+
+@dataclass(frozen=True)
+class MessageOptions:
+    quoted: proto.MessageKey | dict[str, Any] | None = None
+    mentions: list[str] | None = None
+    forwarding_score: int | None = None
+    is_forwarded: bool = False
+
+
+class UnsupportedMessageContent(ValueError):
+    pass
 
 
 def jid_decode(jid: str) -> tuple[str, str, int]:
@@ -69,6 +81,141 @@ def text_message(text: str) -> proto.Message:
     message.conversation = text
     message.messageContextInfo.messageSecret = os.urandom(32)
     return message
+
+
+def extended_text_message(text: str, options: MessageOptions | None = None) -> proto.Message:
+    message = proto.Message()
+    message.extendedTextMessage.text = text
+    _apply_context_info(message.extendedTextMessage.contextInfo, options)
+    message.messageContextInfo.messageSecret = os.urandom(32)
+    return message
+
+
+def reaction_message(key: proto.MessageKey | dict[str, Any], text: str = "") -> proto.Message:
+    message = proto.Message()
+    message.reactionMessage.key.CopyFrom(_coerce_message_key(key))
+    message.reactionMessage.text = text
+    message.reactionMessage.senderTimestampMs = int(time.time() * 1000)
+    message.messageContextInfo.messageSecret = os.urandom(32)
+    return message
+
+
+def delete_message(key: proto.MessageKey | dict[str, Any]) -> proto.Message:
+    message = proto.Message()
+    message.protocolMessage.key.CopyFrom(_coerce_message_key(key))
+    message.protocolMessage.type = proto.Message.ProtocolMessage.Type.REVOKE
+    message.messageContextInfo.messageSecret = os.urandom(32)
+    return message
+
+
+def edit_message(key: proto.MessageKey | dict[str, Any], text: str) -> proto.Message:
+    edited = text_message(text)
+    message = proto.Message()
+    message.protocolMessage.key.CopyFrom(_coerce_message_key(key))
+    message.protocolMessage.type = proto.Message.ProtocolMessage.Type.MESSAGE_EDIT
+    message.protocolMessage.editedMessage.CopyFrom(edited)
+    message.protocolMessage.timestampMs = int(time.time() * 1000)
+    message.messageContextInfo.messageSecret = os.urandom(32)
+    return message
+
+
+def location_message(
+    latitude: float,
+    longitude: float,
+    *,
+    name: str | None = None,
+    address_text: str | None = None,
+    url: str | None = None,
+) -> proto.Message:
+    message = proto.Message()
+    location = message.locationMessage
+    location.degreesLatitude = latitude
+    location.degreesLongitude = longitude
+    if name:
+        location.name = name
+    if address_text:
+        location.address = address_text
+    if url:
+        location.url = url
+    message.messageContextInfo.messageSecret = os.urandom(32)
+    return message
+
+
+def contact_message(display_name: str, vcard: str) -> proto.Message:
+    message = proto.Message()
+    contact = message.contactMessage
+    contact.displayName = display_name
+    contact.vcard = vcard
+    message.messageContextInfo.messageSecret = os.urandom(32)
+    return message
+
+
+def contacts_array_message(display_name: str, contacts: Iterable[dict[str, str]]) -> proto.Message:
+    message = proto.Message()
+    array = message.contactsArrayMessage
+    array.displayName = display_name
+    for item in contacts:
+        contact = array.contacts.add()
+        contact.displayName = item["display_name"]
+        contact.vcard = item["vcard"]
+    message.messageContextInfo.messageSecret = os.urandom(32)
+    return message
+
+
+def normalize_message_content(content: str | proto.Message | dict[str, Any]) -> tuple[proto.Message, str]:
+    if isinstance(content, proto.Message):
+        return content, _message_type_for_proto(content)
+    if isinstance(content, str):
+        return text_message(content), "text"
+    if not isinstance(content, dict):
+        raise UnsupportedMessageContent(f"unsupported message content: {type(content).__name__}")
+
+    options = _options_from_dict(content)
+    if "text" in content:
+        text = str(content["text"])
+        if options.mentions or options.quoted or options.forwarding_score or options.is_forwarded:
+            return extended_text_message(text, options), "text"
+        return text_message(text), "text"
+    if "extended_text" in content:
+        return extended_text_message(str(content["extended_text"]), options), "text"
+    if "reaction" in content:
+        reaction = content["reaction"]
+        if not isinstance(reaction, dict) or "key" not in reaction:
+            raise UnsupportedMessageContent("reaction content requires a key")
+        return reaction_message(reaction["key"], str(reaction.get("text", ""))), "reaction"
+    if "delete" in content:
+        return delete_message(content["delete"]), "protocol"
+    if "edit" in content:
+        edit = content["edit"]
+        if not isinstance(edit, dict) or "key" not in edit or "text" not in edit:
+            raise UnsupportedMessageContent("edit content requires key and text")
+        return edit_message(edit["key"], str(edit["text"])), "protocol"
+    if "location" in content:
+        location = content["location"]
+        if not isinstance(location, dict):
+            raise UnsupportedMessageContent("location content must be a mapping")
+        return (
+            location_message(
+                float(location["latitude"]),
+                float(location["longitude"]),
+                name=location.get("name"),
+                address_text=location.get("address"),
+                url=location.get("url"),
+            ),
+            "location",
+        )
+    if "contact" in content:
+        contact = content["contact"]
+        if not isinstance(contact, dict):
+            raise UnsupportedMessageContent("contact content must be a mapping")
+        return contact_message(str(contact["display_name"]), str(contact["vcard"])), "contact"
+    if "contacts" in content:
+        contacts = content["contacts"]
+        if not isinstance(contacts, list):
+            raise UnsupportedMessageContent("contacts content must be a list")
+        return contacts_array_message(str(content.get("display_name") or "Contacts"), contacts), "contacts"
+
+    raise UnsupportedMessageContent(f"unsupported message content keys: {', '.join(sorted(content))}")
 
 
 def device_sent_message(destination_jid: str, message: proto.Message) -> proto.Message:
@@ -123,6 +270,31 @@ def build_text_message_node(
         recipient_jid,
         text_message(text),
         message_type="text",
+        message_id=message_id,
+        direct_enc=direct_enc,
+        recipient_device_jids=recipient_device_jids,
+        own_fanout_jids=own_fanout_jids,
+        include_phash=include_phash,
+    )
+
+
+def build_message_content_node(
+    creds: dict,
+    recipient_jid: str,
+    content: str | proto.Message | dict[str, Any],
+    *,
+    message_id: str | None = None,
+    direct_enc: bool = True,
+    recipient_device_jids: Iterable[str] | None = None,
+    own_fanout_jids: Iterable[str] = (),
+    include_phash: bool = False,
+) -> OutboundMessage:
+    message, message_type = normalize_message_content(content)
+    return build_proto_message_node(
+        creds,
+        recipient_jid,
+        message,
+        message_type=message_type,
         message_id=message_id,
         direct_enc=direct_enc,
         recipient_device_jids=recipient_device_jids,
@@ -199,3 +371,61 @@ def build_proto_message_node(
         participant_jids=participant_jids,
         signal_types=signal_types,
     )
+
+
+def _apply_context_info(context: proto.ContextInfo, options: MessageOptions | None) -> None:
+    if options is None:
+        return
+    if options.mentions:
+        context.mentionedJid.extend(options.mentions)
+    if options.forwarding_score is not None:
+        context.forwardingScore = options.forwarding_score
+    if options.is_forwarded:
+        context.isForwarded = True
+    if options.quoted is not None:
+        context.placeholderKey.CopyFrom(_coerce_message_key(options.quoted))
+
+
+def _coerce_message_key(key: proto.MessageKey | dict[str, Any]) -> proto.MessageKey:
+    if isinstance(key, proto.MessageKey):
+        return key
+    if not isinstance(key, dict):
+        raise UnsupportedMessageContent("message key must be a proto MessageKey or mapping")
+    message_key = proto.MessageKey()
+    if key.get("remote_jid") or key.get("remoteJid"):
+        message_key.remoteJid = str(key.get("remote_jid") or key.get("remoteJid"))
+    if key.get("id"):
+        message_key.id = str(key["id"])
+    if key.get("participant"):
+        message_key.participant = str(key["participant"])
+    if key.get("from_me") is not None or key.get("fromMe") is not None:
+        message_key.fromMe = bool(key.get("from_me") if key.get("from_me") is not None else key.get("fromMe"))
+    return message_key
+
+
+def _options_from_dict(content: dict[str, Any]) -> MessageOptions:
+    return MessageOptions(
+        quoted=content.get("quoted"),
+        mentions=list(content.get("mentions") or []),
+        forwarding_score=content.get("forwarding_score"),
+        is_forwarded=bool(content.get("is_forwarded", False)),
+    )
+
+
+def _message_type_for_proto(message: proto.Message) -> str:
+    for field, message_type in (
+        ("reactionMessage", "reaction"),
+        ("protocolMessage", "protocol"),
+        ("locationMessage", "location"),
+        ("contactMessage", "contact"),
+        ("contactsArrayMessage", "contacts"),
+        ("imageMessage", "image"),
+        ("videoMessage", "video"),
+        ("audioMessage", "audio"),
+        ("documentMessage", "document"),
+        ("stickerMessage", "sticker"),
+        ("extendedTextMessage", "text"),
+    ):
+        if message.HasField(field):
+            return message_type
+    return "text"

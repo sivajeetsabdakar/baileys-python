@@ -9,7 +9,8 @@ the production implementation target.
 
 ## Current State
 
-The product package is bootstrapped and QR auth is live-proven:
+The product package has live-proven auth/inbound foundations and offline-tested
+outbound/chat/group API foundations:
 
 - installable Python package under `src/baileys`
 - generated WAProto and WABinary token package data
@@ -21,6 +22,10 @@ The product package is bootstrapped and QR auth is live-proven:
 - live/proof scripts under `scripts/`
 - product QR pairing plus saved reconnect through
   `scripts/product_qr_pairing_probe.py`
+- product outbound text/media API probes through `scripts/send_text_probe.py`
+  and `scripts/send_image_probe.py`
+- product chat, presence, profile, privacy, blocklist, and group method
+  surfaces with Baileys-compatible aliases
 
 This is not full Baileys parity yet. It is the first product baseline for the
 full roadmap.

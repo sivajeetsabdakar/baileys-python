@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import copy
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -23,6 +24,54 @@ from .noise import NoiseHandshake
 from .registration import build_registration_payload
 from .defaults import DEFAULT_ORIGIN, DEFAULT_USER_AGENT, INITIAL_PREKEY_COUNT, MIN_PREKEY_COUNT, WA_WEBSOCKET_URL
 from .events import EventEmitter
+from .chat_groups import (
+    GroupMetadata,
+    ParticipantUpdateResult,
+    available_presence_node,
+    block_status_node,
+    blocklist_fetch_node,
+    chat_modify_node,
+    chatstate_presence_node,
+    group_accept_invite_node,
+    group_create_node,
+    group_invite_code_node,
+    group_leave_node,
+    group_metadata_node,
+    group_participants_update_node,
+    group_revoke_invite_node,
+    group_setting_update_node,
+    group_update_description_node,
+    group_update_subject_node,
+    on_whatsapp_node,
+    parse_accept_invite,
+    parse_blocklist,
+    parse_group_metadata,
+    parse_invite_code,
+    parse_on_whatsapp,
+    parse_participant_update,
+    parse_privacy_settings,
+    parse_profile_picture_url,
+    privacy_fetch_node,
+    privacy_update_node,
+    profile_picture_remove_node,
+    profile_picture_update_node,
+    profile_picture_url_node,
+    profile_status_update_node,
+)
+from .jid import is_jid_group
+from .media import (
+    MediaConn,
+    MediaPayload,
+    decrypt_media,
+    download_media,
+    encrypt_media,
+    media_conn_node,
+    media_message,
+    parse_media_conn,
+    read_media_payload,
+    upload_media,
+)
+from .message_send import OutboundMessage, build_message_content_node, build_proto_message_node
 from .noise import generate_noise_key_pair
 from .pairing_code import (
     PairSuccess,
@@ -56,6 +105,7 @@ from .receipts import (
     parse_retry_request,
 )
 from .retry import RetrySessionBundle, inject_retry_session_from_receipt
+from .session_assert import encrypt_session_query_node, inject_sessions_from_encrypt_result
 from .socket_nodes import (
     SocketNodeKind,
     classify_node,
@@ -67,6 +117,7 @@ from .socket_nodes import (
     unified_session_node,
 )
 from .store import InMemoryStore
+from .usync import conversation_identities, extract_device_jids, parse_usync_result, split_own_and_other_devices, usync_devices_query_node
 from .wabinary import BinaryNode
 from .messages import MessageKey, WAMessage, build_message_upsert
 from .notifications import (
@@ -122,6 +173,25 @@ class SocketConfig:
     max_msg_retry_count: int = 5
 
 
+@dataclass(frozen=True)
+class SendMessageResult:
+    message_id: str
+    remote_jid: str
+    message_type: str
+    participant_jids: list[str]
+    signal_types: dict[str, str]
+    acked: bool = False
+    node: BinaryNode | None = None
+
+
+@dataclass(frozen=True)
+class MediaSendResult:
+    send: SendMessageResult
+    payload: MediaPayload
+    direct_path: str
+    media_url: str
+
+
 class WhatsAppClient:
     def __init__(
         self,
@@ -172,6 +242,9 @@ class WhatsAppClient:
         self._last_disconnect_error: DisconnectError | None = None
         self._server_time_offset_ms = 0
         self._message_retry_counts: dict[tuple[str, str | None], int] = {}
+        self._recent_outbound: dict[str, BinaryNode] = {}
+        self._media_conn: MediaConn | None = None
+        self._media_conn_expires_at = 0.0
 
     @property
     def creds(self) -> dict[str, Any]:
@@ -539,6 +612,344 @@ class WhatsAppClient:
             ]
             await self.ev.emit("messages.update", updates)
 
+    async def send_message(
+        self,
+        jid: str,
+        content: str | proto.Message | dict[str, Any],
+        *,
+        message_id: str | None = None,
+        use_usync: bool | None = None,
+        force_sessions: bool = False,
+        include_phash: bool = False,
+        timeout: float = 30,
+        wait_for_ack: float = 0,
+    ) -> SendMessageResult:
+        outbound = await self._build_outbound_message(
+            jid,
+            content,
+            message_id=message_id,
+            use_usync=use_usync,
+            force_sessions=force_sessions,
+            include_phash=include_phash,
+            timeout=timeout,
+        )
+        return await self.relay_message(jid, outbound, timeout=wait_for_ack)
+
+    async def relay_message(
+        self,
+        jid: str,
+        message: OutboundMessage | proto.Message | BinaryNode,
+        *,
+        message_id: str | None = None,
+        message_type: str = "text",
+        timeout: float = 0,
+    ) -> SendMessageResult:
+        if isinstance(message, OutboundMessage):
+            outbound = message
+        elif isinstance(message, proto.Message):
+            outbound = build_proto_message_node(
+                self.auth_state.credentials,
+                jid,
+                message,
+                message_type=message_type,
+                message_id=message_id,
+            )
+        elif isinstance(message, BinaryNode):
+            outbound = OutboundMessage(
+                node=message,
+                message_id=message.attrs.get("id") or message_id or "",
+                signal_type="unknown",
+                recipient_address=None,  # type: ignore[arg-type]
+                participant_jids=[],
+                signal_types={},
+            )
+        else:
+            raise TypeError(f"unsupported relay message type: {type(message).__name__}")
+
+        await self.send_node(outbound.node)
+        await self._commit_credentials(self.auth_state.credentials)
+        self._recent_outbound[outbound.message_id] = outbound.node
+        acked = await self._wait_for_message_ack(outbound.message_id, timeout) if timeout > 0 else False
+        await self.ev.emit(
+            "messages.send",
+            {
+                "jid": jid,
+                "message_id": outbound.message_id,
+                "participant_jids": outbound.participant_jids,
+                "acked": acked,
+            },
+        )
+        return SendMessageResult(
+            message_id=outbound.message_id,
+            remote_jid=jid,
+            message_type=outbound.node.attrs.get("type", message_type),
+            participant_jids=outbound.participant_jids,
+            signal_types=outbound.signal_types,
+            acked=acked,
+            node=outbound.node,
+        )
+
+    async def download_media_message(
+        self,
+        upload_or_url,
+        *,
+        media_key: bytes | None = None,
+        media_type: str | None = None,
+        timeout: int = 45,
+    ) -> bytes:
+        encrypted = await download_media(upload_or_url, timeout=timeout)
+        if media_key is None or media_type is None:
+            return encrypted
+        return decrypt_media(encrypted, media_key, media_type)
+
+    async def send_media_message(
+        self,
+        jid: str,
+        source: bytes | bytearray | str | Path,
+        media_type: str,
+        *,
+        mimetype: str | None = None,
+        filename: str | None = None,
+        caption: str = "",
+        width: int = 0,
+        height: int = 0,
+        seconds: int = 0,
+        ptt: bool = False,
+        timeout: float = 30,
+        wait_for_ack: float = 0,
+    ) -> MediaSendResult:
+        payload = read_media_payload(
+            source,
+            media_type,
+            mimetype=mimetype,
+            filename=filename,
+            caption=caption,
+            width=width,
+            height=height,
+            seconds=seconds,
+            ptt=ptt,
+        )
+        media_conn = await self._get_media_conn(timeout=timeout)
+        encrypted = encrypt_media(payload.data, payload.media_type)
+        upload = await upload_media(encrypted.encrypted, media_conn, encrypted.file_enc_sha256, payload.media_type, timeout=int(timeout))
+        message = media_message(encrypted, upload, payload)
+        send = await self.send_message(jid, message, timeout=timeout, wait_for_ack=wait_for_ack)
+        return MediaSendResult(send=send, payload=payload, direct_path=upload.direct_path, media_url=upload.media_url)
+
+    async def _build_outbound_message(
+        self,
+        jid: str,
+        content: str | proto.Message | dict[str, Any],
+        *,
+        message_id: str | None,
+        use_usync: bool | None,
+        force_sessions: bool,
+        include_phash: bool,
+        timeout: float,
+    ) -> OutboundMessage:
+        use_usync = is_jid_group(jid) if use_usync is None else use_usync
+        own_fanout_jids: list[str] = []
+        recipient_device_jids: list[str] | None = None
+        if use_usync:
+            own_fanout_jids, recipient_device_jids = await self._prepare_usync_fanout(
+                jid,
+                timeout=timeout,
+                force_sessions=force_sessions,
+            )
+        return build_message_content_node(
+            self.auth_state.credentials,
+            jid,
+            content,
+            message_id=message_id,
+            direct_enc=not use_usync,
+            recipient_device_jids=recipient_device_jids,
+            own_fanout_jids=own_fanout_jids,
+            include_phash=include_phash,
+        )
+
+    async def _prepare_usync_fanout(
+        self,
+        jid: str,
+        *,
+        timeout: float,
+        force_sessions: bool,
+    ) -> tuple[list[str], list[str]]:
+        identities = conversation_identities(self.auth_state.credentials, jid)
+        usync_result = await self.query(usync_devices_query_node(identities, self.queries.next_tag()), timeout=timeout, drive_receive=True)
+        parsed = parse_usync_result(usync_result)
+        devices = extract_device_jids(parsed, self.auth_state.credentials["me"]["id"], self.auth_state.credentials.get("me", {}).get("lid"))
+        own_fanout_jids, recipient_device_jids = split_own_and_other_devices(self.auth_state.credentials, devices)
+        missing = self._missing_session_jids(own_fanout_jids + recipient_device_jids, force=force_sessions)
+        if missing:
+            working = copy.deepcopy(self.auth_state.credentials)
+            result = await self.query(encrypt_session_query_node(missing, self.queries.next_tag(), force=force_sessions), timeout=timeout, drive_receive=True)
+            inject_sessions_from_encrypt_result(working, result)
+            await self._commit_credentials(working)
+        return own_fanout_jids, recipient_device_jids
+
+    def _missing_session_jids(self, jids: list[str], *, force: bool) -> list[str]:
+        if force:
+            return jids
+        sessions = self.auth_state.credentials.get("signal_sessions") or {}
+        missing = []
+        for jid in jids:
+            left = jid.split("@", 1)[0]
+            user, _, device = left.partition(":")
+            key = f"{user}:{int(device) if device else 0}"
+            if key not in sessions:
+                missing.append(jid)
+        return missing
+
+    async def _wait_for_message_ack(self, message_id: str, timeout: float) -> bool:
+        deadline = asyncio.get_running_loop().time() + timeout
+        while True:
+            remaining = deadline - asyncio.get_running_loop().time()
+            if remaining <= 0:
+                return False
+            try:
+                nodes = await self.receive_nodes(timeout=min(5, remaining))
+            except (TimeoutError, asyncio.TimeoutError):
+                continue
+            for node in nodes:
+                if node.tag == "ack" and node.attrs.get("id") == message_id:
+                    return True
+
+    async def _get_media_conn(self, *, timeout: float) -> MediaConn:
+        if self._media_conn is not None and self._media_conn_expires_at > time.time():
+            return self._media_conn
+        node = await self.query(media_conn_node(self.queries.next_tag()), timeout=timeout, drive_receive=True)
+        media_conn = parse_media_conn(node)
+        self._media_conn = media_conn
+        self._media_conn_expires_at = time.time() + max(0, media_conn.ttl - 60)
+        return media_conn
+
+    async def group_metadata(self, jid: str, *, timeout: float = 30) -> GroupMetadata:
+        result = await self.query(group_metadata_node(jid, self.queries.next_tag()), timeout=timeout, drive_receive=True)
+        metadata = parse_group_metadata(result)
+        await self.ev.emit("groups.update", [metadata])
+        return metadata
+
+    async def group_create(self, subject: str, participants: list[str], *, timeout: float = 30) -> GroupMetadata:
+        result = await self.query(group_create_node(subject, participants, self.queries.next_tag()), timeout=timeout, drive_receive=True)
+        metadata = parse_group_metadata(result)
+        await self.ev.emit("groups.update", [metadata])
+        return metadata
+
+    async def group_leave(self, jid: str, *, timeout: float = 30) -> None:
+        await self.query(group_leave_node(jid, self.queries.next_tag()), timeout=timeout, drive_receive=True)
+        await self.ev.emit("groups.update", [{"id": jid, "left": True}])
+
+    async def group_update_subject(self, jid: str, subject: str, *, timeout: float = 30) -> None:
+        await self.query(group_update_subject_node(jid, subject, self.queries.next_tag()), timeout=timeout, drive_receive=True)
+        await self.ev.emit("groups.update", [{"id": jid, "subject": subject}])
+
+    async def group_update_description(self, jid: str, description: str | None, *, timeout: float = 30) -> None:
+        await self.query(group_update_description_node(jid, description, self.queries.next_tag()), timeout=timeout, drive_receive=True)
+        await self.ev.emit("groups.update", [{"id": jid, "desc": description}])
+
+    async def group_participants_update(
+        self,
+        jid: str,
+        participants: list[str],
+        action: str,
+        *,
+        timeout: float = 30,
+    ) -> list[ParticipantUpdateResult]:
+        result = await self.query(group_participants_update_node(jid, participants, action, self.queries.next_tag()), timeout=timeout, drive_receive=True)
+        updates = parse_participant_update(result, action)
+        await self.ev.emit("group-participants.update", {"id": jid, "participants": participants, "action": action, "results": updates})
+        return updates
+
+    async def group_invite_code(self, jid: str, *, timeout: float = 30) -> str | None:
+        result = await self.query(group_invite_code_node(jid, self.queries.next_tag()), timeout=timeout, drive_receive=True)
+        return parse_invite_code(result)
+
+    async def group_revoke_invite(self, jid: str, *, timeout: float = 30) -> str | None:
+        result = await self.query(group_revoke_invite_node(jid, self.queries.next_tag()), timeout=timeout, drive_receive=True)
+        return parse_invite_code(result)
+
+    async def group_accept_invite(self, code: str, *, timeout: float = 30) -> str | None:
+        result = await self.query(group_accept_invite_node(code, self.queries.next_tag()), timeout=timeout, drive_receive=True)
+        group_jid = parse_accept_invite(result)
+        if group_jid:
+            await self.ev.emit("groups.update", [{"id": group_jid, "joined": True}])
+        return group_jid
+
+    async def group_setting_update(self, jid: str, setting: str, value: str = "", *, timeout: float = 30) -> None:
+        await self.query(group_setting_update_node(jid, setting, value, self.queries.next_tag()), timeout=timeout, drive_receive=True)
+        await self.ev.emit("groups.update", [{"id": jid, "setting": setting, "value": value}])
+
+    async def fetch_privacy_settings(self, *, timeout: float = 30) -> dict[str, str]:
+        result = await self.query(privacy_fetch_node(self.queries.next_tag()), timeout=timeout, drive_receive=True)
+        return parse_privacy_settings(result)
+
+    async def update_privacy_setting(self, name: str, value: str, *, timeout: float = 30) -> None:
+        await self.query(privacy_update_node(name, value, self.queries.next_tag()), timeout=timeout, drive_receive=True)
+
+    async def fetch_blocklist(self, *, timeout: float = 30) -> list[str]:
+        result = await self.query(blocklist_fetch_node(self.queries.next_tag()), timeout=timeout, drive_receive=True)
+        return parse_blocklist(result)
+
+    async def update_block_status(self, jid: str, action: str, *, timeout: float = 30) -> None:
+        await self.query(block_status_node(jid, action, self.queries.next_tag()), timeout=timeout, drive_receive=True)
+
+    async def profile_picture_url(self, jid: str, picture_type: str = "preview", *, timeout: float = 30) -> str | None:
+        result = await self.query(profile_picture_url_node(jid, self.queries.next_tag(), picture_type), timeout=timeout, drive_receive=True)
+        return parse_profile_picture_url(result)
+
+    async def update_profile_status(self, status: str, *, timeout: float = 30) -> None:
+        await self.query(profile_status_update_node(status, self.queries.next_tag()), timeout=timeout, drive_receive=True)
+
+    async def update_profile_name(self, name: str, *, timeout: float = 30) -> None:
+        await self.chat_modify({"pushNameSetting": name}, "", timeout=timeout)
+
+    async def update_profile_picture(self, jid: str, data: bytes, *, timeout: float = 30) -> None:
+        await self.query(profile_picture_update_node(jid, data, self.queries.next_tag(), own_jid=_me_id(self.auth_state.credentials)), timeout=timeout, drive_receive=True)
+
+    async def remove_profile_picture(self, jid: str, *, timeout: float = 30) -> None:
+        await self.query(profile_picture_remove_node(jid, self.queries.next_tag(), own_jid=_me_id(self.auth_state.credentials)), timeout=timeout, drive_receive=True)
+
+    async def on_whatsapp(self, *jids: str, timeout: float = 30) -> list[dict[str, Any]]:
+        if not jids:
+            return []
+        result = await self.query(on_whatsapp_node(jids, self.queries.next_tag()), timeout=timeout, drive_receive=True)
+        return parse_on_whatsapp(result)
+
+    async def send_presence_update(self, presence_type: str, to_jid: str | None = None) -> BinaryNode:
+        if presence_type in {"available", "unavailable"}:
+            me = self.auth_state.credentials.get("me") or {}
+            node = available_presence_node(me.get("name") or "~", presence_type)
+        else:
+            if not to_jid:
+                raise ValueError("chatstate presence requires to_jid")
+            me = self.auth_state.credentials.get("me") or {}
+            node = chatstate_presence_node(me.get("id") or "", to_jid, presence_type)
+        await self.send_node(node)
+        if presence_type in {"available", "unavailable"}:
+            await self.ev.emit("connection.update", {"isOnline": presence_type == "available"})
+        return node
+
+    async def chat_modify(self, modification: dict[str, Any], jid: str, *, timeout: float = 30) -> BinaryNode:
+        result = await self.query(chat_modify_node(modification, jid, self.queries.next_tag()), timeout=timeout, drive_receive=True)
+        await self.ev.emit("chats.update", [{"id": jid, **modification}])
+        return result
+
+    async def archive_chat(self, jid: str, archive: bool = True, *, timeout: float = 30) -> BinaryNode:
+        return await self.chat_modify({"archive": archive}, jid, timeout=timeout)
+
+    async def mute_chat(self, jid: str, mute_end_time: int | None = None, *, timeout: float = 30) -> BinaryNode:
+        return await self.chat_modify({"mute": mute_end_time or 0}, jid, timeout=timeout)
+
+    async def pin_chat(self, jid: str, pin: bool = True, *, timeout: float = 30) -> BinaryNode:
+        return await self.chat_modify({"pin": pin}, jid, timeout=timeout)
+
+    async def delete_chat(self, jid: str, *, timeout: float = 30) -> BinaryNode:
+        return await self.chat_modify({"delete": True}, jid, timeout=timeout)
+
+    async def star_message(self, key: dict[str, Any] | MessageKey, star: bool = True, *, timeout: float = 30) -> BinaryNode:
+        payload = key if isinstance(key, dict) else {"remote_jid": key.remote_jid, "id": key.id, "participant": key.participant}
+        return await self.chat_modify({"star": star, "messages": [payload]}, payload.get("remote_jid") or "", timeout=timeout)
+
     async def dispatch_retry_receipt_node(self, request: RetryRequest) -> RetryOutcome:
         participant = request.key.participant
         local_retry_count = self._increment_retry_count(request.key.id or "", participant)
@@ -578,7 +989,13 @@ class WhatsAppClient:
         return outcome
 
     async def resend_message_for_retry(self, request: RetryRequest) -> bool:
-        return False
+        if not request.key.id:
+            return False
+        node = self._recent_outbound.get(request.key.id)
+        if node is None:
+            return False
+        await self.send_node(node)
+        return True
 
     async def send_ack(self, node: BinaryNode, *, error_code: int | None = None) -> bool:
         if not self.config.auto_ack or not can_ack_node(node):
@@ -1011,6 +1428,10 @@ class WhatsAppClient:
         return success
 
     # Baileys-style aliases for common public surface names.
+    sendMessage = send_message
+    relayMessage = relay_message
+    downloadMediaMessage = download_media_message
+    sendMediaMessage = send_media_message
     sendNode = send_node
     receiveNodes = receive_nodes
     sendAck = send_ack
@@ -1018,6 +1439,28 @@ class WhatsAppClient:
     readMessages = read_messages
     resendMessageForRetry = resend_message_for_retry
     waitForSuccess = wait_for_success
+    groupMetadata = group_metadata
+    groupCreate = group_create
+    groupLeave = group_leave
+    groupUpdateSubject = group_update_subject
+    groupUpdateDescription = group_update_description
+    groupParticipantsUpdate = group_participants_update
+    groupInviteCode = group_invite_code
+    groupRevokeInvite = group_revoke_invite
+    groupAcceptInvite = group_accept_invite
+    groupSettingUpdate = group_setting_update
+    fetchPrivacySettings = fetch_privacy_settings
+    updatePrivacySetting = update_privacy_setting
+    fetchBlocklist = fetch_blocklist
+    updateBlockStatus = update_block_status
+    profilePictureUrl = profile_picture_url
+    updateProfileStatus = update_profile_status
+    updateProfileName = update_profile_name
+    updateProfilePicture = update_profile_picture
+    removeProfilePicture = remove_profile_picture
+    onWhatsApp = on_whatsapp
+    sendPresenceUpdate = send_presence_update
+    chatModify = chat_modify
     initializeSession = initialize_session
     requestPairingCode = request_pairing_code
     digestKeyBundle = digest_key_bundle

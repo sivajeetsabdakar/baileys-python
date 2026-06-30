@@ -27,6 +27,7 @@ from .crypto import (
 )
 from .disconnect import DisconnectError, DisconnectReason, failure_to_disconnect, stream_error_to_disconnect
 from .events import EventEmitter, ListenerRef
+from .chat_groups import GroupMetadata, GroupParticipant, ParticipantUpdateResult
 from .jid import (
     JidParts,
     areJidsSameUser,
@@ -61,7 +62,15 @@ from .jid import (
     transferDevice,
     transfer_device,
 )
-from .message_send import build_proto_message_node, build_text_message_node
+from .media import MediaPayload, MediaUploadResult, media_message, read_media_payload
+from .message_send import (
+    MessageOptions,
+    OutboundMessage,
+    UnsupportedMessageContent,
+    build_message_content_node,
+    build_proto_message_node,
+    build_text_message_node,
+)
 from .messages import MessageKey, MessageUpsert, WAMessage, build_message_upsert
 from .notifications import (
     CallInfo,
@@ -103,7 +112,7 @@ from .receipts import (
     receipt_node_for_message,
     receipt_status_from_type,
 )
-from .socket import ReconnectPolicy, SocketConfig, WhatsAppClient, make_socket, makeWASocket
+from .socket import MediaSendResult, ReconnectPolicy, SendMessageResult, SocketConfig, WhatsAppClient, make_socket, makeWASocket
 from .store import Chat, Contact, InMemoryStore, makeInMemoryStore, make_in_memory_store
 from .wabinary import BinaryNode, decode_binary_node, encode_binary_node
 from .whatsapp_keys import AppStateKeys, MediaKeys, derive_media_keys, expand_app_state_keys, media_hkdf_info_key
@@ -121,6 +130,8 @@ __all__ = [
     "DisconnectReason",
     "DirtyInfo",
     "EventEmitter",
+    "GroupMetadata",
+    "GroupParticipant",
     "InMemoryStore",
     "JidParts",
     "JsonCredentialStore",
@@ -130,14 +141,19 @@ __all__ = [
     "MessageUpsert",
     "MemorySignalKeyStore",
     "MediaKeys",
+    "MediaPayload",
+    "MediaSendResult",
+    "MediaUploadResult",
     "MultiFileAuthState",
     "NotificationInfo",
     "OfflineInfo",
+    "OutboundMessage",
     "PairDeviceRefs",
     "PairSuccess",
     "PairingCodeRequest",
     "PreKeyMaintenanceResult",
     "PreKeyNodeResult",
+    "ParticipantUpdateResult",
     "QRPairingRequest",
     "QueryManager",
     "QueryResult",
@@ -146,6 +162,7 @@ __all__ = [
     "RetryOutcome",
     "RetryRequest",
     "SignalKeyPairData",
+    "SendMessageResult",
     "SignedPreKeyRotation",
     "SocketConfig",
     "TagGenerator",
@@ -166,6 +183,7 @@ __all__ = [
     "configure_successful_pairing",
     "credentials_from_pair_success",
     "build_proto_message_node",
+    "build_message_content_node",
     "build_message_upsert",
     "build_receipt_node",
     "build_text_message_node",
@@ -211,6 +229,7 @@ __all__ = [
     "make_socket",
     "md5",
     "media_hkdf_info_key",
+    "media_message",
     "receipt_node_for_message",
     "receipt_status_from_type",
     "extract_pair_device_refs",
@@ -226,8 +245,11 @@ __all__ = [
     "pairing_code_hello_node",
     "pairing_code_request_node",
     "phone_number_to_jid",
+    "read_media_payload",
     "sha256",
     "stream_error_to_disconnect",
+    "UnsupportedMessageContent",
+    "MessageOptions",
     "transferDevice",
     "transfer_device",
     "useMultiFileAuthState",

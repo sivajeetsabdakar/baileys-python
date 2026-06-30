@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import base64
+import mimetypes
+from pathlib import Path
 import time
 from dataclasses import dataclass
-from typing import Iterable
+from typing import Any, Iterable
 
 import aiohttp
 
@@ -43,6 +45,19 @@ class MediaUploadResult:
     media_url: str
     direct_path: str
     host: str
+
+
+@dataclass(frozen=True)
+class MediaPayload:
+    data: bytes
+    media_type: str
+    mimetype: str
+    filename: str | None = None
+    caption: str = ""
+    width: int = 0
+    height: int = 0
+    seconds: int = 0
+    ptt: bool = False
 
 
 def media_conn_node(tag_id: str) -> BinaryNode:
@@ -172,3 +187,80 @@ def image_message(
     image.directPath = upload.direct_path
     image.mediaKeyTimestamp = int(time.time())
     return message
+
+
+def read_media_payload(
+    source: bytes | bytearray | str | Path,
+    media_type: str,
+    *,
+    mimetype: str | None = None,
+    filename: str | None = None,
+    caption: str = "",
+    width: int = 0,
+    height: int = 0,
+    seconds: int = 0,
+    ptt: bool = False,
+) -> MediaPayload:
+    if media_type not in MEDIA_PATH_MAP:
+        raise ValueError(f"unsupported media type: {media_type}")
+    if isinstance(source, (bytes, bytearray)):
+        data = bytes(source)
+        guessed_name = filename
+    else:
+        path = Path(source)
+        data = path.read_bytes()
+        guessed_name = filename or path.name
+    guessed_type = mimetype or (mimetypes.guess_type(guessed_name or "")[0] if guessed_name else None)
+    return MediaPayload(
+        data=data,
+        media_type=media_type,
+        mimetype=guessed_type or _default_mimetype(media_type),
+        filename=guessed_name,
+        caption=caption,
+        width=width,
+        height=height,
+        seconds=seconds,
+        ptt=ptt,
+    )
+
+
+def media_message(
+    encrypted: EncryptedMedia,
+    upload: MediaUploadResult,
+    payload: MediaPayload,
+) -> proto.Message:
+    message = proto.Message()
+    target = getattr(message, f"{payload.media_type}Message")
+    target.url = upload.media_url
+    target.mimetype = payload.mimetype
+    target.fileSha256 = encrypted.file_sha256
+    target.fileEncSha256 = encrypted.file_enc_sha256
+    target.fileLength = encrypted.file_length
+    target.mediaKey = encrypted.media_key
+    target.directPath = upload.direct_path
+    target.mediaKeyTimestamp = int(time.time())
+    if payload.caption and hasattr(target, "caption"):
+        target.caption = payload.caption
+    if payload.filename and hasattr(target, "fileName"):
+        target.fileName = payload.filename
+    if payload.filename and hasattr(target, "title"):
+        target.title = payload.filename
+    if payload.width and hasattr(target, "width"):
+        target.width = payload.width
+    if payload.height and hasattr(target, "height"):
+        target.height = payload.height
+    if payload.seconds and hasattr(target, "seconds"):
+        target.seconds = payload.seconds
+    if payload.ptt and hasattr(target, "ptt"):
+        target.ptt = True
+    return message
+
+
+def _default_mimetype(media_type: str) -> str:
+    return {
+        "image": "image/jpeg",
+        "video": "video/mp4",
+        "audio": "audio/ogg",
+        "document": "application/octet-stream",
+        "sticker": "image/webp",
+    }[media_type]

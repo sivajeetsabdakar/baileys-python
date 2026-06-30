@@ -17,8 +17,8 @@ Baileys names such as `sendMessage`, `relayMessage`, `groupMetadata`,
 | 1 | Protocol foundation | Done |
 | 2 | Auth and socket lifecycle | Done |
 | 3 | Event/store and inbound pipeline | Done |
-| 4 | Outbound messages and media breadth | Not started |
-| 5 | Chats, profile, privacy, groups | Not started |
+| 4 | Outbound messages and media breadth | Partial |
+| 5 | Chats, profile, privacy, groups | Partial |
 | 6 | History and app-state completeness | Not started |
 | 7 | Business, newsletters, communities, edge surfaces | Not started |
 | 8 | Core beta release hardening | Not started |
@@ -134,6 +134,53 @@ tests are stable.
   `--require-group`; the run received a sender-key distribution message and a
   decrypted group text message.
 
+## Phase 4 In Progress
+
+- Added product outbound APIs on `WhatsAppClient`: `send_message`,
+  `relay_message`, `download_media_message`, and `send_media_message`.
+- Added Baileys-style aliases `sendMessage`, `relayMessage`,
+  `downloadMediaMessage`, and `sendMediaMessage`.
+- Promoted the proven text send path into the product client, including direct
+  sends, group/USync fanout, Signal session assertion, credential persistence
+  after successful relay, and recent outbound replay for retry receipts.
+- Added message content builders for text, extended text, mentions, quote keys,
+  reactions, edit, delete, location, contact, and contact-list messages.
+- Added typed errors for unsupported message content instead of sending
+  malformed payloads.
+- Added media payload helpers for bytes and file paths plus generic
+  image/video/audio/document/sticker protobuf message generation.
+- Integrated media connection fetch/cache, media encrypt/upload, and product
+  media send/download helpers.
+- Reworked `scripts/send_text_probe.py` and `scripts/send_image_probe.py` to
+  call the product `WhatsAppClient` APIs.
+- Offline tests cover content builders, relay/cache retry replay, media message
+  generation, send aliases, and product send orchestration.
+- Live Phase 4 sends still need to be rerun with the dedicated account before
+  the phase can be marked Done.
+
+## Phase 5 In Progress
+
+- Added chat and presence APIs: `chat_modify`, `archive_chat`, `mute_chat`,
+  `pin_chat`, `delete_chat`, `star_message`, and `send_presence_update`.
+- Added profile/privacy/blocklist APIs: `on_whatsapp`,
+  `profile_picture_url`, `update_profile_name`, `update_profile_status`,
+  `update_profile_picture`, `remove_profile_picture`,
+  `fetch_privacy_settings`, `update_privacy_setting`, `fetch_blocklist`, and
+  `update_block_status`.
+- Added group APIs: `group_metadata`, `group_create`, `group_leave`,
+  `group_update_subject`, `group_update_description`,
+  `group_participants_update`, `group_invite_code`, `group_revoke_invite`,
+  `group_accept_invite`, and `group_setting_update`.
+- Added Baileys-compatible aliases for the common chat, presence, profile,
+  privacy, blocklist, and group methods.
+- Added group metadata and participant result parsers plus stable
+  `groups.update`, `group-participants.update`, and `chats.update` emissions
+  from successful product API calls.
+- Offline tests cover query node builders, parsers, aliases, presence nodes,
+  typed validation, and store/event integration for the new API surfaces.
+- Live Phase 5 group/profile/privacy checks still need to be run with the
+  dedicated account before the phase can be marked Done.
+
 ## Live Harness
 
 - `scripts/product_qr_pairing_probe.py` covers QR pairing and saved reconnect.
@@ -143,15 +190,19 @@ tests are stable.
   proof.
 - `scripts/product_soak_probe.py` keeps a saved-auth product socket online for
   timed reconnect/receive-loop checks.
+- `scripts/send_text_probe.py` covers product outbound text send probes.
+- `scripts/send_image_probe.py` covers product outbound image send probes.
 
 ## Current Verification
 
 - Offline compile check passes for `src`, `scripts`, and `examples`.
-- Offline test suite passes with 91 tests.
+- Offline test suite passes with 99 tests.
 - WABinary token and WAProto generated artifact checks pass.
 - Product pairing-code saved reconnect passes against the dedicated test
   account.
 - A short saved-auth soak passes with pending message processing and no
   decrypt, retry, or ACK errors.
+- Phase 4/5 live outbound, media, group, profile, and privacy smoke checks are
+  pending a dedicated account run.
 - Public docs are kept to relative repository paths and avoid local machine
   setup details.
