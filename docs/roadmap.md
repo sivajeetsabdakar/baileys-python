@@ -216,8 +216,10 @@ tests are stable.
 - WABinary token and WAProto generated artifact checks pass.
 - Product QR and pairing-code saved reconnect have passed against the dedicated
   test account in prior live runs.
-- The latest saved-auth live rerun is blocked by logged-out credentials, so
-  Phase 4/5 outbound, media, group, profile read-only, and write-side probes
-  need a fresh link before final closure.
+- The latest QR bootstrap rerun reaches valid pair-device refs again after
+  aligning the registration payload with the current web client version and
+  web sub-platform. Phone-side linking is currently blocked by WhatsApp with
+  "can't link new devices right now", so saved reconnect and Phase 4/5 live
+  probes need another run after account linking is allowed.
 - Public docs are kept to relative repository paths and avoid local machine
   setup details.

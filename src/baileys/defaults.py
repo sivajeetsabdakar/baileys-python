@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-VERSION = (2, 3000, 1035194821)
+VERSION = (2, 3000, 1042814420)
 DICT_VERSION = 3
 
 WA_WEBSOCKET_URL = "wss://web.whatsapp.com/ws/chat"

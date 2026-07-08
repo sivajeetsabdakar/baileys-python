@@ -71,7 +71,7 @@ def build_registration_payload() -> tuple[bytes, dict[str, bytes | int]]:
     payload.userAgent.mnc = "000"
     payload.userAgent.mcc = "000"
     payload.userAgent.localeCountryIso31661Alpha2 = "US"
-    payload.webInfo.webSubPlatform = proto.ClientPayload.WebInfo.WebSubPlatform.DARWIN
+    payload.webInfo.webSubPlatform = proto.ClientPayload.WebInfo.WebSubPlatform.WEB_BROWSER
 
     pairing = payload.devicePairingData
     pairing.buildHash = md5(".".join(str(part) for part in VERSION).encode("utf-8"))

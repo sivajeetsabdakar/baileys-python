@@ -34,7 +34,7 @@ from baileys.wabinary import BinaryNode
 
 
 def test_defaults_are_shared_with_registration_layer():
-    assert VERSION == (2, 3000, 1035194821)
+    assert VERSION == (2, 3000, 1042814420)
     assert KEY_BUNDLE_TYPE == b"\x05"
     assert S_WHATSAPP_NET == "s.whatsapp.net"
 
