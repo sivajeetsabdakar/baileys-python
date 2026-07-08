@@ -155,15 +155,16 @@ tests are stable.
   call the product `WhatsAppClient` APIs.
 - Offline tests cover content builders, relay/cache retry replay, media message
   generation, send aliases, and product send orchestration.
-- Live Phase 4 outbound coverage is partially proved from earlier dedicated
-  account runs, but the latest rerun needs a freshly linked saved session before
-  the remaining peer-state cases can be closed.
-- Group text send and image send/download have live probe coverage through
-  `scripts/send_text_probe.py` and `scripts/send_image_probe.py`; rerun them
-  after relinking before marking Phase 4 complete.
-- 1:1 send has direct session bootstrap and sparse-USync fallback coverage in
-  product code. Fresh live proof is still needed for third-party peer states
-  where device discovery returns no peer devices.
+- Live Phase 4 outbound coverage is proven for direct 1:1 text with ACK and
+  image send/download/decrypt through `scripts/send_text_probe.py` and
+  `scripts/send_image_probe.py`.
+- Peer USync and session assertion are live-proven for a third-party contact
+  with multiple companion devices; all returned sessions were injected and no
+  unresolved device sessions remained.
+- Group text send has prior probe coverage but still needs a fresh run with a
+  known group JID before marking group outbound complete.
+- 1:1 send has direct session bootstrap coverage in product code and is
+  live-proven for a third-party peer with USync device fanout.
 
 ## Phase 5 In Progress
 
@@ -185,12 +186,11 @@ tests are stable.
   from successful product API calls.
 - Offline tests cover query node builders, parsers, aliases, presence nodes,
   typed validation, and store/event integration for the new API surfaces.
-- Live Phase 5 read-only checks have probe coverage through
-  `scripts/phase5_live_probe.py` for privacy settings, blocklist, group
-  metadata, and invite code retrieval. Fresh live proof is needed after
-  relinking saved auth.
-- Write-side profile/group mutations and broad presence flow checks remain
-  pending.
+- Live Phase 5 read-only checks are proven through `scripts/phase5_live_probe.py`
+  for privacy settings, profile picture lookup, blocklist, and `on_whatsapp`.
+- Presence write is proven through `scripts/phase5_write_probe.py`.
+- Profile mutations, group metadata/invite reads, and group participant/update
+  writes still need safe live targets before marking Phase 5 complete.
 
 ## Live Harness
 
@@ -214,12 +214,11 @@ tests are stable.
 - Offline compile check passes for `src`, `scripts`, and `examples`.
 - Offline test suite passes with 108 tests.
 - WABinary token and WAProto generated artifact checks pass.
-- Product QR and pairing-code saved reconnect have passed against the dedicated
-  test account in prior live runs.
-- The latest QR bootstrap rerun reaches valid pair-device refs again after
-  aligning the registration payload with the current web client version and
-  web sub-platform. Phone-side linking is currently blocked by WhatsApp with
-  "can't link new devices right now", so saved reconnect and Phase 4/5 live
-  probes need another run after account linking is allowed.
+- Product QR pairing and saved reconnect pass against the dedicated test
+  account.
+- The latest live run proves QR pairing, saved reconnect, third-party USync
+  device/session assertion, direct text send with ACK, image send/download,
+  Phase 5 read-only profile/privacy/blocklist/on-whatsapp checks, and presence
+  write.
 - Public docs are kept to relative repository paths and avoid local machine
   setup details.
