@@ -85,12 +85,15 @@ def test_proto_message_builder_accepts_additional_attributes():
             "chat@s.whatsapp.net",
             message,
             message_type="text",
-            additional_attributes={"category": "peer"},
+            additional_attributes={"category": "peer", "push_priority": "high_force"},
+            additional_nodes=[BinaryNode("meta", {"appdata": "default"})],
         )
     finally:
         message_send_module.build_encrypted_node = original
 
     assert outbound.node.attrs["category"] == "peer"
+    assert outbound.node.attrs["push_priority"] == "high_force"
+    assert outbound.node.content[-1].tag == "meta"
 
 
 def test_relay_message_caches_and_retry_replays(tmp_path):

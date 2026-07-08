@@ -19,7 +19,7 @@ Baileys names such as `sendMessage`, `relayMessage`, `groupMetadata`,
 | 3 | Event/store and inbound pipeline | Done |
 | 4 | Outbound messages and media breadth | Partial |
 | 5 | Chats, profile, privacy, groups | Partial |
-| 6 | History and app-state completeness | Not started |
+| 6 | History and app-state completeness | In progress |
 | 7 | Business, newsletters, communities, edge surfaces | Not started |
 | 8 | Core beta release hardening | Not started |
 | 9 | Full parity hardening | Not started |
@@ -216,6 +216,19 @@ tests are stable.
   the snapshot key id was sent, but no app-state key-share response arrived in
   the probe window.
 
+## Phase 6 In Progress
+
+- Added `WhatsAppClient.fetch_app_state_snapshots()` /
+  `fetchAppStateSnapshots` for app-state collection snapshot requests.
+- App-state snapshot extraction now downloads and decrypts external
+  `md-app-state` blobs, decodes snapshot version/record/key metadata, and
+  persists blocked collection -> missing key id state in saved credentials.
+- Live proof against the dedicated saved session reports all five core
+  collections blocked on key `AAAAAP9V`: `critical_block`,
+  `critical_unblock_low`, `regular`, `regular_high`, and `regular_low`.
+- Full snapshot/patch mutation decode, MAC-verified state application, history
+  sync processing, and peer key-share response handling remain open.
+
 ## Live Harness
 
 - `scripts/product_qr_pairing_probe.py` covers QR pairing and saved reconnect.
@@ -238,8 +251,9 @@ tests are stable.
   confirmation flag.
 - `scripts/phase5_mutation_probe.py` covers broader explicit Phase 5 mutation
   flows and reports per-operation success or server/client errors.
-- `scripts/app_state_key_probe.py` covers app-state snapshot fetch/decrypt
-  diagnostics and app-state sync-key request probes.
+- `scripts/app_state_key_probe.py` covers product app-state snapshot
+  fetch/decrypt diagnostics, blocked-key persistence, and app-state sync-key
+  request probes.
 
 ## Current Verification
 
@@ -256,7 +270,7 @@ tests are stable.
   presence write states, group setting/invite/participant mutations, profile
   status update, and profile picture update.
 - Live chat patch/profile-name writes currently stop at missing app-state key
-  material in the saved session. Snapshot fetch/decrypt works; peer key-share
-  response is the remaining live blocker.
+  material in the saved session. Product snapshot fetch/decrypt and blocked-key
+  persistence work; peer key-share response is the remaining live blocker.
 - Public docs are kept to relative repository paths and avoid local machine
   setup details.

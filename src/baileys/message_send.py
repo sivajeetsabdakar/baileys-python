@@ -289,6 +289,7 @@ def build_message_content_node(
     own_fanout_jids: Iterable[str] = (),
     include_phash: bool = False,
     additional_attributes: dict[str, str] | None = None,
+    additional_nodes: Iterable[BinaryNode] = (),
 ) -> OutboundMessage:
     message, message_type = normalize_message_content(content)
     return build_proto_message_node(
@@ -302,6 +303,7 @@ def build_message_content_node(
         own_fanout_jids=own_fanout_jids,
         include_phash=include_phash,
         additional_attributes=additional_attributes,
+        additional_nodes=additional_nodes,
     )
 
 
@@ -317,6 +319,7 @@ def build_proto_message_node(
     own_fanout_jids: Iterable[str] = (),
     include_phash: bool = False,
     additional_attributes: dict[str, str] | None = None,
+    additional_nodes: Iterable[BinaryNode] = (),
 ) -> OutboundMessage:
     message_id = message_id or generate_message_id(creds.get("me", {}).get("id"))
     recipient_user, recipient_server, _ = jid_decode(recipient_jid)
@@ -327,7 +330,11 @@ def build_proto_message_node(
     attrs = {"id": message_id, "to": recipient_jid, "type": message_type}
     if additional_attributes:
         attrs.update(additional_attributes)
-    if direct_enc:
+    is_peer_message = additional_attributes and additional_attributes.get("category") == "peer"
+    if is_peer_message:
+        content = [enc_node]
+        participant_jids = [recipient_device_jid]
+    elif direct_enc:
         content = [enc_node]
         participant_jids = [recipient_device_jid]
     else:
@@ -368,6 +375,7 @@ def build_proto_message_node(
             if device_identity is not None:
                 content.append(device_identity)
 
+    content.extend(additional_nodes)
     return OutboundMessage(
         node=BinaryNode("message", attrs, content),
         message_id=message_id,

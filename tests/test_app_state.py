@@ -4,11 +4,14 @@ import base64
 
 from baileys.app_state import (
     app_state_patch_node,
+    app_state_sync_request_node,
     app_state_sync_key_request_message,
     chat_modification_to_app_patch,
     inject_app_state_sync_key_share,
+    extract_app_state_snapshot_info,
     lt_hash_subtract_then_add,
 )
+from baileys.wabinary import BinaryNode
 from baileys.generated import WAProto_pb2 as proto
 
 
@@ -95,3 +98,61 @@ def test_app_state_sync_key_request_message_encodes_key_ids():
     request = message.protocolMessage.appStateSyncKeyRequest
     assert len(request.keyIds) == 1
     assert request.keyIds[0].keyId == b"k" * 32
+
+
+def test_app_state_sync_request_node_uses_collection_versions():
+    node = app_state_sync_request_node(
+        ["regular_low"],
+        "tag-1",
+        versions={"regular_low": {"version": 7}},
+        force_snapshot=False,
+    )
+
+    collection = node.content[0].content[0]
+    assert node.attrs["xmlns"] == "w:sync:app:state"
+    assert collection.attrs == {"name": "regular_low", "version": "7", "return_snapshot": "false"}
+
+
+def test_extract_app_state_snapshot_info_reports_missing_keys():
+    async def scenario():
+        key_id = base64.b64encode(b"k" * 32).decode("ascii")
+        snapshot = proto.SyncdSnapshot()
+        snapshot.version.version = 3
+        snapshot.keyId.id = b"k" * 32
+        snapshot.records.add()
+
+        blob = proto.ExternalBlobReference()
+        blob.directPath = "/snapshot"
+        blob.mediaKey = b"m" * 32
+        node = BinaryNode(
+            "iq",
+            {},
+            [
+                BinaryNode(
+                    "sync",
+                    {},
+                    [
+                        BinaryNode(
+                            "collection",
+                            {"name": "regular_low", "has_more_patches": "true"},
+                            [BinaryNode("snapshot", {}, blob.SerializeToString())],
+                        )
+                    ],
+                )
+            ],
+        )
+
+        async def fake_download(_blob):
+            return snapshot.SerializeToString()
+
+        info = await extract_app_state_snapshot_info(node, {}, fake_download)
+
+        assert len(info) == 1
+        assert info[0].collection == "regular_low"
+        assert info[0].version == 3
+        assert info[0].records == 1
+        assert info[0].key_id == key_id
+        assert info[0].missing_key is True
+        assert info[0].has_more_patches is True
+
+    __import__("asyncio").run(scenario())

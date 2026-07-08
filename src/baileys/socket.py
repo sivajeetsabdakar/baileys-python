@@ -11,9 +11,13 @@ import websockets
 
 from .auth_state import AuthState, JsonCredentialStore, MultiFileAuthState
 from .app_state import (
+    AppStateSnapshotInfo,
     MissingAppStateKey,
+    WA_PATCH_NAMES,
     app_state_patch_node,
+    app_state_sync_request_node,
     app_state_sync_key_request_message,
+    extract_app_state_snapshot_info,
     inject_app_state_sync_key_share,
 )
 from .client import WhatsAppWebClient
@@ -67,6 +71,7 @@ from .media import (
     MediaConn,
     MediaPayload,
     decrypt_media,
+    download_external_blob,
     download_media,
     encrypt_media,
     media_conn_node,
@@ -676,6 +681,7 @@ class WhatsAppClient:
         timeout: float = 30,
         wait_for_ack: float = 0,
         additional_attributes: dict[str, str] | None = None,
+        additional_nodes: list[BinaryNode] | None = None,
     ) -> SendMessageResult:
         outbound = await self._build_outbound_message(
             jid,
@@ -685,6 +691,7 @@ class WhatsAppClient:
             force_sessions=force_sessions,
             include_phash=include_phash,
             additional_attributes=additional_attributes,
+            additional_nodes=additional_nodes or [],
             timeout=timeout,
         )
         return await self.relay_message(jid, outbound, timeout=wait_for_ack)
@@ -806,6 +813,7 @@ class WhatsAppClient:
         force_sessions: bool,
         include_phash: bool,
         additional_attributes: dict[str, str] | None,
+        additional_nodes: list[BinaryNode],
         timeout: float,
     ) -> OutboundMessage:
         jid = _coerce_chat_jid(jid)
@@ -830,6 +838,7 @@ class WhatsAppClient:
             own_fanout_jids=own_fanout_jids,
             include_phash=include_phash,
             additional_attributes=additional_attributes,
+            additional_nodes=additional_nodes,
         )
 
     async def _prepare_usync_fanout(
@@ -1136,8 +1145,43 @@ class WhatsAppClient:
             force_sessions=True,
             timeout=timeout,
             wait_for_ack=wait_for_ack,
-            additional_attributes={"category": "peer"},
+            additional_attributes={"category": "peer", "push_priority": "high_force"},
+            additional_nodes=[BinaryNode("meta", {"appdata": "default"})],
         )
+
+    async def fetch_app_state_snapshots(
+        self,
+        collections: list[str] | tuple[str, ...] = WA_PATCH_NAMES,
+        *,
+        timeout: float = 30,
+        force_snapshot: bool = True,
+    ) -> list[AppStateSnapshotInfo]:
+        node = app_state_sync_request_node(
+            list(collections),
+            self.queries.next_tag(),
+            versions=self.auth_state.credentials.get("app_state_sync_versions") or {},
+            force_snapshot=force_snapshot,
+        )
+        result = await self.query(node, timeout=timeout, drive_receive=True)
+        snapshots = await extract_app_state_snapshot_info(
+            result,
+            self.auth_state.credentials,
+            lambda blob: download_external_blob(blob, timeout=int(timeout)),
+        )
+        blocked = self.auth_state.credentials.setdefault("app_state_blocked_collections", {})
+        changed = False
+        for snapshot in snapshots:
+            if snapshot.missing_key and snapshot.key_id:
+                if blocked.get(snapshot.collection) != snapshot.key_id:
+                    blocked[snapshot.collection] = snapshot.key_id
+                    changed = True
+            elif snapshot.collection in blocked:
+                blocked.pop(snapshot.collection, None)
+                changed = True
+        if changed:
+            await self._commit_credentials(self.auth_state.credentials)
+        await self.ev.emit("app-state.snapshots", snapshots)
+        return snapshots
 
     async def archive_chat(self, jid: str, archive: bool = True, *, timeout: float = 30) -> BinaryNode:
         return await self.chat_modify({"archive": archive}, jid, timeout=timeout)
@@ -1667,6 +1711,7 @@ class WhatsAppClient:
     sendPresenceUpdate = send_presence_update
     chatModify = chat_modify
     requestAppStateSyncKey = request_app_state_sync_key
+    fetchAppStateSnapshots = fetch_app_state_snapshots
     initializeSession = initialize_session
     requestPairingCode = request_pairing_code
     digestKeyBundle = digest_key_bundle

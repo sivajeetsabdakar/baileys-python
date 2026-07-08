@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import base64
 import sys
 from pathlib import Path
 
@@ -13,10 +12,6 @@ if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
 from baileys import MessageUpsert, make_socket  # noqa: E402
-from baileys.defaults import S_WHATSAPP_NET  # noqa: E402
-from baileys.generated import WAProto_pb2 as proto  # noqa: E402
-from baileys.media import download_external_blob  # noqa: E402
-from baileys.wabinary import BinaryNode  # noqa: E402
 
 
 DEFAULT_COLLECTIONS = (
@@ -105,30 +100,19 @@ async def main() -> int:
         await client.connect_and_wait(success_timeout=60)
         if args.request_snapshots:
             collections = args.collections or list(DEFAULT_COLLECTIONS)
-            for name in collections:
-                node = BinaryNode(
-                    "iq",
-                    {
-                        "to": S_WHATSAPP_NET,
-                        "xmlns": "w:sync:app:state",
-                        "type": "set",
-                        "id": client.queries.next_tag(),
-                    },
-                    [
-                        BinaryNode(
-                            "sync",
-                            {},
-                            [
-                                BinaryNode(
-                                    "collection",
-                                    {"name": name, "version": "0", "return_snapshot": "true"},
-                                )
-                            ],
-                        )
-                    ],
+            snapshots = await client.fetch_app_state_snapshots(collections, timeout=45)
+            for snapshot in snapshots:
+                print(
+                    "SNAPSHOT "
+                    f"collection={snapshot.collection} "
+                    f"version={snapshot.version} "
+                    f"records={snapshot.records} "
+                    f"key_id={snapshot.key_id or ''} "
+                    f"has_key={snapshot.has_key} "
+                    f"missing_key={snapshot.missing_key} "
+                    f"has_more_patches={snapshot.has_more_patches}",
+                    flush=True,
                 )
-                result = await client.query(node, timeout=30, drive_receive=True)
-                await print_snapshot_summary(name, result)
 
         if args.request_keys:
             result = await client.request_app_state_sync_key(args.request_keys, timeout=30, wait_for_ack=args.wait_for_ack)
@@ -148,49 +132,6 @@ async def main() -> int:
         return 0
     finally:
         await client.close()
-
-
-async def print_snapshot_summary(collection: str, node: BinaryNode) -> None:
-    for sync in _children(node, "sync"):
-        for item in _children(sync, "collection"):
-            name = item.attrs.get("name") or collection
-            snapshots = _children(item, "snapshot")
-            patches = _children(item, "patch")
-            print(f"SNAPSHOT_RESPONSE collection={name} snapshots={len(snapshots)} patches={len(patches)}", flush=True)
-            for snapshot_node in snapshots:
-                if not isinstance(snapshot_node.content, bytes):
-                    print(f"SNAPSHOT_EMPTY collection={name}", flush=True)
-                    continue
-                blob = proto.ExternalBlobReference()
-                blob.ParseFromString(snapshot_node.content)
-                print(
-                    "SNAPSHOT_BLOB "
-                    f"collection={name} "
-                    f"direct_path={bool(blob.directPath)} "
-                    f"media_key={bool(blob.mediaKey)} "
-                    f"file_size={blob.fileSizeBytes if blob.fileSizeBytes else 0}",
-                    flush=True,
-                )
-                data = await download_external_blob(blob, timeout=45)
-                snapshot = proto.SyncdSnapshot()
-                snapshot.ParseFromString(data)
-                key_id = ""
-                if snapshot.HasField("keyId") and snapshot.keyId.id:
-                    key_id = base64.b64encode(snapshot.keyId.id).decode("ascii")
-                print(
-                    "SNAPSHOT "
-                    f"collection={name} "
-                    f"version={snapshot.version} "
-                    f"records={len(snapshot.records)} "
-                    f"key_id={key_id}",
-                    flush=True,
-                )
-
-
-def _children(node: BinaryNode, tag: str) -> list[BinaryNode]:
-    if not isinstance(node.content, list):
-        return []
-    return [child for child in node.content if isinstance(child, BinaryNode) and child.tag == tag]
 
 
 if __name__ == "__main__":

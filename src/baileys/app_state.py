@@ -6,6 +6,7 @@ import json
 import os
 import sys
 import time
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -23,6 +24,13 @@ from .whatsapp_keys import expand_app_state_keys
 APP_STATE_KEY_NAMESPACE = "app-state-sync-key"
 APP_STATE_VERSION_NAMESPACE = "app-state-sync-version"
 PATCH_INFO = b"WhatsApp Patch Integrity"
+WA_PATCH_NAMES = (
+    "regular_low",
+    "regular",
+    "regular_high",
+    "critical_block",
+    "critical_unblock_low",
+)
 
 
 @dataclass
@@ -71,6 +79,20 @@ class EncodedAppPatch:
     patch_type: str
 
 
+@dataclass(frozen=True)
+class AppStateSnapshotInfo:
+    collection: str
+    version: int
+    records: int
+    key_id: str | None
+    has_key: bool
+    has_more_patches: bool = False
+
+    @property
+    def missing_key(self) -> bool:
+        return bool(self.key_id and not self.has_key)
+
+
 def store_app_state_sync_key(credentials: dict[str, Any], key_id: str, key_data: proto.Message.AppStateSyncKeyData) -> None:
     credentials.setdefault("app_state_sync_keys", {})[key_id] = {
         "keyData": b64(key_data.keyData),
@@ -109,6 +131,65 @@ def app_state_sync_key_request_message(key_ids: list[str] | tuple[str, ...] | st
         item = protocol.appStateSyncKeyRequest.keyIds.add()
         item.keyId = unb64(key_id)
     return message
+
+
+def app_state_sync_request_node(
+    collections: list[str] | tuple[str, ...],
+    tag_id: str,
+    *,
+    versions: dict[str, Any] | None = None,
+    force_snapshot: bool = True,
+) -> BinaryNode:
+    content = []
+    for name in collections:
+        state = LTHashState.from_json((versions or {}).get(name))
+        content.append(
+            BinaryNode(
+                "collection",
+                {
+                    "name": name,
+                    "version": str(state.version),
+                    "return_snapshot": str(force_snapshot or state.version == 0).lower(),
+                },
+            )
+        )
+    return BinaryNode(
+        "iq",
+        {"id": tag_id, "to": S_WHATSAPP_NET, "type": "set", "xmlns": "w:sync:app:state"},
+        [BinaryNode("sync", {}, content)],
+    )
+
+
+async def extract_app_state_snapshot_info(
+    node: BinaryNode,
+    credentials: dict[str, Any],
+    download_blob: Callable[[proto.ExternalBlobReference], Awaitable[bytes]],
+) -> list[AppStateSnapshotInfo]:
+    snapshots: list[AppStateSnapshotInfo] = []
+    for sync in _children(node, "sync"):
+        for collection in _children(sync, "collection"):
+            name = collection.attrs.get("name") or ""
+            has_more = collection.attrs.get("has_more_patches") == "true"
+            for snapshot_node in _children(collection, "snapshot"):
+                if not isinstance(snapshot_node.content, bytes):
+                    continue
+                blob = proto.ExternalBlobReference()
+                blob.ParseFromString(snapshot_node.content)
+                snapshot_data = await download_blob(blob)
+                snapshot = proto.SyncdSnapshot()
+                snapshot.ParseFromString(snapshot_data)
+                key_id = b64(snapshot.keyId.id) if snapshot.HasField("keyId") and snapshot.keyId.id else None
+                snapshots.append(
+                    AppStateSnapshotInfo(
+                        collection=name,
+                        version=int(snapshot.version.version) if snapshot.HasField("version") else 0,
+                        records=len(snapshot.records),
+                        key_id=key_id,
+                        has_key=bool(key_id and _app_state_key_data(credentials, key_id)),
+                        has_more_patches=has_more,
+                    )
+                )
+    return snapshots
 
 
 def app_state_patch_node(
@@ -294,6 +375,12 @@ def _app_state_key_data(credentials: dict[str, Any], key_id: str) -> bytes | Non
             message.ParseFromString(unb64(raw["raw"]))
             return message.keyData
     return None
+
+
+def _children(node: BinaryNode, tag: str) -> list[BinaryNode]:
+    if not isinstance(node.content, list):
+        return []
+    return [child for child in node.content if isinstance(child, BinaryNode) and child.tag == tag]
 
 
 class MissingAppStateKey(RuntimeError):
