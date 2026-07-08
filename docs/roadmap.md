@@ -170,8 +170,8 @@ tests are stable.
 - Group text send is live-proven with ACK against the dedicated test group.
 - Reaction add/remove, edit, and delete are live-proven with ACK against the
   dedicated test peer.
-- Document and sticker send/download/decrypt are live-proven with ACK. Video
-  and audio still need real sample fixtures before live proof.
+- Image, video, audio, document, and sticker send/download/decrypt are
+  live-proven with ACK using generated samples and file-backed fixtures.
 
 ## Phase 5 In Progress
 
@@ -198,9 +198,16 @@ tests are stable.
   metadata, and group invite code lookup.
 - Presence writes are proven through `scripts/phase5_write_probe.py` for
   available, unavailable, composing, paused, and recording states.
-- Profile mutations, chat patches, group participant/update writes, and invite
-  revoke/settings mutations still need explicit safe targets before marking
-  Phase 5 complete.
+- Added `scripts/phase5_mutation_probe.py` for explicit live mutation checks
+  across group settings, invite revoke, participant promote/demote, chat
+  patches, profile updates, and profile picture updates.
+- Group announcement mode change/revert, invite revoke, participant promote,
+  and participant demote are live-proven against the dedicated test group.
+- Profile status and profile picture update are live-proven.
+- Profile name and chat patch mutations still need the encrypted app-state
+  patch implementation used by Baileys. The current public methods exist, but
+  the live probe correctly exposes that the placeholder patch builder is not
+  wire-compatible yet.
 
 ## Live Harness
 
@@ -222,6 +229,8 @@ tests are stable.
 - `scripts/phase5_write_probe.py` covers explicit Phase 5 write flows (presence,
   profile name/status, and group participant updates) with a required `--apply`
   confirmation flag.
+- `scripts/phase5_mutation_probe.py` covers broader explicit Phase 5 mutation
+  flows and reports per-operation success or server/client errors.
 
 ## Current Verification
 
@@ -233,7 +242,9 @@ tests are stable.
 - The latest live run proves QR pairing, saved reconnect, third-party USync
   device/session assertion, direct text send with ACK, group text send with
   ACK, reaction/edit/delete operations with ACK, image/document/sticker
-  send/download, Phase 5 read-only profile/privacy/blocklist/on-whatsapp/group
-  checks, and all supported presence write states.
+  send/download, video/audio send/download from file fixtures, Phase 5
+  read-only profile/privacy/blocklist/on-whatsapp/group checks, all supported
+  presence write states, group setting/invite/participant mutations, profile
+  status update, and profile picture update.
 - Public docs are kept to relative repository paths and avoid local machine
   setup details.

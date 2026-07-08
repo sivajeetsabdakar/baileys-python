@@ -29,6 +29,7 @@ outbound/chat/group API foundations:
 - product chat, presence, profile, privacy, blocklist, and group method
   surfaces with Baileys-compatible aliases
 - `scripts/phase5_live_probe.py` for read-only Phase 5 live validation
+- `scripts/phase5_mutation_probe.py` for explicit Phase 5 mutation validation
 
 This is not full Baileys parity yet. It is the first product baseline for the
 full roadmap.
