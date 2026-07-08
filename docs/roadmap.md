@@ -161,10 +161,17 @@ tests are stable.
 - Peer USync and session assertion are live-proven for a third-party contact
   with multiple companion devices; all returned sessions were injected and no
   unresolved device sessions remained.
-- Group text send has prior probe coverage but still needs a fresh run with a
-  known group JID before marking group outbound complete.
+- Added `scripts/message_content_probe.py` for live reaction, edit, delete, and
+  reaction-removal validation through the product send API.
+- Added `scripts/send_media_probe.py` for reusable product media probes across
+  generated image/document/sticker payloads and real sample files.
 - 1:1 send has direct session bootstrap coverage in product code and is
   live-proven for a third-party peer with USync device fanout.
+- Group text send is live-proven with ACK against the dedicated test group.
+- Reaction add/remove, edit, and delete are live-proven with ACK against the
+  dedicated test peer.
+- Document and sticker send/download/decrypt are live-proven with ACK. Video
+  and audio still need real sample fixtures before live proof.
 
 ## Phase 5 In Progress
 
@@ -187,10 +194,13 @@ tests are stable.
 - Offline tests cover query node builders, parsers, aliases, presence nodes,
   typed validation, and store/event integration for the new API surfaces.
 - Live Phase 5 read-only checks are proven through `scripts/phase5_live_probe.py`
-  for privacy settings, profile picture lookup, blocklist, and `on_whatsapp`.
-- Presence write is proven through `scripts/phase5_write_probe.py`.
-- Profile mutations, group metadata/invite reads, and group participant/update
-  writes still need safe live targets before marking Phase 5 complete.
+  for privacy settings, profile picture lookup, blocklist, `on_whatsapp`, group
+  metadata, and group invite code lookup.
+- Presence writes are proven through `scripts/phase5_write_probe.py` for
+  available, unavailable, composing, paused, and recording states.
+- Profile mutations, chat patches, group participant/update writes, and invite
+  revoke/settings mutations still need explicit safe targets before marking
+  Phase 5 complete.
 
 ## Live Harness
 
@@ -203,6 +213,10 @@ tests are stable.
   timed reconnect/receive-loop checks.
 - `scripts/send_text_probe.py` covers product outbound text send probes.
 - `scripts/send_image_probe.py` covers product outbound image send probes.
+- `scripts/message_content_probe.py` covers reaction add/remove, edit, and
+  delete probes.
+- `scripts/send_media_probe.py` covers reusable product media send/download
+  probes for generated or file-backed media samples.
 - `scripts/phase5_live_probe.py` covers read-only profile/privacy/blocklist/group
   metadata probes.
 - `scripts/phase5_write_probe.py` covers explicit Phase 5 write flows (presence,
@@ -217,8 +231,9 @@ tests are stable.
 - Product QR pairing and saved reconnect pass against the dedicated test
   account.
 - The latest live run proves QR pairing, saved reconnect, third-party USync
-  device/session assertion, direct text send with ACK, image send/download,
-  Phase 5 read-only profile/privacy/blocklist/on-whatsapp checks, and presence
-  write.
+  device/session assertion, direct text send with ACK, group text send with
+  ACK, reaction/edit/delete operations with ACK, image/document/sticker
+  send/download, Phase 5 read-only profile/privacy/blocklist/on-whatsapp/group
+  checks, and all supported presence write states.
 - Public docs are kept to relative repository paths and avoid local machine
   setup details.

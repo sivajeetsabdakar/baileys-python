@@ -24,6 +24,8 @@ outbound/chat/group API foundations:
   `scripts/product_qr_pairing_probe.py`
 - product outbound text/media API probes through `scripts/send_text_probe.py`
   and `scripts/send_image_probe.py`
+- reusable product content/media probes through
+  `scripts/message_content_probe.py` and `scripts/send_media_probe.py`
 - product chat, presence, profile, privacy, blocklist, and group method
   surfaces with Baileys-compatible aliases
 - `scripts/phase5_live_probe.py` for read-only Phase 5 live validation
