@@ -10,7 +10,12 @@ from typing import Any
 import websockets
 
 from .auth_state import AuthState, JsonCredentialStore, MultiFileAuthState
-from .app_state import MissingAppStateKey, app_state_patch_node, inject_app_state_sync_key_share
+from .app_state import (
+    MissingAppStateKey,
+    app_state_patch_node,
+    app_state_sync_key_request_message,
+    inject_app_state_sync_key_share,
+)
 from .client import WhatsAppWebClient
 from .disconnect import (
     DisconnectError,
@@ -71,7 +76,7 @@ from .media import (
     upload_media,
 )
 from .message_send import OutboundMessage, build_message_content_node, build_proto_message_node
-from .jid import is_jid_group, jid_decode_tuple, jid_encode, phone_number_to_jid
+from .jid import is_jid_group, jid_decode_tuple, jid_encode, jid_normalized_user, phone_number_to_jid
 from .noise import generate_noise_key_pair
 from .pairing_code import (
     PairSuccess,
@@ -670,6 +675,7 @@ class WhatsAppClient:
         include_phash: bool = False,
         timeout: float = 30,
         wait_for_ack: float = 0,
+        additional_attributes: dict[str, str] | None = None,
     ) -> SendMessageResult:
         outbound = await self._build_outbound_message(
             jid,
@@ -678,6 +684,7 @@ class WhatsAppClient:
             use_usync=use_usync,
             force_sessions=force_sessions,
             include_phash=include_phash,
+            additional_attributes=additional_attributes,
             timeout=timeout,
         )
         return await self.relay_message(jid, outbound, timeout=wait_for_ack)
@@ -798,6 +805,7 @@ class WhatsAppClient:
         use_usync: bool | None,
         force_sessions: bool,
         include_phash: bool,
+        additional_attributes: dict[str, str] | None,
         timeout: float,
     ) -> OutboundMessage:
         jid = _coerce_chat_jid(jid)
@@ -821,6 +829,7 @@ class WhatsAppClient:
             recipient_device_jids=recipient_device_jids,
             own_fanout_jids=own_fanout_jids,
             include_phash=include_phash,
+            additional_attributes=additional_attributes,
         )
 
     async def _prepare_usync_fanout(
@@ -1108,6 +1117,27 @@ class WhatsAppClient:
         await self._commit_credentials(working)
         await self.ev.emit("chats.update", [{"id": jid, **modification}])
         return result
+
+    async def request_app_state_sync_key(
+        self,
+        key_ids: list[str] | tuple[str, ...] | str,
+        *,
+        timeout: float = 30,
+        wait_for_ack: float = 0,
+    ) -> SendMessageResult:
+        me = self.auth_state.credentials.get("me", {}).get("id")
+        if not me:
+            raise RuntimeError("cannot request app-state sync key before login")
+        message = app_state_sync_key_request_message(key_ids)
+        return await self.send_message(
+            jid_normalized_user(me),
+            message,
+            use_usync=False,
+            force_sessions=True,
+            timeout=timeout,
+            wait_for_ack=wait_for_ack,
+            additional_attributes={"category": "peer"},
+        )
 
     async def archive_chat(self, jid: str, archive: bool = True, *, timeout: float = 30) -> BinaryNode:
         return await self.chat_modify({"archive": archive}, jid, timeout=timeout)
@@ -1636,6 +1666,7 @@ class WhatsAppClient:
     onWhatsApp = on_whatsapp
     sendPresenceUpdate = send_presence_update
     chatModify = chat_modify
+    requestAppStateSyncKey = request_app_state_sync_key
     initializeSession = initialize_session
     requestPairingCode = request_pairing_code
     digestKeyBundle = digest_key_bundle

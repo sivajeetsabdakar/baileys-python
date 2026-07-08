@@ -164,6 +164,27 @@ async def download_media(upload: MediaUploadResult, *, timeout: int = 45) -> byt
             return data
 
 
+async def download_external_blob(blob: proto.ExternalBlobReference, media_type: str = "md-app-state", *, timeout: int = 45) -> bytes:
+    if not blob.mediaKey:
+        raise ValueError("external blob missing media key")
+    if not blob.directPath:
+        raise ValueError("external blob missing direct path")
+    encrypted = await download_direct_path(blob.directPath, timeout=timeout)
+    if blob.fileEncSha256 and sha256(encrypted) != blob.fileEncSha256:
+        raise ValueError("external blob encrypted hash mismatch")
+    return decrypt_media(encrypted, blob.mediaKey, media_type)
+
+
+async def download_direct_path(direct_path: str, *, timeout: int = 45) -> bytes:
+    url = direct_path if direct_path.startswith(("http://", "https://")) else f"https://mmg.whatsapp.net{direct_path}"
+    async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=timeout)) as session:
+        async with session.get(url, headers={"Origin": DEFAULT_ORIGIN}) as response:
+            data = await response.read()
+            if response.status >= 400:
+                raise ValueError(f"download failed status={response.status} body={data[:200]!r}")
+            return data
+
+
 def image_message(
     encrypted: EncryptedMedia,
     upload: MediaUploadResult,

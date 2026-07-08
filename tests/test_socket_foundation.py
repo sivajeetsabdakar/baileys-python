@@ -1072,6 +1072,7 @@ def test_build_outbound_message_normalizes_plain_phone_jid(tmp_path):
             recipient_device_jids: object | None = None,
             own_fanout_jids: object = (),
             include_phash: bool = False,
+            additional_attributes: dict[str, str] | None = None,
         ) -> OutboundMessage:
             return OutboundMessage(
                 node=BinaryNode(
@@ -1097,6 +1098,7 @@ def test_build_outbound_message_normalizes_plain_phone_jid(tmp_path):
                 use_usync=False,
                 force_sessions=False,
                 include_phash=False,
+                additional_attributes=None,
                 timeout=5,
             )
         finally:

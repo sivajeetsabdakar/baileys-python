@@ -4,6 +4,7 @@ import base64
 
 from baileys.app_state import (
     app_state_patch_node,
+    app_state_sync_key_request_message,
     chat_modification_to_app_patch,
     inject_app_state_sync_key_share,
     lt_hash_subtract_then_add,
@@ -83,3 +84,14 @@ def test_app_state_key_share_updates_credentials():
     assert key_ids == [base64.b64encode(b"k" * 32).decode("ascii")]
     assert creds["myAppStateKeyId"] == key_ids[0]
     assert creds["app_state_sync_keys"][key_ids[0]]["keyData"] == base64.b64encode(b"a" * 32).decode("ascii")
+
+
+def test_app_state_sync_key_request_message_encodes_key_ids():
+    key_id = base64.b64encode(b"k" * 32).decode("ascii")
+
+    message = app_state_sync_key_request_message(key_id)
+
+    assert message.protocolMessage.type == proto.Message.ProtocolMessage.APP_STATE_SYNC_KEY_REQUEST
+    request = message.protocolMessage.appStateSyncKeyRequest
+    assert len(request.keyIds) == 1
+    assert request.keyIds[0].keyId == b"k" * 32

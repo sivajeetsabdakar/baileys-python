@@ -6,7 +6,8 @@ import baileys as b
 from baileys.auth_state import AuthState, JsonCredentialStore
 from baileys.generated import WAProto_pb2 as proto
 from baileys.media import EncryptedMedia, MediaPayload, MediaUploadResult, media_message, read_media_payload
-from baileys.message_send import OutboundMessage, normalize_message_content
+import baileys.message_send as message_send_module
+from baileys.message_send import OutboundMessage, build_proto_message_node, normalize_message_content
 from baileys.receipts import RetryRequest
 from baileys.socket import WhatsAppClient, make_socket
 from baileys.wabinary import BinaryNode
@@ -67,6 +68,29 @@ def test_media_payload_and_message_builders(tmp_path):
     assert message.documentMessage.fileName == "note.txt"
     assert message.documentMessage.caption == "doc"
     assert message.documentMessage.directPath == "/v/t/file"
+
+
+def test_proto_message_builder_accepts_additional_attributes():
+    message = proto.Message()
+    message.conversation = "hello"
+    original = message_send_module.build_encrypted_node
+
+    def fake_build_encrypted_node(creds, recipient_jid, payload):
+        return BinaryNode("enc", {"type": "msg"}, b"ciphertext"), "msg", None
+
+    message_send_module.build_encrypted_node = fake_build_encrypted_node  # type: ignore[assignment]
+    try:
+        outbound = build_proto_message_node(
+            _minimal_creds(),
+            "chat@s.whatsapp.net",
+            message,
+            message_type="text",
+            additional_attributes={"category": "peer"},
+        )
+    finally:
+        message_send_module.build_encrypted_node = original
+
+    assert outbound.node.attrs["category"] == "peer"
 
 
 def test_relay_message_caches_and_retry_replays(tmp_path):

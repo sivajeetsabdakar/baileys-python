@@ -288,6 +288,7 @@ def build_message_content_node(
     recipient_device_jids: Iterable[str] | None = None,
     own_fanout_jids: Iterable[str] = (),
     include_phash: bool = False,
+    additional_attributes: dict[str, str] | None = None,
 ) -> OutboundMessage:
     message, message_type = normalize_message_content(content)
     return build_proto_message_node(
@@ -300,6 +301,7 @@ def build_message_content_node(
         recipient_device_jids=recipient_device_jids,
         own_fanout_jids=own_fanout_jids,
         include_phash=include_phash,
+        additional_attributes=additional_attributes,
     )
 
 
@@ -314,6 +316,7 @@ def build_proto_message_node(
     recipient_device_jids: Iterable[str] | None = None,
     own_fanout_jids: Iterable[str] = (),
     include_phash: bool = False,
+    additional_attributes: dict[str, str] | None = None,
 ) -> OutboundMessage:
     message_id = message_id or generate_message_id(creds.get("me", {}).get("id"))
     recipient_user, recipient_server, _ = jid_decode(recipient_jid)
@@ -322,6 +325,8 @@ def build_proto_message_node(
     signal_types = {recipient_device_jid: signal_type}
 
     attrs = {"id": message_id, "to": recipient_jid, "type": message_type}
+    if additional_attributes:
+        attrs.update(additional_attributes)
     if direct_enc:
         content = [enc_node]
         participant_jids = [recipient_device_jid]

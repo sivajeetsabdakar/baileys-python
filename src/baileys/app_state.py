@@ -99,6 +99,18 @@ def inject_app_state_sync_key_share(credentials: dict[str, Any], message: proto.
     return key_ids
 
 
+def app_state_sync_key_request_message(key_ids: list[str] | tuple[str, ...] | str) -> proto.Message:
+    if isinstance(key_ids, str):
+        key_ids = [key_ids]
+    message = proto.Message()
+    protocol = message.protocolMessage
+    protocol.type = proto.Message.ProtocolMessage.APP_STATE_SYNC_KEY_REQUEST
+    for key_id in key_ids:
+        item = protocol.appStateSyncKeyRequest.keyIds.add()
+        item.keyId = unb64(key_id)
+    return message
+
+
 def app_state_patch_node(
     credentials: dict[str, Any],
     modification: dict[str, Any],

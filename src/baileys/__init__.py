@@ -16,6 +16,7 @@ from .app_state import (
     LTHashState,
     MissingAppStateKey,
     app_state_patch_node,
+    app_state_sync_key_request_message,
     chat_modification_to_app_patch,
     encode_syncd_patch,
     inject_app_state_sync_key_share,
@@ -73,7 +74,7 @@ from .jid import (
     transferDevice,
     transfer_device,
 )
-from .media import MediaPayload, MediaUploadResult, media_message, read_media_payload
+from .media import MediaPayload, MediaUploadResult, download_external_blob, media_message, read_media_payload
 from .message_send import (
     MessageOptions,
     OutboundMessage,
@@ -193,6 +194,7 @@ __all__ = [
     "areJidsSameUser",
     "are_jids_same_user",
     "app_state_patch_node",
+    "app_state_sync_key_request_message",
     "build_pairing_qr_data",
     "aggregate_message_keys",
     "build_ack_node",
@@ -209,6 +211,7 @@ __all__ = [
     "derive_media_keys",
     "derive_pairing_code_key",
     "decode_binary_node",
+    "download_external_blob",
     "encode_binary_node",
     "encode_syncd_patch",
     "expand_app_state_keys",

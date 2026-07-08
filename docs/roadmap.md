@@ -209,9 +209,12 @@ tests are stable.
   and participant demote are live-proven against the dedicated test group.
 - Profile status and profile picture update are live-proven.
 - Profile name and chat patch mutations are offline-covered through the
-  encrypted app-state patch builder. The current saved live session still lacks
-  `myAppStateKeyId`; a fresh app-state key share or first-history sync with
-  the new handler active is needed before live patch writes can pass.
+  encrypted app-state patch builder. Fresh QR pairing, app-state snapshot
+  request, external app-state blob download/decrypt, and snapshot metadata
+  decode are live-proven through `scripts/app_state_key_probe.py`. The current
+  saved live session still lacks `myAppStateKeyId`; a direct peer request for
+  the snapshot key id was sent, but no app-state key-share response arrived in
+  the probe window.
 
 ## Live Harness
 
@@ -235,6 +238,8 @@ tests are stable.
   confirmation flag.
 - `scripts/phase5_mutation_probe.py` covers broader explicit Phase 5 mutation
   flows and reports per-operation success or server/client errors.
+- `scripts/app_state_key_probe.py` covers app-state snapshot fetch/decrypt
+  diagnostics and app-state sync-key request probes.
 
 ## Current Verification
 
@@ -251,6 +256,7 @@ tests are stable.
   presence write states, group setting/invite/participant mutations, profile
   status update, and profile picture update.
 - Live chat patch/profile-name writes currently stop at missing app-state key
-  material in the saved session, not at patch encoding.
+  material in the saved session. Snapshot fetch/decrypt works; peer key-share
+  response is the remaining live blocker.
 - Public docs are kept to relative repository paths and avoid local machine
   setup details.
