@@ -10,6 +10,7 @@ from typing import Any
 import websockets
 
 from .auth_state import AuthState, JsonCredentialStore, MultiFileAuthState
+from .app_state import MissingAppStateKey, app_state_patch_node, inject_app_state_sync_key_share
 from .client import WhatsAppWebClient
 from .disconnect import (
     DisconnectError,
@@ -30,7 +31,6 @@ from .chat_groups import (
     available_presence_node,
     block_status_node,
     blocklist_fetch_node,
-    chat_modify_node,
     chatstate_presence_node,
     group_accept_invite_node,
     group_create_node,
@@ -568,6 +568,13 @@ class WhatsAppClient:
             await self.ev.emit("messages.decrypt_error", {"node": node, "error": exc})
             return
         if upsert is not None:
+            key_ids = []
+            for message in upsert.messages:
+                if message.message is not None:
+                    key_ids.extend(inject_app_state_sync_key_share(self.auth_state.credentials, message.message))
+            if key_ids:
+                await self._commit_credentials(self.auth_state.credentials)
+                await self.ev.emit("app-state.keys.update", {"key_ids": key_ids})
             await self.send_ack(node)
             await self.ev.emit("messages.upsert", upsert)
 
@@ -1091,7 +1098,14 @@ class WhatsAppClient:
         return node
 
     async def chat_modify(self, modification: dict[str, Any], jid: str, *, timeout: float = 30) -> BinaryNode:
-        result = await self.query(chat_modify_node(modification, jid, self.queries.next_tag()), timeout=timeout, drive_receive=True)
+        working = copy.deepcopy(self.auth_state.credentials)
+        try:
+            encoded = app_state_patch_node(working, modification, jid, self.queries.next_tag())
+        except MissingAppStateKey as exc:
+            await self.ev.emit("app-state.patch_error", {"jid": jid, "modification": modification, "error": exc})
+            raise
+        result = await self.query(encoded.node, timeout=timeout, drive_receive=True)
+        await self._commit_credentials(working)
         await self.ev.emit("chats.update", [{"id": jid, **modification}])
         return result
 
@@ -1109,7 +1123,7 @@ class WhatsAppClient:
 
     async def star_message(self, key: dict[str, Any] | MessageKey, star: bool = True, *, timeout: float = 30) -> BinaryNode:
         payload = key if isinstance(key, dict) else {"remote_jid": key.remote_jid, "id": key.id, "participant": key.participant}
-        return await self.chat_modify({"star": star, "messages": [payload]}, payload.get("remote_jid") or "", timeout=timeout)
+        return await self.chat_modify({"star": {"star": star, "messages": [payload]}}, payload.get("remote_jid") or "", timeout=timeout)
 
     async def dispatch_retry_receipt_node(self, request: RetryRequest) -> RetryOutcome:
         participant = request.key.participant

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 
 import baileys as b
 from baileys.auth_state import AuthState, JsonCredentialStore
@@ -20,6 +21,18 @@ from baileys.wabinary import BinaryNode
 
 def _minimal_creds() -> dict:
     return {"me": {"id": "me@s.whatsapp.net", "name": "Me"}}
+
+
+def _creds_with_app_state() -> dict:
+    key_id = base64.b64encode(b"k" * 32).decode("ascii")
+    creds = _minimal_creds()
+    creds.update(
+        {
+            "myAppStateKeyId": key_id,
+            "app_state_sync_keys": {key_id: {"keyData": base64.b64encode(b"a" * 32).decode("ascii")}},
+        }
+    )
+    return creds
 
 
 def test_group_nodes_and_parsers_match_common_shapes():
@@ -130,7 +143,7 @@ def test_on_whatsapp_nodes_and_queries_match_expected_shape():
 def test_client_phase5_methods_call_query_and_emit_events(tmp_path):
     async def scenario():
         store = JsonCredentialStore(tmp_path / "creds.json")
-        store.save_credentials(_minimal_creds())
+        store.save_credentials(_creds_with_app_state())
         client = make_socket(AuthState.from_store(store))
         queries = []
         group_updates = []
@@ -157,6 +170,8 @@ def test_client_phase5_methods_call_query_and_emit_events(tmp_path):
         assert group_updates[0][0].id == "123@g.us"
         assert chat_updates[0][0]["archive"] is True
         assert queries[0].attrs["xmlns"] == "w:g2"
+        assert queries[-1].attrs["xmlns"] == "w:sync:app:state"
+        assert queries[-1].content[0].tag == "sync"
         assert client.groupMetadata.__func__ is client.group_metadata.__func__
         assert client.fetchPrivacySettings.__func__ is client.fetch_privacy_settings.__func__
         assert b.GroupMetadata is not None

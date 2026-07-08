@@ -28,6 +28,8 @@ outbound/chat/group API foundations:
   `scripts/message_content_probe.py` and `scripts/send_media_probe.py`
 - product chat, presence, profile, privacy, blocklist, and group method
   surfaces with Baileys-compatible aliases
+- encrypted app-state patch encoding for chat/profile-name mutations, pending
+  live key material on the saved test session
 - `scripts/phase5_live_probe.py` for read-only Phase 5 live validation
 - `scripts/phase5_mutation_probe.py` for explicit Phase 5 mutation validation
 

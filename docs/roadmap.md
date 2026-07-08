@@ -201,13 +201,17 @@ tests are stable.
 - Added `scripts/phase5_mutation_probe.py` for explicit live mutation checks
   across group settings, invite revoke, participant promote/demote, chat
   patches, profile updates, and profile picture updates.
+- Added Baileys-style encrypted app-state patch encoding for chat/profile-name
+  mutations, including app-state key-share ingestion, LT hash update,
+  SyncActionData encryption, content/snapshot/patch MACs, and persisted
+  per-collection sync versions.
 - Group announcement mode change/revert, invite revoke, participant promote,
   and participant demote are live-proven against the dedicated test group.
 - Profile status and profile picture update are live-proven.
-- Profile name and chat patch mutations still need the encrypted app-state
-  patch implementation used by Baileys. The current public methods exist, but
-  the live probe correctly exposes that the placeholder patch builder is not
-  wire-compatible yet.
+- Profile name and chat patch mutations are offline-covered through the
+  encrypted app-state patch builder. The current saved live session still lacks
+  `myAppStateKeyId`; a fresh app-state key share or first-history sync with
+  the new handler active is needed before live patch writes can pass.
 
 ## Live Harness
 
@@ -235,7 +239,7 @@ tests are stable.
 ## Current Verification
 
 - Offline compile check passes for `src`, `scripts`, and `examples`.
-- Offline test suite passes with 108 tests.
+- Offline test suite passes with 112 tests.
 - WABinary token and WAProto generated artifact checks pass.
 - Product QR pairing and saved reconnect pass against the dedicated test
   account.
@@ -246,5 +250,7 @@ tests are stable.
   read-only profile/privacy/blocklist/on-whatsapp/group checks, all supported
   presence write states, group setting/invite/participant mutations, profile
   status update, and profile picture update.
+- Live chat patch/profile-name writes currently stop at missing app-state key
+  material in the saved session, not at patch encoding.
 - Public docs are kept to relative repository paths and avoid local machine
   setup details.
