@@ -155,8 +155,15 @@ tests are stable.
   call the product `WhatsAppClient` APIs.
 - Offline tests cover content builders, relay/cache retry replay, media message
   generation, send aliases, and product send orchestration.
-- Live Phase 4 sends still need to be rerun with the dedicated account before
-  the phase can be marked Done.
+- Live Phase 4 outbound coverage is partially proved from earlier dedicated
+  account runs, but the latest rerun needs a freshly linked saved session before
+  the remaining peer-state cases can be closed.
+- Group text send and image send/download have live probe coverage through
+  `scripts/send_text_probe.py` and `scripts/send_image_probe.py`; rerun them
+  after relinking before marking Phase 4 complete.
+- 1:1 send has direct session bootstrap and sparse-USync fallback coverage in
+  product code. Fresh live proof is still needed for third-party peer states
+  where device discovery returns no peer devices.
 
 ## Phase 5 In Progress
 
@@ -178,8 +185,12 @@ tests are stable.
   from successful product API calls.
 - Offline tests cover query node builders, parsers, aliases, presence nodes,
   typed validation, and store/event integration for the new API surfaces.
-- Live Phase 5 group/profile/privacy checks still need to be run with the
-  dedicated account before the phase can be marked Done.
+- Live Phase 5 read-only checks have probe coverage through
+  `scripts/phase5_live_probe.py` for privacy settings, blocklist, group
+  metadata, and invite code retrieval. Fresh live proof is needed after
+  relinking saved auth.
+- Write-side profile/group mutations and broad presence flow checks remain
+  pending.
 
 ## Live Harness
 
@@ -192,17 +203,21 @@ tests are stable.
   timed reconnect/receive-loop checks.
 - `scripts/send_text_probe.py` covers product outbound text send probes.
 - `scripts/send_image_probe.py` covers product outbound image send probes.
+- `scripts/phase5_live_probe.py` covers read-only profile/privacy/blocklist/group
+  metadata probes.
+- `scripts/phase5_write_probe.py` covers explicit Phase 5 write flows (presence,
+  profile name/status, and group participant updates) with a required `--apply`
+  confirmation flag.
 
 ## Current Verification
 
 - Offline compile check passes for `src`, `scripts`, and `examples`.
-- Offline test suite passes with 99 tests.
+- Offline test suite passes with 108 tests.
 - WABinary token and WAProto generated artifact checks pass.
-- Product pairing-code saved reconnect passes against the dedicated test
-  account.
-- A short saved-auth soak passes with pending message processing and no
-  decrypt, retry, or ACK errors.
-- Phase 4/5 live outbound, media, group, profile, and privacy smoke checks are
-  pending a dedicated account run.
+- Product QR and pairing-code saved reconnect have passed against the dedicated
+  test account in prior live runs.
+- The latest saved-auth live rerun is blocked by logged-out credentials, so
+  Phase 4/5 outbound, media, group, profile read-only, and write-side probes
+  need a fresh link before final closure.
 - Public docs are kept to relative repository paths and avoid local machine
   setup details.

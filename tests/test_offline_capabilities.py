@@ -1,4 +1,5 @@
 import base64
+import pytest
 
 from baileys.crypto import (
     aes_decrypt_gcm,
@@ -388,6 +389,74 @@ def test_usync_device_query_and_parser_match_baileys_shape():
     assert split_own_and_other_devices(creds, devices) == (["999@lid"], ["555@lid"])
 
 
+def test_usync_device_parser_accepts_alt_device_layout_and_id_key():
+    result = BinaryNode(
+        "iq",
+        {"id": "tag-2", "type": "result"},
+        [
+            BinaryNode(
+                "usync",
+                {},
+                [
+                    BinaryNode(
+                        "list",
+                        {},
+                        [
+                            BinaryNode(
+                                "user",
+                                {"id": "123@lid"},
+                                [BinaryNode("devices", {}, [BinaryNode("device", {"id": "0"})])],
+                            ),
+                            BinaryNode(
+                                "user",
+                                {"id": "321@lid"},
+                                [
+                                    BinaryNode(
+                                        "devices",
+                                        {},
+                                        [BinaryNode("device-list", {}, [BinaryNode("device", {"id": "0"})])],
+                                    )
+                                ],
+                            ),
+                        ],
+                    )
+                ],
+            )
+        ],
+    )
+    parsed = parse_usync_result(result)
+    assert [item["id"] for item in parsed] == ["123@lid", "321@lid"]
+    assert all("devices" in item for item in parsed)
+
+
+def test_usync_parser_skips_malformed_user_id():
+    parsed = parse_usync_result(
+        BinaryNode(
+            "iq",
+            {"type": "result"},
+            [
+                BinaryNode(
+                    "usync",
+                    {},
+                    [
+                        BinaryNode(
+                            "list",
+                            {},
+                            [
+                                BinaryNode("user", {"jid": "919272419368:s.whatsapp.net"}, [BinaryNode("devices", {}, [])]),
+                                BinaryNode("user", {"jid": "321@lid"}, [BinaryNode("devices", {}, [BinaryNode("device", {"id": "0"})])]),
+                            ],
+                        )
+                    ],
+                )
+            ],
+        )
+    )
+    extracted = extract_device_jids(parsed, "111@lid", "999@lid")
+    assert [device.jid for device in extracted] == ["321@lid"]
+    assert len(parsed) == 2
+
+
 def test_encrypt_session_query_and_injection_builds_signal_session():
     alice_identity = identity_key.IdentityKeyPair.generate()
     bob_identity = identity_key.IdentityKeyPair.generate()
@@ -424,6 +493,9 @@ def test_encrypt_session_query_and_injection_builds_signal_session():
     query = encrypt_session_query_node(["bob:1@lid"], "enc-1", force=True)
     assert query.attrs == {"id": "enc-1", "xmlns": "encrypt", "type": "get", "to": "s.whatsapp.net"}
     assert query.content[0].content[0].attrs == {"jid": "bob:1@lid", "reason": "identity"}
+
+    malformed_query = encrypt_session_query_node(["919272419368:s.whatsapp.net"], "enc-2")
+    assert malformed_query.content[0].content[0].attrs == {"jid": "919272419368@s.whatsapp.net"}
 
     result = BinaryNode(
         "iq",
@@ -495,6 +567,75 @@ def test_encrypt_session_query_and_injection_builds_signal_session():
         protocol.PreKeySignalMessage.try_from(ciphertext.serialize()),
     )
     assert plaintext == b"session works"
+
+
+def test_encrypt_session_query_partial_errors():
+    alice_identity = identity_key.IdentityKeyPair.generate()
+    bob_identity = identity_key.IdentityKeyPair.generate()
+    bob_pre_key_id = 31
+    bob_signed_pre_key_id = 32
+    bob_pre_key_pair = _signal_key_pair()
+    bob_signed_pre_key_pair = _signal_key_pair()
+    bob_signed_pre_key_signature = bob_identity.private_key().calculate_signature(
+        bob_signed_pre_key_pair.public_key().serialize()
+    )
+    alice_creds = creds_from_generated_signal_material(
+        identity_pair=alice_identity,
+        registration_id=1111,
+        signed_pre_key_id=1,
+        signed_pre_key_pair=_signal_key_pair(),
+        signed_pre_key_signature=alice_identity.private_key().calculate_signature(_signal_key_pair().public_key().serialize()),
+    )
+
+    result = BinaryNode(
+        "iq",
+        {"id": "enc-1", "type": "result"},
+        [
+            BinaryNode(
+                "list",
+                {},
+                [
+                    BinaryNode(
+                        "user",
+                        {"jid": "bob:1@lid", "error": "missing"},
+                    ),
+                    BinaryNode(
+                        "user",
+                        {"jid": "charlie:2@lid"},
+                        [
+                            BinaryNode("registration", {}, encode_big_endian(2222, 4)),
+                            BinaryNode("identity", {}, bob_identity.identity_key().serialize()[1:]),
+                            BinaryNode(
+                                "skey",
+                                {},
+                                [
+                                    BinaryNode("id", {}, encode_big_endian(bob_signed_pre_key_id, 3)),
+                                    BinaryNode("value", {}, bob_signed_pre_key_pair.public_key().serialize()[1:]),
+                                    BinaryNode("signature", {}, bob_signed_pre_key_signature),
+                                ],
+                            ),
+                            BinaryNode(
+                                "key",
+                                {},
+                                [
+                                    BinaryNode("id", {}, encode_big_endian(bob_pre_key_id, 3)),
+                                    BinaryNode("value", {}, bob_signed_pre_key_pair.public_key().serialize()[1:]),
+                                ],
+                            ),
+                        ],
+                    ),
+                ],
+            )
+        ],
+    )
+
+    with pytest.raises(ValueError):
+        inject_sessions_from_encrypt_result(alice_creds, result)
+
+    injected = inject_sessions_from_encrypt_result(alice_creds, result, allow_partial=True)
+    assert [item.jid for item in injected] == ["charlie:2@lid"]
+    assert "charlie:2" in alice_creds["signal_sessions"]
+    assert "bob:1" not in alice_creds["signal_sessions"]
 
 
 

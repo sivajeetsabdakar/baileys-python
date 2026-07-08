@@ -16,8 +16,8 @@ from baileys import make_socket  # noqa: E402
 
 async def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--creds-path", default=str(ROOT / "auth" / "live_pair_creds.json"))
-    parser.add_argument("--to", default="51213374591183@lid")
+    parser.add_argument("--creds-path", default=str(ROOT / "auth" / "pairing_code_creds.json"))
+    parser.add_argument("--to", required=True, help="destination jid (for example: 120363427206088684@g.us)")
     parser.add_argument("--text", default="Python Baileys test message")
     parser.add_argument("--timeout", type=int, default=45)
     parser.add_argument("--watch", type=int, default=30)

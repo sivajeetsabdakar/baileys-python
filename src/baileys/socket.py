@@ -58,7 +58,6 @@ from .chat_groups import (
     profile_picture_url_node,
     profile_status_update_node,
 )
-from .jid import is_jid_group
 from .media import (
     MediaConn,
     MediaPayload,
@@ -72,6 +71,7 @@ from .media import (
     upload_media,
 )
 from .message_send import OutboundMessage, build_message_content_node, build_proto_message_node
+from .jid import is_jid_group, jid_decode_tuple, jid_encode, phone_number_to_jid
 from .noise import generate_noise_key_pair
 from .pairing_code import (
     PairSuccess,
@@ -188,8 +188,48 @@ class SendMessageResult:
 class MediaSendResult:
     send: SendMessageResult
     payload: MediaPayload
+    media_key: bytes
     direct_path: str
     media_url: str
+
+
+def _normalize_session_jid(raw_jid: str) -> str:
+    value = str(raw_jid).strip()
+    if "@" not in value and value.count(":") == 1:
+        user, suffix = value.split(":", 1)
+        if suffix and not suffix.isdigit():
+            return f"{user}@{suffix}"
+    return value
+
+
+def _session_key_for_jid(raw_jid: str) -> str:
+    value = _normalize_session_jid(raw_jid)
+    left = value.split("@", 1)[0]
+    if not left:
+        return ""
+    user, sep, device = left.partition(":")
+    if not user:
+        return ""
+    if sep and device.isdigit():
+        return f"{user}:{int(device)}"
+    return f"{user}:0"
+
+
+def _coerce_chat_jid(raw_jid: str) -> str:
+    value = _normalize_session_jid(raw_jid)
+    return phone_number_to_jid(value) if "@" not in value else value
+
+
+def _dedupe_jids(jids: list[str]) -> list[str]:
+    seen: set[str] = set()
+    unique: list[str] = []
+    for jid in jids:
+        normalized = _normalize_session_jid(jid)
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        unique.append(normalized)
+    return unique
 
 
 class WhatsAppClient:
@@ -734,7 +774,13 @@ class WhatsAppClient:
         upload = await upload_media(encrypted.encrypted, media_conn, encrypted.file_enc_sha256, payload.media_type, timeout=int(timeout))
         message = media_message(encrypted, upload, payload)
         send = await self.send_message(jid, message, timeout=timeout, wait_for_ack=wait_for_ack)
-        return MediaSendResult(send=send, payload=payload, direct_path=upload.direct_path, media_url=upload.media_url)
+        return MediaSendResult(
+            send=send,
+            payload=payload,
+            media_key=encrypted.media_key,
+            direct_path=upload.direct_path,
+            media_url=upload.media_url,
+        )
 
     async def _build_outbound_message(
         self,
@@ -747,9 +793,12 @@ class WhatsAppClient:
         include_phash: bool,
         timeout: float,
     ) -> OutboundMessage:
+        jid = _coerce_chat_jid(jid)
         use_usync = is_jid_group(jid) if use_usync is None else use_usync
         own_fanout_jids: list[str] = []
         recipient_device_jids: list[str] | None = None
+        if not use_usync and not is_jid_group(jid):
+            await self._prepare_direct_session(jid, timeout=timeout, force_sessions=force_sessions)
         if use_usync:
             own_fanout_jids, recipient_device_jids = await self._prepare_usync_fanout(
                 jid,
@@ -779,23 +828,75 @@ class WhatsAppClient:
         parsed = parse_usync_result(usync_result)
         devices = extract_device_jids(parsed, self.auth_state.credentials["me"]["id"], self.auth_state.credentials.get("me", {}).get("lid"))
         own_fanout_jids, recipient_device_jids = split_own_and_other_devices(self.auth_state.credentials, devices)
+        if not is_jid_group(jid) and not recipient_device_jids:
+            target_user, target_server, _ = jid_decode_tuple(jid)
+            fallback_jid = jid_encode(target_user, target_server, 0)
+            recipient_device_jids = [fallback_jid]
         missing = self._missing_session_jids(own_fanout_jids + recipient_device_jids, force=force_sessions)
         if missing:
             working = copy.deepcopy(self.auth_state.credentials)
             result = await self.query(encrypt_session_query_node(missing, self.queries.next_tag(), force=force_sessions), timeout=timeout, drive_receive=True)
-            inject_sessions_from_encrypt_result(working, result)
+            inject_sessions_from_encrypt_result(working, result, allow_partial=True)
+            unresolved = self._missing_session_jids_from_credentials(working, own_fanout_jids + recipient_device_jids, force=force_sessions)
+            if unresolved:
+                raise ValueError(f"session assertion incomplete for {unresolved}")
             await self._commit_credentials(working)
         return own_fanout_jids, recipient_device_jids
 
+    async def _prepare_direct_session(
+        self,
+        jid: str,
+        *,
+        timeout: float,
+        force_sessions: bool,
+    ) -> None:
+        if is_jid_group(jid):
+            return
+        user, server, _ = jid_decode_tuple(jid)
+        recipient_device_jid = jid_encode(user, server, 0)
+        missing = self._missing_session_jids([recipient_device_jid], force=force_sessions)
+        if not missing:
+            return
+
+        working = copy.deepcopy(self.auth_state.credentials)
+        result = await self.query(
+            encrypt_session_query_node(missing, self.queries.next_tag(), force=force_sessions),
+            timeout=timeout,
+            drive_receive=True,
+        )
+        inject_sessions_from_encrypt_result(working, result, allow_partial=True)
+        unresolved = self._missing_session_jids_from_credentials(working, missing, force=force_sessions)
+        if unresolved:
+            raise ValueError(f"session assertion incomplete for {unresolved}")
+        await self._commit_credentials(working)
+
+    def _missing_session_jids_from_credentials(
+        self,
+        credentials: dict[str, Any],
+        jids: list[str],
+        *,
+        force: bool,
+    ) -> list[str]:
+        sessions = credentials.get("signal_sessions") or {}
+        missing: list[str] = []
+        for jid in _dedupe_jids(jids):
+            key = _session_key_for_jid(jid)
+            if not key:
+                continue
+            if key not in sessions:
+                missing.append(jid)
+        return missing
+
     def _missing_session_jids(self, jids: list[str], *, force: bool) -> list[str]:
+        normalized = _dedupe_jids(jids)
         if force:
-            return jids
+            return normalized
         sessions = self.auth_state.credentials.get("signal_sessions") or {}
         missing = []
-        for jid in jids:
-            left = jid.split("@", 1)[0]
-            user, _, device = left.partition(":")
-            key = f"{user}:{int(device) if device else 0}"
+        for jid in normalized:
+            key = _session_key_for_jid(jid)
+            if not key:
+                continue
             if key not in sessions:
                 missing.append(jid)
         return missing
@@ -912,8 +1013,68 @@ class WhatsAppClient:
     async def on_whatsapp(self, *jids: str, timeout: float = 30) -> list[dict[str, Any]]:
         if not jids:
             return []
-        result = await self.query(on_whatsapp_node(jids, self.queries.next_tag()), timeout=timeout, drive_receive=True)
-        return parse_on_whatsapp(result)
+        normalized = []
+        for raw_jid in jids:
+            jid = str(raw_jid).strip()
+            if not jid:
+                continue
+            if "@lid" in jid:
+                continue
+            normalized.append(jid)
+        if not normalized:
+            return []
+
+        all_results: list[dict[str, Any]] = []
+        seen: set[str] = set()
+        deadline = asyncio.get_running_loop().time() + timeout
+        chunk_size = 12
+        last_error: TimeoutError | asyncio.TimeoutError | None = None
+
+        async def _query_one(phone_jids: list[str], query_timeout: float) -> list[dict[str, Any]]:
+            result = await self.query(
+                on_whatsapp_node(phone_jids, self.queries.next_tag()),
+                timeout=query_timeout,
+                drive_receive=True,
+            )
+            return parse_on_whatsapp(result)
+
+        for start in range(0, len(normalized), chunk_size):
+            remaining_time = deadline - asyncio.get_running_loop().time()
+            if remaining_time <= 0:
+                break
+            chunk = normalized[start : start + chunk_size]
+            try:
+                chunk_results = await _query_one(chunk, min(timeout, remaining_time))
+            except (TimeoutError, asyncio.TimeoutError) as exc:
+                last_error = exc
+                if len(chunk) == 1:
+                    continue
+                for jid in chunk:
+                    remaining_time = deadline - asyncio.get_running_loop().time()
+                    if remaining_time <= 0:
+                        break
+                    try:
+                        single_results = await _query_one([jid], min(remaining_time, 10))
+                        for item in single_results:
+                            jid_id = item.get("jid")
+                            if jid_id and jid_id not in seen:
+                                seen.add(jid_id)
+                                all_results.append(item)
+                    except (TimeoutError, asyncio.TimeoutError):
+                        last_error = exc
+                        continue
+                continue
+
+            for item in chunk_results:
+                jid_id = item.get("jid")
+                if jid_id and jid_id not in seen:
+                    seen.add(jid_id)
+                    all_results.append(item)
+
+        if not all_results and last_error is not None:
+            raise last_error
+
+        return all_results
 
     async def send_presence_update(self, presence_type: str, to_jid: str | None = None) -> BinaryNode:
         if presence_type in {"available", "unavailable"}:

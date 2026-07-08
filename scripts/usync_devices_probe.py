@@ -26,6 +26,7 @@ from baileys.session_assert import (  # noqa: E402
     summarize_encrypt_user_shapes,
 )
 from baileys.signal_crypto import SignalKeyPair  # noqa: E402
+from baileys.jid import jid_decode_tuple, jid_encode
 from baileys.socket_nodes import (  # noqa: E402
     S_WHATSAPP_NET,
     SocketNodeKind,
@@ -139,16 +140,40 @@ async def query_for_id(websocket, noise: NoiseHandshake, query_node: BinaryNode,
 
 
 def missing_session_jids(creds: dict, jids: list[str], *, force: bool) -> list[str]:
+    def normalize(raw_jid: str) -> str:
+        value = str(raw_jid).strip()
+        if "@" not in value and value.count(":") == 1:
+            user, suffix = value.split(":", 1)
+            if suffix and not suffix.isdigit():
+                return f"{user}@{suffix}"
+        return value
+
     if force:
         return jids
     sessions = creds.get("signal_sessions") or {}
     missing = []
     for jid in jids:
-        user = jid.split("@", 1)[0].split(":", 1)[0]
-        device = int(jid.split("@", 1)[0].split(":", 1)[1]) if ":" in jid.split("@", 1)[0] else 0
-        if f"{user}:{device}" not in sessions:
+        normalized = normalize(jid)
+        left = normalized.split("@", 1)[0]
+        user, sep, device = left.partition(":")
+        if not user:
+            continue
+        if sep and device.isdigit():
+            key = f"{user}:{int(device)}"
+        else:
+            key = f"{user}:0"
+        if key not in sessions:
             missing.append(jid)
     return missing
+
+
+def normalize_chat_jid(raw_jid: str) -> str:
+    value = str(raw_jid).strip()
+    if "@" not in value and value.count(":") == 1:
+        user, suffix = value.split(":", 1)
+        if user and suffix and not suffix.isdigit():
+            return f"{user}@{suffix}"
+    return value
 
 
 async def main() -> int:
@@ -165,7 +190,8 @@ async def main() -> int:
     creds_path = Path(args.creds_path)
     creds = json.loads(creds_path.read_text(encoding="utf-8"))
     tag_gen = TagGenerator()
-    identities = conversation_identities(creds, args.to)
+    target_jid = normalize_chat_jid(args.to)
+    identities = conversation_identities(creds, target_jid)
     print(f"USYNC_IDENTITIES {identities}", flush=True)
 
     websocket, noise = await login_socket(creds)
@@ -177,6 +203,12 @@ async def main() -> int:
         devices = extract_device_jids(parsed, creds["me"]["id"], creds.get("me", {}).get("lid"))
         me_recipients, other_recipients = split_own_and_other_devices(creds, devices)
         all_recipients = me_recipients + other_recipients
+        if target_jid and not other_recipients:
+            target_user, target_server, _ = jid_decode_tuple(target_jid)
+            fallback = jid_encode(target_user, target_server, 0)
+            if fallback not in all_recipients:
+                all_recipients.append(fallback)
+                print(f"USYNC_FALLBACK_TARGETS {[fallback]}", flush=True)
         print(f"USYNC_RESULT_ENTRIES {json.dumps(parsed, default=str, separators=(',', ':'))}", flush=True)
         print(f"USYNC_DEVICE_JIDS {[device.jid for device in devices]}", flush=True)
         print(f"USYNC_ME_RECIPIENTS {me_recipients}", flush=True)
@@ -194,7 +226,17 @@ async def main() -> int:
                     + json.dumps([shape.__dict__ for shape in shapes], separators=(",", ":")),
                     flush=True,
                 )
-                injected = inject_sessions_from_encrypt_result(creds, encrypt_result)
+                try:
+                    injected = inject_sessions_from_encrypt_result(
+                        creds,
+                        encrypt_result,
+                        allow_partial=True,
+                    )
+                except ValueError as exc:
+                    print(f"INJECT_SESSIONS_ERROR {exc}", flush=True)
+                    injected = []
+                unresolved = missing_session_jids(creds, all_recipients, force=args.force)
+                print(f"USYNC_UNRESOLVED {[jid for jid in unresolved]}", flush=True)
                 print(f"INJECTED_SESSIONS {[item.address_key for item in injected]}", flush=True)
                 if args.save:
                     save_creds(creds_path, creds)

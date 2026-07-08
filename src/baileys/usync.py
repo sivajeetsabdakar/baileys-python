@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Iterable
 
 from baileys.defaults import S_WHATSAPP_NET
-from baileys.jid import JidParts, is_lid as is_lid_user, is_pn as is_pn_user, jid_decode, jid_encode, jid_normalized_user
+from baileys.jid import JidParts, jid_decode, jid_encode, jid_normalized_user
 from baileys.socket_nodes import find_child
 from baileys.wabinary import BinaryNode
 
@@ -36,10 +36,7 @@ def jid_decode_full(jid: str) -> JidParts:
 
 
 def usync_devices_query_node(jids: Iterable[str], tag_id: str) -> BinaryNode:
-    user_nodes = [
-        BinaryNode("user", {"jid": jid_normalized_user(jid)}, [])
-        for jid in jids
-    ]
+    user_nodes = [BinaryNode("user", {"jid": jid_normalized_user(jid)}, []) for jid in jids]
     return BinaryNode(
         "iq",
         {"id": tag_id, "to": S_WHATSAPP_NET, "type": "get", "xmlns": "usync"},
@@ -66,16 +63,27 @@ def parse_usync_result(node: BinaryNode) -> list[dict[str, object]]:
 
     results: list[dict[str, object]] = []
     for user_node in list_node.content:
-        jid = user_node.attrs.get("jid")
-        if not jid:
+        if user_node.tag != "user":
             continue
-        entry: dict[str, object] = {"id": jid}
+        user_id = user_node.attrs.get("jid") or user_node.attrs.get("id")
+        if not user_id:
+            continue
+
+        entry: dict[str, object] = {"id": user_id}
         if isinstance(user_node.content, list):
             for child in user_node.content:
-                if child.tag == "lid" and child.attrs.get("val"):
-                    entry["lid"] = child.attrs["val"]
+                if child.tag == "lid":
+                    value = child.attrs.get("val") or child.attrs.get("value")
+                    if value:
+                        entry["lid"] = value
                 elif child.tag == "devices":
                     entry["devices"] = _parse_devices(child)
+                elif child.tag == "device":
+                    entry["devices"] = _parse_devices(BinaryNode("devices", {}, [child]))
+
+        if "devices" not in entry:
+            entry["devices"] = {"device_list": [], "key_index": None}
+
         results.append(entry)
     return results
 
@@ -93,7 +101,10 @@ def extract_device_jids(
 
     for user_result in result:
         item_id = str(user_result["id"])
-        item_parts = jid_decode_full(item_id)
+        try:
+            item_parts = jid_decode_full(item_id)
+        except ValueError:
+            continue
         device_list = (user_result.get("devices") or {}).get("device_list", [])  # type: ignore[union-attr]
         if not isinstance(device_list, list):
             continue
@@ -152,31 +163,62 @@ def split_own_and_other_devices(creds: dict, devices: Iterable[DeviceInfo]) -> t
 
 
 def _parse_devices(node: BinaryNode) -> dict[str, object]:
-    device_list_node = find_child(node, "device-list")
     devices: list[dict[str, object]] = []
-    if isinstance(device_list_node.content if device_list_node else None, list):
+    key_index_node = find_child(node, "key-index-list")
+    key_index: dict[str, object] | None = None
+
+    for device_list_node in _device_list_nodes(node):
+        if not isinstance(device_list_node.content if device_list_node else None, list):
+            continue
         for device in device_list_node.content:
             if device.tag != "device":
                 continue
+            device_id = _int_attr(device.attrs.get("id"))
+            if device_id is None:
+                continue
             devices.append(
                 {
-                    "id": int(device.attrs["id"]),
-                    "key_index": int(device.attrs["key-index"]) if device.attrs.get("key-index") else None,
-                    "is_hosted": device.attrs.get("is_hosted") == "true",
+                    "id": device_id,
+                    "key_index": _int_attr(device.attrs.get("key-index"), device.attrs.get("key_index")),
+                    "is_hosted": device.attrs.get("is_hosted") == "true" or device.attrs.get("isHosted") == "true",
                 }
             )
 
-    key_index_node = find_child(node, "key-index-list")
-    key_index: dict[str, object] | None = None
     if key_index_node is not None:
         key_index = {
-            "timestamp": int(key_index_node.attrs["ts"]) if key_index_node.attrs.get("ts") else None,
-            "expected_timestamp": int(key_index_node.attrs["expected_ts"])
-            if key_index_node.attrs.get("expected_ts")
-            else None,
+            "timestamp": _int_attr(key_index_node.attrs.get("ts")),
+            "expected_timestamp": _int_attr(key_index_node.attrs.get("expected_ts")),
             "signed_key_index": key_index_node.content if isinstance(key_index_node.content, bytes) else None,
         }
     return {"device_list": devices, "key_index": key_index}
+
+
+def _device_list_nodes(node: BinaryNode) -> Iterable[BinaryNode]:
+    if node.tag == "device-list":
+        return [node]
+    if node.tag == "device":
+        return [BinaryNode("device-list", {}, [node])]
+
+    if isinstance(node.content, list):
+        child_list_nodes: list[BinaryNode] = [child for child in node.content if child.tag == "device-list"]
+        if child_list_nodes:
+            return child_list_nodes
+        if any(child.tag == "device" for child in node.content):
+            return [node]
+
+    device_list_node = find_child(node, "device-list")
+    return [device_list_node] if device_list_node is not None else []
+
+
+def _int_attr(*values: str | None) -> int | None:
+    for value in values:
+        if value is None:
+            continue
+        try:
+            return int(value)
+        except ValueError:
+            continue
+    return None
 
 
 def _server_for_device(initial_server: str, is_hosted: bool) -> str:

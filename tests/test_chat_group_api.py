@@ -6,6 +6,7 @@ import baileys as b
 from baileys.auth_state import AuthState, JsonCredentialStore
 from baileys.chat_groups import (
     block_status_node,
+    on_whatsapp_node,
     group_metadata_node,
     group_participants_update_node,
     parse_group_metadata,
@@ -84,6 +85,46 @@ def test_privacy_profile_and_on_whatsapp_nodes_parse():
         )
     )
     assert on_wa == [{"jid": "123@s.whatsapp.net", "exists": True}]
+
+    on_wa_bool = parse_on_whatsapp(
+        BinaryNode(
+            "iq",
+            {},
+            [
+                BinaryNode(
+                    "usync",
+                    {},
+                    [
+                        BinaryNode(
+                            "list",
+                            {},
+                            [
+                                BinaryNode(
+                                    "user",
+                                    {"id": "321@s.whatsapp.net"},
+                                    [BinaryNode("contact", {"value": "true"})],
+                                )
+                            ],
+                        )
+                    ],
+                )
+            ],
+        )
+    )
+    assert on_wa_bool == [{"jid": "321@s.whatsapp.net", "exists": True}]
+
+
+def test_on_whatsapp_nodes_and_queries_match_expected_shape():
+    on_query = on_whatsapp_node(["+1234567890@s.whatsapp.net"], "tag-3")
+    assert on_query.attrs == {"id": "tag-3", "to": "s.whatsapp.net", "type": "get", "xmlns": "usync"}
+
+    user_nodes = on_query.content[0].content[1].content  # iq > usync > list > users
+    assert len(user_nodes) == 1
+    assert user_nodes[0].tag == "user"
+    assert user_nodes[0].attrs == {}
+    assert len(user_nodes[0].content) == 1
+    assert user_nodes[0].content[0].tag == "contact"
+    assert user_nodes[0].content[0].content == b"+1234567890"
 
 
 def test_client_phase5_methods_call_query_and_emit_events(tmp_path):

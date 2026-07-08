@@ -6,14 +6,18 @@ import baileys as b
 from baileys import AuthState, JsonCredentialStore, makeWASocket, make_socket
 from baileys.auth_store import creds_from_generated_signal_material
 from baileys.crypto import hmac_sign
+from baileys.message_send import OutboundMessage
 from baileys.events import EventEmitter
+from baileys.jid import jid_decode_tuple
 from baileys.generated import WAProto_pb2 as proto
 from baileys.noise import generate_noise_key_pair
 from baileys.pairing_code import configure_successful_pairing
 from baileys.registration import build_registration_payload
 from baileys.signal_crypto import sign, verify
 from baileys.query import QueryManager
-from baileys.socket import WhatsAppClient
+from baileys.socket_nodes import find_child
+from baileys import socket as socket_module
+from baileys.socket import WhatsAppClient, _session_key_for_jid
 from baileys.wabinary import BinaryNode
 from signal_protocol import curve, identity_key
 
@@ -1048,6 +1052,152 @@ def test_client_finalize_pair_success_sends_reply_and_persists_credentials(tmp_p
     asyncio.run(scenario())
 
 
+def test_build_outbound_message_normalizes_plain_phone_jid(tmp_path):
+    async def scenario():
+        store = JsonCredentialStore(tmp_path / "creds.json")
+        store.save_credentials(_generated_creds())
+        client = make_socket(AuthState.from_store(store))
+        original_builder = socket_module.build_message_content_node
+
+        async def fake_prepare(_: str, timeout: float, force_sessions: bool) -> None:
+            pass
+
+        def fake_build_message_content_node(
+            creds: dict,
+            recipient_jid: str,
+            content: str | proto.Message | dict[str, object],
+            *,
+            message_id: str | None = None,
+            direct_enc: bool = True,
+            recipient_device_jids: object | None = None,
+            own_fanout_jids: object = (),
+            include_phash: bool = False,
+        ) -> OutboundMessage:
+            return OutboundMessage(
+                node=BinaryNode(
+                    "message",
+                    {"id": message_id or "msg-id", "to": recipient_jid, "type": "text"},
+                    [],
+                ),
+                message_id=message_id or "msg-id",
+                signal_type="msg",
+                recipient_address=None,  # type: ignore[arg-type]
+                participant_jids=[f"{jid_decode_tuple(recipient_jid)[0]}:0@s.whatsapp.net"],
+                signal_types={f"{jid_decode_tuple(recipient_jid)[0]}:0@s.whatsapp.net": "msg"},
+            )
+
+        client._prepare_direct_session = fake_prepare  # type: ignore[method-assign]
+        socket_module.build_message_content_node = fake_build_message_content_node  # type: ignore[assignment]
+
+        try:
+            outbound = await client._build_outbound_message(
+                "1234567890",
+                "hello",
+                message_id="msg-1",
+                use_usync=False,
+                force_sessions=False,
+                include_phash=False,
+                timeout=5,
+            )
+        finally:
+            socket_module.build_message_content_node = original_builder
+
+        assert outbound.node.attrs["to"] == "1234567890@s.whatsapp.net"
+        assert outbound.participant_jids == ["1234567890:0@s.whatsapp.net"]
+
+    asyncio.run(scenario())
+
+
+def test_on_whatsapp_batches_and_falls_back_per_jid_on_timeout(tmp_path):
+    async def scenario():
+        store = JsonCredentialStore(tmp_path / "creds.json")
+        store.save_credentials(_minimal_creds())
+        client = make_socket(AuthState.from_store(store))
+
+        queries: list[BinaryNode] = []
+
+        async def fake_query(node: BinaryNode, **kwargs):
+            queries.append(node)
+            list_node = find_child(find_child(node, "usync"), "list")
+            if not isinstance(list_node.content if list_node else None, list):
+                return BinaryNode("iq", {"type": "result"}, [BinaryNode("usync", {}, [BinaryNode("list", {})])])
+            user_jids = [user.attrs.get("jid") or user.attrs.get("id") for user in list_node.content]
+            if len(user_jids) > 1:
+                raise TimeoutError("timeout")
+            user = list_node.content[0]
+            user_jid = user_jids[0]
+            if user_jid is None:
+                contact = find_child(user, "contact")
+                contact_value = contact.content if contact is not None and isinstance(contact.content, (bytes, str)) else b""
+                if isinstance(contact_value, bytes):
+                    contact_value = contact_value.decode("utf-8")
+                user_jid = str(contact_value).lstrip("+")
+            return BinaryNode(
+                "iq",
+                {"type": "result"},
+                [
+                    BinaryNode(
+                        "usync",
+                        {},
+                        [
+                            BinaryNode(
+                                "list",
+                                {},
+                                [BinaryNode("user", {"id": user_jid}, [BinaryNode("contact", {"type": "in"})])],
+                            )
+                        ],
+                    )
+                ],
+            )
+
+        client.query = fake_query  # type: ignore[method-assign]
+
+        results = await client.on_whatsapp("111", "222", "333", timeout=2)
+
+        assert [result["jid"] for result in results] == [
+            "111",
+            "222",
+            "333",
+        ]
+        assert len(queries) == 4
+        first = find_child(find_child(queries[0], "usync"), "list")
+        assert first is not None and len(first.content) == 3
+
+    asyncio.run(scenario())
+
+
+def test_on_whatsapp_skips_unsupported_lid_jids(tmp_path):
+    async def scenario():
+        store = JsonCredentialStore(tmp_path / "creds.json")
+        store.save_credentials(_minimal_creds())
+        client = make_socket(AuthState.from_store(store))
+
+        async def fake_query(node: BinaryNode, **kwargs):
+            list_node = find_child(find_child(node, "usync"), "list")
+            assert list_node is not None
+            phones = []
+            for user in list_node.content:
+                contact = find_child(user, "contact")
+                if contact is None or not isinstance(contact.content, (bytes, str)):
+                    continue
+                phones.append(contact.content.decode("utf-8") if isinstance(contact.content, bytes) else str(contact.content))
+            assert phones == ["+456"]
+            return BinaryNode(
+                "iq",
+                {"type": "result"},
+                [
+                    BinaryNode("usync", {}, [BinaryNode("list", {}, [])]),
+                ],
+            )
+
+        client.query = fake_query  # type: ignore[method-assign]
+
+        results = await client.on_whatsapp("123@lid", "456")
+        assert results == []
+
+    asyncio.run(scenario())
+
+
 def test_dispatch_pair_success_auto_finalizes_qr_context(tmp_path):
     class FakeWeb:
         def __init__(self):
@@ -1074,3 +1224,27 @@ def test_dispatch_pair_success_auto_finalizes_qr_context(tmp_path):
         assert client._qr_meta is None
 
     asyncio.run(scenario())
+
+
+def test_session_key_normalization_handles_malformed_jids():
+    assert _session_key_for_jid("919272419368:s.whatsapp.net") == "919272419368:0"
+    assert _session_key_for_jid("111@lid") == "111:0"
+    assert _session_key_for_jid("111:2@lid") == "111:2"
+
+
+def test_forced_session_fetch_still_checks_post_fetch_store(tmp_path):
+    store = JsonCredentialStore(tmp_path / "creds.json")
+    creds = _minimal_creds()
+    creds["signal_sessions"] = {"123:0": "session"}
+    store.save_credentials(creds)
+    client = make_socket(AuthState.from_store(store))
+
+    assert client._missing_session_jids(["123@s.whatsapp.net"], force=True) == ["123@s.whatsapp.net"]
+    assert (
+        client._missing_session_jids_from_credentials(
+            client.auth_state.credentials,
+            ["123@s.whatsapp.net"],
+            force=True,
+        )
+        == []
+    )

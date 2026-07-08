@@ -244,7 +244,9 @@ def on_whatsapp_node(jids: Iterable[str], tag_id: str) -> BinaryNode:
     users = []
     for jid in jids:
         phone = jid.replace("+", "").split("@", 1)[0].split(":", 1)[0]
-        users.append(BinaryNode("user", {}, [BinaryNode("contact", {"type": "phone"}, f"+{phone}".encode("utf-8"))]))
+        users.append(
+            BinaryNode("user", {}, [BinaryNode("contact", {}, f"+{phone}".encode("utf-8"))]),
+        )
     return BinaryNode(
         "iq",
         {"id": tag_id, "to": S_WHATSAPP_NET, "type": "get", "xmlns": "usync"},
@@ -266,8 +268,19 @@ def parse_on_whatsapp(node: BinaryNode) -> list[dict[str, Any]]:
     results = []
     for user in list_node.content:
         contact = find_child(user, "contact")
-        if user.attrs.get("jid") and contact is not None:
-            results.append({"jid": user.attrs["jid"], "exists": contact.attrs.get("type") in {"in", "out"} or contact.attrs.get("value") == "true"})
+        if not (user.attrs.get("jid") or user.attrs.get("id")) or contact is None:
+            continue
+        contact_exists = (
+            contact.attrs.get("type") == "in"
+            or contact.attrs.get("value") == "true"
+            or contact.attrs.get("value") == "1"
+        )
+        results.append(
+            {
+                "jid": user.attrs.get("jid") or user.attrs.get("id") or "",
+                "exists": contact_exists,
+            }
+        )
     return results
 
 

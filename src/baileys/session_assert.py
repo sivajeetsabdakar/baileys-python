@@ -31,7 +31,7 @@ class EncryptUserShape:
 def encrypt_session_query_node(jids: Iterable[str], tag_id: str, *, force: bool = False) -> BinaryNode:
     users = []
     for jid in jids:
-        attrs = {"jid": jid}
+        attrs = {"jid": _normalize_wire_jid(jid)}
         if force:
             attrs["reason"] = "identity"
         users.append(BinaryNode("user", attrs))
@@ -42,9 +42,14 @@ def encrypt_session_query_node(jids: Iterable[str], tag_id: str, *, force: bool 
     )
 
 
-def inject_sessions_from_encrypt_result(creds: dict, node: BinaryNode) -> list[InjectedSession]:
+def inject_sessions_from_encrypt_result(
+    creds: dict,
+    node: BinaryNode,
+    *,
+    allow_partial: bool = False,
+) -> list[InjectedSession]:
     store = build_signal_store(creds)
-    injected = inject_sessions_into_store(creds, store, node)
+    injected = inject_sessions_into_store(creds, store, node, allow_partial=allow_partial)
     for item in injected:
         export_session(creds, store, _protocol_address_for_wire_jid(item.jid))
     return injected
@@ -54,21 +59,31 @@ def inject_sessions_into_store(
     creds: dict,
     store: storage.InMemSignalProtocolStore,
     node: BinaryNode,
+    *,
+    allow_partial: bool = False,
 ) -> list[InjectedSession]:
     list_node = find_child(node, "list")
     if not isinstance(list_node.content if list_node else None, list):
         return []
 
     injected: list[InjectedSession] = []
+    failed: list[str] = []
     for user_node in list_node.content:
         if user_node.tag != "user":
             continue
         if find_child(user_node, "error") is not None or user_node.attrs.get("error"):
-            raise ValueError(f"encrypt session query returned user error: {user_node.attrs!r}")
+            failed.append(user_node.attrs.get("jid", ""))
+            continue
         jid = user_node.attrs["jid"]
         bundle = _prekey_bundle_from_user_node(user_node)
         addr = _protocol_address_for_wire_jid(jid)
-        session.process_prekey_bundle(addr, store, bundle)
+        try:
+            session.process_prekey_bundle(addr, store, bundle)
+        except Exception:
+            if not allow_partial:
+                raise
+            failed.append(jid)
+            continue
         injected.append(
             InjectedSession(
                 jid=jid,
@@ -78,6 +93,10 @@ def inject_sessions_into_store(
                 registration_id=bundle.registration_id(),
             )
         )
+    if failed and not injected:
+        raise ValueError(f"encrypt session query returned errors for all users: {failed}")
+    if failed and not allow_partial:
+        raise ValueError(f"encrypt session query returned partial errors: {failed}")
     return injected
 
 
@@ -131,7 +150,7 @@ def _prekey_bundle_from_user_node(node: BinaryNode) -> state.PreKeyBundle:
 
 
 def _protocol_address_for_wire_jid(jid: str) -> address.ProtocolAddress:
-    user, _, device = jid_decode(jid)
+    user, _, device = jid_decode(_normalize_wire_jid(jid))
     return address.ProtocolAddress(user, device)
 
 
@@ -158,3 +177,12 @@ def _required_uint_child(node: BinaryNode, tag: str, length: int) -> int:
     if len(content) > length:
         raise ValueError(f"{tag!r} child too long: {len(content)} > {length}")
     return int.from_bytes(content.rjust(length, b"\x00"), "big")
+
+
+def _normalize_wire_jid(raw_jid: str) -> str:
+    value = str(raw_jid).strip()
+    if "@" not in value and value.count(":") == 1:
+        user, suffix = value.split(":", 1)
+        if user and suffix and not suffix.isdigit():
+            return f"{user}@{suffix}"
+    return value

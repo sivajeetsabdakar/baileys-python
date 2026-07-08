@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import base64
+from types import SimpleNamespace
 import sys
 from io import BytesIO
 from pathlib import Path
@@ -36,11 +37,12 @@ def probe_image_bytes() -> tuple[bytes, int, int]:
 
 async def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--creds-path", default=str(ROOT / "auth" / "live_pair_creds.json"))
-    parser.add_argument("--to", default="51213374591183@lid")
+    parser.add_argument("--creds-path", default=str(ROOT / "auth" / "pairing_code_creds.json"))
+    parser.add_argument("--to", required=True, help="destination jid (for example: 120363427206088684@g.us)")
     parser.add_argument("--caption", default="Python Baileys image test")
     parser.add_argument("--timeout", type=int, default=45)
     parser.add_argument("--watch", type=int, default=35)
+    parser.add_argument("--download", action="store_true", help="download and decrypt immediately after send")
     args = parser.parse_args()
 
     image_bytes, width, height = probe_image_bytes()
@@ -60,9 +62,18 @@ async def main() -> int:
         )
         print(
             f"SEND_IMAGE_PROBE_DONE id={result.send.message_id} to={result.send.remote_jid} "
-            f"bytes={len(image_bytes)} direct_path={result.direct_path} related_response={result.send.acked}",
+            f"bytes={len(image_bytes)} direct_path={result.direct_path} media_url={result.media_url} "
+            f"media_key={base64.b64encode(result.media_key).decode('ascii')} related_response={result.send.acked}",
             flush=True,
         )
+        if args.download:
+            download_payload = SimpleNamespace(
+                media_url=result.media_url,
+                direct_path=result.direct_path,
+                host="",
+            )
+            downloaded = await client.download_media_message(download_payload, media_key=result.media_key, media_type="image")
+            print(f"DOWNLOAD_OK bytes={len(downloaded)}", flush=True)
     finally:
         await client.close()
     return 0
