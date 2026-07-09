@@ -210,11 +210,9 @@ tests are stable.
 - Profile status and profile picture update are live-proven.
 - Profile name and chat patch mutations are offline-covered through the
   encrypted app-state patch builder. Fresh QR pairing, app-state snapshot
-  request, external app-state blob download/decrypt, and snapshot metadata
-  decode are live-proven through `scripts/app_state_key_probe.py`. The current
-  saved live session still lacks `myAppStateKeyId`; a direct peer request for
-  the snapshot key id was sent, but no app-state key-share response arrived in
-  the probe window.
+  request, external app-state blob download/decrypt, snapshot metadata decode,
+  app-state key-share ingestion, and full app-state replay are live-proven
+  through `scripts/app_state_key_probe.py`.
 
 ## Phase 6 In Progress
 
@@ -236,17 +234,19 @@ tests are stable.
   and decrypts `md-msg-hist` payloads, parses `HistorySync` chats, contacts,
   messages, LID/PN mappings, push names, and binds `messaging-history.set`
   into the in-memory store.
+- History blob download now maps history notification `fileLength` onto
+  `ExternalBlobReference.fileSizeBytes`, matching the generated WAProto field
+  names used by current live history notifications.
 - Live saved-session proof received and processed a
   `HISTORY_SYNC_NOTIFICATION` push-name sync with 14 contacts and no history
   processing errors.
-- Live proof against the dedicated saved session reports all five core
-  collections blocked on key `AAAAAP9V`: `critical_block`,
+- Fresh QR live proof received `APP_STATE_SYNC_KEY_SHARE` for key `AAAAAP9V`,
+  persisted the key, decoded and applied all five core app-state collections,
+  and emitted 311 decoded mutations across `critical_block`,
   `critical_unblock_low`, `regular`, `regular_high`, and `regular_low`.
-- A direct app-state sync-key request for `AAAAAP9V` is ACKed by the server,
-  but the primary device does not return an `APP_STATE_SYNC_KEY_SHARE` during
-  the probe window on the current saved sessions.
-- Peer key-share response delivery and broader app-state replay proof remain
-  open.
+- Saved reconnect with the refreshed session re-applies all five app-state
+  collections with zero blocked collections, zero decrypt errors, and zero
+  history processing errors.
 
 ## Live Harness
 
@@ -277,7 +277,7 @@ tests are stable.
 ## Current Verification
 
 - Offline compile check passes for `src`, `scripts`, and `examples`.
-- Offline test suite passes with 112 tests.
+- Offline test suite passes with 130 tests.
 - WABinary token and WAProto generated artifact checks pass.
 - Product QR pairing and saved reconnect pass against the dedicated test
   account.
@@ -287,9 +287,10 @@ tests are stable.
   send/download, video/audio send/download from file fixtures, Phase 5
   read-only profile/privacy/blocklist/on-whatsapp/group checks, all supported
   presence write states, group setting/invite/participant mutations, profile
-  status update, and profile picture update.
-- Live chat patch/profile-name writes currently stop at missing app-state key
-  material in the saved session. Product snapshot fetch/decrypt and blocked-key
-  persistence work; peer key-share response is the remaining live blocker.
+  status update, profile picture update, fresh app-state key-share delivery,
+  and saved reconnect app-state replay.
+- Live app-state key-share delivery and replay are proven on a freshly linked
+  saved session. Profile-name/chat patch write probes can now be retried
+  against that refreshed session.
 - Public docs are kept to relative repository paths and avoid local machine
   setup details.

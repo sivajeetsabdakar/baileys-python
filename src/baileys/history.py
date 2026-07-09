@@ -123,7 +123,7 @@ async def download_history_sync(notification: proto.Message.HistorySyncNotificat
         blob.mediaKey = notification.mediaKey
         blob.fileEncSha256 = notification.fileEncSha256
         blob.fileSha256 = notification.fileSha256
-        blob.fileLength = int(notification.fileLength) if notification.fileLength else 0
+        blob.fileSizeBytes = int(notification.fileLength) if notification.fileLength else 0
         data = zlib.decompress(await download_external_blob(blob, "md-msg-hist", timeout=timeout))
     history = proto.HistorySync()
     history.ParseFromString(data)

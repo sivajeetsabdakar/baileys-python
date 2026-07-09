@@ -29,8 +29,8 @@ outbound/chat/group API foundations:
 - product chat, presence, profile, privacy, blocklist, and group method
   surfaces with Baileys-compatible aliases
 - encrypted app-state patch encoding plus product app-state snapshot
-  fetch/decrypt diagnostics and blocked-key tracking, pending live peer
-  key-share response on the saved test session
+  fetch/decrypt diagnostics, blocked-key tracking, live key-share ingestion,
+  and app-state replay proof on a freshly linked test session
 - `scripts/phase5_live_probe.py` for read-only Phase 5 live validation
 - `scripts/phase5_mutation_probe.py` for explicit Phase 5 mutation validation
 - `scripts/app_state_key_probe.py` for app-state key and snapshot diagnostics

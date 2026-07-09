@@ -6,7 +6,7 @@ import time
 from dataclasses import dataclass
 from typing import Any, Iterable
 
-from signal_protocol import address, protocol, session_cipher
+from signal_protocol import address, session_cipher
 
 from baileys.auth_store import build_signal_store, export_session, unb64
 from baileys.generated import WAProto_pb2 as proto
@@ -231,13 +231,16 @@ def encode_message_payload(message: proto.Message) -> bytes:
     return random_pad_max_16(message.SerializeToString())
 
 
-def encrypt_for_recipient(creds: dict, recipient_jid: str, plaintext: bytes) -> tuple[str, bytes, address.ProtocolAddress]:
+def encrypt_for_recipient(
+    creds: dict, recipient_jid: str, plaintext: bytes
+) -> tuple[str, bytes, address.ProtocolAddress]:
     addr = protocol_address_for_jid(recipient_jid)
     store = build_signal_store(creds)
     encrypted = session_cipher.message_encrypt(store, addr, plaintext)
+    serialized = encrypted.serialize()
     export_session(creds, store, addr)
     signal_type = "pkmsg" if encrypted.message_type() == 3 else "msg"
-    return signal_type, encrypted.serialize(), addr
+    return signal_type, serialized, addr
 
 
 def build_encrypted_node(creds: dict, recipient_jid: str, payload: proto.Message) -> tuple[BinaryNode, str, address.ProtocolAddress]:
@@ -428,7 +431,7 @@ def _options_from_dict(content: dict[str, Any]) -> MessageOptions:
 def _message_type_for_proto(message: proto.Message) -> str:
     for field, message_type in (
         ("reactionMessage", "reaction"),
-        ("protocolMessage", "protocol"),
+        ("protocolMessage", "text"),
         ("locationMessage", "location"),
         ("contactMessage", "contact"),
         ("contactsArrayMessage", "contacts"),

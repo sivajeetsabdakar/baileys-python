@@ -4,6 +4,7 @@ import asyncio
 import zlib
 
 from baileys.generated import WAProto_pb2 as proto
+import baileys.history as history_module
 from baileys.events import EventEmitter
 from baileys.history import (
     download_and_process_history_sync_notification,
@@ -71,6 +72,39 @@ def test_download_and_process_history_sync_notification_inflates_inline_payload(
         assert result.progress == 100
         assert result.chunk_order == 3
         assert result.messages[0].key.id == "m1"
+
+    asyncio.run(scenario())
+
+
+def test_download_history_sync_uses_external_blob_file_size_bytes():
+    async def scenario():
+        history = proto.HistorySync()
+        history.syncType = proto.HistorySync.RECENT
+        compressed = zlib.compress(history.SerializeToString())
+        captured = {}
+
+        async def fake_download_external_blob(blob, media_type, *, timeout):
+            captured["fields"] = [field.name for field, _ in blob.ListFields()]
+            captured["file_size"] = blob.fileSizeBytes
+            captured["media_type"] = media_type
+            return compressed
+
+        original = history_module.download_external_blob
+        history_module.download_external_blob = fake_download_external_blob
+        try:
+            notification = proto.Message.HistorySyncNotification()
+            notification.directPath = "/v/history"
+            notification.mediaKey = b"k" * 32
+            notification.fileLength = 123
+
+            result = await history_module.download_history_sync(notification)
+        finally:
+            history_module.download_external_blob = original
+
+        assert result.syncType == proto.HistorySync.RECENT
+        assert "fileSizeBytes" in captured["fields"]
+        assert captured["file_size"] == 123
+        assert captured["media_type"] == "md-msg-hist"
 
     asyncio.run(scenario())
 

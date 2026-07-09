@@ -96,6 +96,27 @@ def test_proto_message_builder_accepts_additional_attributes():
     assert outbound.node.content[-1].tag == "meta"
 
 
+def test_protocol_message_builder_uses_text_stanza_type():
+    message = proto.Message()
+    message.protocolMessage.type = proto.Message.ProtocolMessage.APP_STATE_SYNC_KEY_REQUEST
+    original = message_send_module.build_encrypted_node
+
+    def fake_build_encrypted_node(creds, recipient_jid, payload):
+        return BinaryNode("enc", {"type": "msg"}, b"ciphertext"), "msg", None
+
+    message_send_module.build_encrypted_node = fake_build_encrypted_node  # type: ignore[assignment]
+    try:
+        outbound = message_send_module.build_message_content_node(
+            _minimal_creds(),
+            "chat@s.whatsapp.net",
+            message,
+        )
+    finally:
+        message_send_module.build_encrypted_node = original
+
+    assert outbound.node.attrs["type"] == "text"
+
+
 def test_relay_message_caches_and_retry_replays(tmp_path):
     class FakeWeb:
         def __init__(self):
