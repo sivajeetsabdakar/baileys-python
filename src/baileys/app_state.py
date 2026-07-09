@@ -6,7 +6,7 @@ import json
 import os
 import sys
 import time
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Iterable
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -91,6 +91,24 @@ class AppStateSnapshotInfo:
     @property
     def missing_key(self) -> bool:
         return bool(self.key_id and not self.has_key)
+
+
+@dataclass(frozen=True)
+class AppStateMutation:
+    collection: str
+    index: list[Any]
+    action: proto.SyncActionValue
+    operation: int
+    key_id: str
+    sync_action_data: proto.SyncActionData
+
+
+@dataclass(frozen=True)
+class DecodedAppStateSnapshot:
+    info: AppStateSnapshotInfo
+    state: LTHashState
+    mutations: list[AppStateMutation]
+    snapshot_mac_valid: bool | None = None
 
 
 def store_app_state_sync_key(credentials: dict[str, Any], key_id: str, key_data: proto.Message.AppStateSyncKeyData) -> None:
@@ -280,6 +298,109 @@ def encode_syncd_patch(
     return EncodedAppPatch(node=BinaryNode("patch", {}, patch.SerializeToString()), patch=patch, state=state, patch_type=patch_create.patch_type)
 
 
+def decode_syncd_mutations(
+    mutations: Iterable[proto.SyncdMutation | proto.SyncdRecord],
+    state: LTHashState,
+    credentials: dict[str, Any],
+    collection: str,
+    *,
+    validate_macs: bool = True,
+    emit_mutations: bool = True,
+) -> tuple[LTHashState, list[AppStateMutation]]:
+    state = copy.deepcopy(state)
+    decoded: list[AppStateMutation] = []
+    derived_key_cache = {}
+
+    for item in mutations:
+        operation, record = _mutation_record(item)
+        if not record.HasField("keyId") or not record.keyId.id:
+            continue
+        if not record.HasField("value") or len(record.value.blob) < 32:
+            continue
+        if not record.HasField("index") or not record.index.blob:
+            continue
+
+        key_id = b64(record.keyId.id)
+        keys = derived_key_cache.get(key_id)
+        if keys is None:
+            key_data = _app_state_key_data(credentials, key_id)
+            if not key_data:
+                raise MissingAppStateKey(f"failed to find app-state key {key_id!r} to decode {collection}")
+            keys = expand_app_state_keys(key_data)
+            derived_key_cache[key_id] = keys
+
+        content = record.value.blob
+        encrypted_content = content[:-32]
+        value_mac = content[-32:]
+        if validate_macs:
+            expected_value_mac = generate_content_mac(operation, encrypted_content, record.keyId.id, keys.value_mac_key)
+            if expected_value_mac != value_mac:
+                continue
+
+        try:
+            sync_action = proto.SyncActionData()
+            sync_action.ParseFromString(_aes_decrypt_prefix_iv(encrypted_content, keys.value_encryption_key))
+        except Exception:
+            continue
+
+        if validate_macs and hmac_sign(sync_action.index, keys.index_key) != record.index.blob:
+            raise ValueError("HMAC index verification failed")
+
+        if emit_mutations:
+            index = json.loads(sync_action.index.decode("utf-8"))
+            decoded.append(
+                AppStateMutation(
+                    collection=collection,
+                    index=index,
+                    action=copy.deepcopy(sync_action.value),
+                    operation=operation,
+                    key_id=key_id,
+                    sync_action_data=copy.deepcopy(sync_action),
+                )
+            )
+
+        _mix_lthash_mutation(state, record.index.blob, value_mac, operation)
+
+    return state, decoded
+
+
+def decode_syncd_snapshot(
+    collection: str,
+    snapshot: proto.SyncdSnapshot,
+    credentials: dict[str, Any],
+    *,
+    minimum_version_number: int | None = None,
+    validate_macs: bool = True,
+) -> DecodedAppStateSnapshot:
+    version = int(snapshot.version.version) if snapshot.HasField("version") else 0
+    key_id = b64(snapshot.keyId.id) if snapshot.HasField("keyId") and snapshot.keyId.id else None
+    key_data = _app_state_key_data(credentials, key_id) if key_id else None
+    info = AppStateSnapshotInfo(
+        collection=collection,
+        version=version,
+        records=len(snapshot.records),
+        key_id=key_id,
+        has_key=bool(key_data),
+    )
+    should_emit = minimum_version_number is None or version > minimum_version_number
+    state, mutations = decode_syncd_mutations(
+        snapshot.records,
+        LTHashState(version=version),
+        credentials,
+        collection,
+        validate_macs=validate_macs,
+        emit_mutations=should_emit,
+    )
+
+    snapshot_mac_valid: bool | None = None
+    if validate_macs and key_id and key_data and snapshot.mac:
+        keys = expand_app_state_keys(key_data)
+        expected = generate_snapshot_mac(state.hash, state.version, collection, keys.snapshot_mac_key)
+        snapshot_mac_valid = expected == snapshot.mac
+
+    return DecodedAppStateSnapshot(info=info, state=state, mutations=mutations, snapshot_mac_valid=snapshot_mac_valid)
+
+
 def chat_modification_to_app_patch(modification: dict[str, Any], jid: str) -> AppPatchCreate:
     value = proto.SyncActionValue()
     value.timestamp = int(time.time() * 1000)
@@ -360,6 +481,17 @@ def _aes_encrypt_prefix_iv(data: bytes, key: bytes) -> bytes:
     return iv + encryptor.update(padded) + encryptor.finalize()
 
 
+def _aes_decrypt_prefix_iv(data: bytes, key: bytes) -> bytes:
+    if len(data) < 16:
+        raise ValueError("encrypted app-state value is missing IV")
+    iv = data[:16]
+    ciphertext = data[16:]
+    decryptor = Cipher(algorithms.AES(key), modes.CBC(iv)).decryptor()
+    padded = decryptor.update(ciphertext) + decryptor.finalize()
+    unpadder = padding.PKCS7(128).unpadder()
+    return unpadder.update(padded) + unpadder.finalize()
+
+
 def _app_state_key_data(credentials: dict[str, Any], key_id: str) -> bytes | None:
     keys = credentials.get("app_state_sync_keys") or credentials.get("app-state-sync-key") or {}
     raw = keys.get(key_id)
@@ -381,6 +513,29 @@ def _children(node: BinaryNode, tag: str) -> list[BinaryNode]:
     if not isinstance(node.content, list):
         return []
     return [child for child in node.content if isinstance(child, BinaryNode) and child.tag == tag]
+
+
+def _mutation_record(item: proto.SyncdMutation | proto.SyncdRecord) -> tuple[int, proto.SyncdRecord]:
+    if isinstance(item, proto.SyncdMutation):
+        if not item.HasField("record"):
+            return item.operation, proto.SyncdRecord()
+        return item.operation, item.record
+    return proto.SyncdMutation.SET, item
+
+
+def _mix_lthash_mutation(state: LTHashState, index_mac: bytes, value_mac: bytes, operation: int) -> None:
+    index_key = b64(index_mac)
+    previous = state.index_value_map.get(index_key)
+    if operation == proto.SyncdMutation.REMOVE:
+        if previous is None:
+            return
+        state.index_value_map.pop(index_key, None)
+        state.hash = lt_hash_subtract_then_add(state.hash, [previous], [])
+        return
+
+    subtract = [previous] if previous else []
+    state.hash = lt_hash_subtract_then_add(state.hash, subtract, [value_mac])
+    state.index_value_map[index_key] = value_mac
 
 
 class MissingAppStateKey(RuntimeError):

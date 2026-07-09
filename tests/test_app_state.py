@@ -7,10 +7,16 @@ from baileys.app_state import (
     app_state_sync_request_node,
     app_state_sync_key_request_message,
     chat_modification_to_app_patch,
+    decode_syncd_snapshot,
+    encode_syncd_patch,
     inject_app_state_sync_key_share,
     extract_app_state_snapshot_info,
+    generate_snapshot_mac,
+    LTHashState,
     lt_hash_subtract_then_add,
+    MissingAppStateKey,
 )
+from baileys.whatsapp_keys import expand_app_state_keys
 from baileys.wabinary import BinaryNode
 from baileys.generated import WAProto_pb2 as proto
 
@@ -69,6 +75,67 @@ def test_app_state_patch_node_encodes_syncd_patch_and_updates_state():
     state = creds["app_state_sync_versions"]["regular_low"]
     assert state["version"] == 1
     assert base64.b64decode(state["hash"]) != bytes(128)
+
+
+def test_decode_syncd_snapshot_decodes_encrypted_records():
+    creds = _app_state_creds()
+    patch_create = chat_modification_to_app_patch({"archive": True}, "chat@s.whatsapp.net")
+    key_id = creds["myAppStateKeyId"]
+    encoded = encode_syncd_patch(patch_create, key_id, LTHashState(), b"a" * 32)
+    snapshot = proto.SyncdSnapshot()
+    snapshot.version.version = encoded.state.version
+    snapshot.keyId.id = b"k" * 32
+    snapshot.records.append(encoded.patch.mutations[0].record)
+    keys = expand_app_state_keys(b"a" * 32)
+    snapshot.mac = generate_snapshot_mac(encoded.state.hash, encoded.state.version, "regular_low", keys.snapshot_mac_key)
+
+    decoded = decode_syncd_snapshot("regular_low", snapshot, creds)
+
+    assert decoded.info.collection == "regular_low"
+    assert decoded.info.version == 1
+    assert decoded.info.has_key is True
+    assert decoded.snapshot_mac_valid is True
+    assert decoded.state.hash == encoded.state.hash
+    assert len(decoded.mutations) == 1
+    assert decoded.mutations[0].index == ["archive", "chat@s.whatsapp.net"]
+    assert decoded.mutations[0].action.archiveChatAction.archived is True
+
+
+def test_decode_syncd_snapshot_reports_missing_record_key():
+    creds = _app_state_creds()
+    patch_create = chat_modification_to_app_patch({"archive": True}, "chat@s.whatsapp.net")
+    encoded = encode_syncd_patch(patch_create, creds["myAppStateKeyId"], LTHashState(), b"a" * 32)
+    snapshot = proto.SyncdSnapshot()
+    snapshot.version.version = encoded.state.version
+    snapshot.keyId.id = b"k" * 32
+    snapshot.records.append(encoded.patch.mutations[0].record)
+
+    del creds["app_state_sync_keys"][creds["myAppStateKeyId"]]
+
+    try:
+        decode_syncd_snapshot("regular_low", snapshot, creds)
+    except MissingAppStateKey as exc:
+        assert creds["myAppStateKeyId"] in str(exc)
+    else:
+        raise AssertionError("missing app-state key did not block snapshot decode")
+
+
+def test_decode_syncd_snapshot_skips_bad_value_mac():
+    creds = _app_state_creds()
+    patch_create = chat_modification_to_app_patch({"archive": True}, "chat@s.whatsapp.net")
+    encoded = encode_syncd_patch(patch_create, creds["myAppStateKeyId"], LTHashState(), b"a" * 32)
+    snapshot = proto.SyncdSnapshot()
+    snapshot.version.version = encoded.state.version
+    snapshot.keyId.id = b"k" * 32
+    snapshot.records.append(encoded.patch.mutations[0].record)
+    bad_blob = bytearray(snapshot.records[0].value.blob)
+    bad_blob[-1] ^= 0xFF
+    snapshot.records[0].value.blob = bytes(bad_blob)
+
+    decoded = decode_syncd_snapshot("regular_low", snapshot, creds)
+
+    assert decoded.mutations == []
+    assert decoded.state.hash == bytes(128)
 
 
 def test_app_state_key_share_updates_credentials():

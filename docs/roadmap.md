@@ -223,11 +223,15 @@ tests are stable.
 - App-state snapshot extraction now downloads and decrypts external
   `md-app-state` blobs, decodes snapshot version/record/key metadata, and
   persists blocked collection -> missing key id state in saved credentials.
+- App-state snapshot mutation decode now validates content/index MACs,
+  decrypts `SyncActionData`, applies LT hash/index-map updates, exposes typed
+  decoded mutations, and preserves missing-key errors so blocked collections
+  can be retried after key-share delivery.
 - Live proof against the dedicated saved session reports all five core
   collections blocked on key `AAAAAP9V`: `critical_block`,
   `critical_unblock_low`, `regular`, `regular_high`, and `regular_low`.
-- Full snapshot/patch mutation decode, MAC-verified state application, history
-  sync processing, and peer key-share response handling remain open.
+- Patch-sequence application, history sync processing, and peer key-share
+  response handling remain open.
 
 ## Live Harness
 
