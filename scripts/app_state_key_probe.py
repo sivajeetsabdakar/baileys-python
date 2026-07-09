@@ -11,7 +11,7 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from baileys import MessageUpsert, make_socket  # noqa: E402
+from baileys import HistorySyncResult, MessageUpsert, make_socket  # noqa: E402
 
 
 DEFAULT_COLLECTIONS = (
@@ -38,6 +38,16 @@ async def main() -> int:
         action="store_true",
         help="Request app-state collection snapshots and print safe metadata.",
     )
+    parser.add_argument(
+        "--sync-app-state",
+        action="store_true",
+        help="Request and apply app-state snapshots/patches through the product sync API.",
+    )
+    parser.add_argument(
+        "--force-snapshot",
+        action="store_true",
+        help="Request snapshots even when saved collection versions exist.",
+    )
     parser.add_argument("--collection", action="append", choices=DEFAULT_COLLECTIONS, dest="collections")
     parser.add_argument("--request-key", action="append", dest="request_keys", help="Request an app-state sync key id.")
     parser.add_argument("--wait-for-ack", type=float, default=0)
@@ -53,6 +63,11 @@ async def main() -> int:
         "messages": 0,
         "protocol_messages": 0,
         "app_state_key_updates": 0,
+        "app_state_syncs": 0,
+        "app_state_sync_blocked": 0,
+        "app_state_mutations": 0,
+        "history_sets": 0,
+        "history_errors": 0,
         "decrypt_errors": 0,
     }
 
@@ -63,6 +78,56 @@ async def main() -> int:
     def on_keys(payload: dict) -> None:
         counters["app_state_key_updates"] += 1
         print(f"EVENT app-state.keys.update {payload}", flush=True)
+
+    def on_app_state_sync(payload) -> None:
+        counters["app_state_syncs"] += len(payload)
+        for item in payload:
+            print(
+                "EVENT app-state.sync "
+                f"collection={item.collection} "
+                f"version={item.state.version} "
+                f"mutations={len(item.mutations)} "
+                f"patches={len(item.patches)} "
+                f"has_more_patches={item.has_more_patches}",
+                flush=True,
+            )
+
+    def on_app_state_sync_blocked(payload: dict) -> None:
+        counters["app_state_sync_blocked"] += 1
+        print(
+            "EVENT app-state.sync_blocked "
+            f"collection={payload.get('collection')} "
+            f"key_id={payload.get('key_id') or ''} "
+            f"error={payload.get('error')}",
+            flush=True,
+        )
+
+    def on_app_state_mutations(payload: dict) -> None:
+        mutations = payload.get("mutations") or []
+        counters["app_state_mutations"] += len(mutations)
+        print(
+            "EVENT app-state.mutations "
+            f"collection={payload.get('collection')} "
+            f"count={len(mutations)}",
+            flush=True,
+        )
+
+    def on_history(payload: HistorySyncResult) -> None:
+        counters["history_sets"] += 1
+        print(
+            "EVENT messaging-history.set "
+            f"sync_type={payload.sync_type} "
+            f"progress={payload.progress} "
+            f"chats={len(payload.chats)} "
+            f"contacts={len(payload.contacts)} "
+            f"messages={len(payload.messages)} "
+            f"mappings={len(payload.lid_pn_mappings)}",
+            flush=True,
+        )
+
+    def on_history_error(payload: dict) -> None:
+        counters["history_errors"] += 1
+        print(f"EVENT messaging-history.error {payload.get('error')}", flush=True)
 
     def on_decrypt_error(payload: dict) -> None:
         counters["decrypt_errors"] += 1
@@ -95,6 +160,11 @@ async def main() -> int:
     client.ev.on("messages.upsert", on_upsert)
     client.ev.on("messages.decrypt_error", on_decrypt_error)
     client.ev.on("app-state.keys.update", on_keys)
+    client.ev.on("app-state.sync", on_app_state_sync)
+    client.ev.on("app-state.sync_blocked", on_app_state_sync_blocked)
+    client.ev.on("app-state.mutations", on_app_state_mutations)
+    client.ev.on("messaging-history.set", on_history)
+    client.ev.on("messaging-history.error", on_history_error)
 
     try:
         await client.connect_and_wait(success_timeout=60)
@@ -113,6 +183,15 @@ async def main() -> int:
                     f"has_more_patches={snapshot.has_more_patches}",
                     flush=True,
                 )
+
+        if args.sync_app_state:
+            collections = args.collections or list(DEFAULT_COLLECTIONS)
+            applied = await client.sync_app_state(
+                collections,
+                timeout=45,
+                force_snapshot=args.force_snapshot,
+            )
+            print(f"SYNC_APP_STATE_DONE applied={len(applied)}", flush=True)
 
         if args.request_keys:
             result = await client.request_app_state_sync_key(args.request_keys, timeout=30, wait_for_ack=args.wait_for_ack)

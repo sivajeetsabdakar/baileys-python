@@ -239,6 +239,9 @@ tests are stable.
 - Live proof against the dedicated saved session reports all five core
   collections blocked on key `AAAAAP9V`: `critical_block`,
   `critical_unblock_low`, `regular`, `regular_high`, and `regular_low`.
+- A direct app-state sync-key request for `AAAAAP9V` is ACKed by the server,
+  but the primary device does not return an `APP_STATE_SYNC_KEY_SHARE` during
+  the probe window on the current saved sessions.
 - Peer key-share response delivery and broader live history/app-state replay
   proof remain open.
 
@@ -265,8 +268,8 @@ tests are stable.
 - `scripts/phase5_mutation_probe.py` covers broader explicit Phase 5 mutation
   flows and reports per-operation success or server/client errors.
 - `scripts/app_state_key_probe.py` covers product app-state snapshot
-  fetch/decrypt diagnostics, blocked-key persistence, and app-state sync-key
-  request probes.
+  fetch/decrypt diagnostics, app-state sync application, blocked-key
+  persistence, history event visibility, and app-state sync-key request probes.
 
 ## Current Verification
 
