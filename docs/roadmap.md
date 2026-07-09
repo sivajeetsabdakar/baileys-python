@@ -18,7 +18,7 @@ Baileys names such as `sendMessage`, `relayMessage`, `groupMetadata`,
 | 2 | Auth and socket lifecycle | Done |
 | 3 | Event/store and inbound pipeline | Done |
 | 4 | Outbound messages and media breadth | Done |
-| 5 | Chats, profile, privacy, groups | Partial |
+| 5 | Chats, profile, privacy, groups | Done |
 | 6 | History and app-state completeness | In progress |
 | 7 | Business, newsletters, communities, edge surfaces | Not started |
 | 8 | Core beta release hardening | Not started |
@@ -176,7 +176,7 @@ tests are stable.
 - Image, video, audio, document, and sticker send/download/decrypt are
   live-proven with ACK using generated samples and file-backed fixtures.
 
-## Phase 5 In Progress
+## Phase 5 Delivered
 
 - Added chat and presence APIs: `chat_modify`, `archive_chat`, `mute_chat`,
   `pin_chat`, `delete_chat`, `star_message`, and `send_presence_update`.
@@ -211,7 +211,10 @@ tests are stable.
 - Group announcement mode change/revert, invite revoke, participant promote,
   and participant demote are live-proven against the dedicated test group.
 - Group subject and description set/revert are live-proven against the
-  dedicated test group.
+  dedicated test group. Description updates fetch metadata first and send the
+  previous description id to avoid server conflicts.
+- Group metadata preserves PN mappings for LID participants so probes and
+  callers can match either address form.
 - Profile name, profile status, and profile picture updates are live-proven.
 - Chat archive, mute, pin, and star mutations are live-proven on a refreshed
   saved session with app-state keys.
@@ -224,10 +227,6 @@ tests are stable.
   with `account_reachout_restricted`, and group create does not return a
   response before timeout. Product APIs now raise explicit IQ errors for these
   server-side rejections instead of returning empty success results.
-- The current live test group is temporarily single-member after the
-  account-side add restriction, so participant-dependent group mutation probes
-  now fail fast until that group is restored or a fresh disposable group is
-  available.
 
 ## Phase 6 In Progress
 

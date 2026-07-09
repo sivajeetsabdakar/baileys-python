@@ -54,7 +54,10 @@ def test_group_nodes_and_parsers_match_common_shapes():
                     "group",
                     {"id": "123", "subject": "Test", "size": "1", "addressing_mode": "lid"},
                     [
-                        BinaryNode("participant", {"jid": "a@s.whatsapp.net", "type": "admin"}),
+                        BinaryNode(
+                            "participant",
+                            {"jid": "a@lid", "type": "admin", "phone_number": "a@s.whatsapp.net"},
+                        ),
                         BinaryNode("description", {"id": "d1"}, [BinaryNode("body", {}, b"hello")]),
                     ],
                 )
@@ -65,6 +68,7 @@ def test_group_nodes_and_parsers_match_common_shapes():
     assert parsed.subject == "Test"
     assert parsed.desc == "hello"
     assert parsed.participants[0].admin == "admin"
+    assert parsed.participants[0].phone_number == "a@s.whatsapp.net"
 
 
 def test_iq_error_parser_exposes_server_code_and_text():
@@ -220,6 +224,41 @@ def test_group_participant_update_raises_iq_error_and_skips_event(tmp_path):
             raise AssertionError("expected IQError")
 
         assert participant_updates == []
+
+    asyncio.run(scenario())
+
+
+def test_group_description_update_sends_previous_description_id(tmp_path):
+    async def scenario():
+        store = JsonCredentialStore(tmp_path / "creds.json")
+        store.save_credentials(_creds_with_app_state())
+        client = make_socket(AuthState.from_store(store))
+        queries = []
+
+        async def fake_query(node, **kwargs):
+            queries.append(node)
+            if node.attrs.get("xmlns") == "w:g2" and node.attrs.get("type") == "get":
+                return BinaryNode(
+                    "iq",
+                    {"type": "result"},
+                    [
+                        BinaryNode(
+                            "group",
+                            {"id": "123", "subject": "Group"},
+                            [BinaryNode("description", {"id": "desc-1"}, [BinaryNode("body", {}, b"old")])],
+                        )
+                    ],
+                )
+            return BinaryNode("iq", {"type": "result"})
+
+        client.query = fake_query  # type: ignore[method-assign]
+
+        await client.group_update_description("123@g.us", "new")
+
+        assert queries[0].content[0].tag == "query"
+        description = queries[1].content[0]
+        assert description.tag == "description"
+        assert description.attrs["prev"] == "desc-1"
 
     asyncio.run(scenario())
 

@@ -30,6 +30,13 @@ def phone_to_jid(value: str) -> str:
     return f"{digits}@s.whatsapp.net"
 
 
+def matching_participant(metadata: object, jid: str) -> object | None:
+    for item in getattr(metadata, "participants", []):
+        if item.jid == jid or item.phone_number == jid:
+            return item
+    return None
+
+
 def generated_profile_picture() -> bytes:
     from PIL import Image
 
@@ -116,7 +123,7 @@ async def main() -> int:
         if args.group_jid:
             async def group_metadata():
                 metadata = await client.group_metadata(args.group_jid, timeout=args.timeout)
-                participants = [(item.jid, item.admin) for item in metadata.participants]
+                participants = [(item.jid, item.admin, item.phone_number) for item in metadata.participants]
                 return {
                     "id": metadata.id,
                     "subject": metadata.subject,
@@ -171,15 +178,16 @@ async def main() -> int:
 
         if args.group_jid and args.group_add_remove and add_remove_participant_jid:
             metadata = await client.group_metadata(args.group_jid, timeout=args.timeout)
-            is_member = any(item.jid == add_remove_participant_jid for item in metadata.participants)
-            if is_member:
+            member = matching_participant(metadata, add_remove_participant_jid)
+            mutation_jid = member.jid if member is not None else add_remove_participant_jid
+            if member is not None:
                 ok &= await participant_step(
                     "GROUP_REMOVE",
-                    lambda: client.group_participants_update(args.group_jid, [add_remove_participant_jid], "remove", timeout=args.timeout),
+                    lambda: client.group_participants_update(args.group_jid, [mutation_jid], "remove", timeout=args.timeout),
                 )
                 ok &= await participant_step(
                     "GROUP_ADD_RESTORE",
-                    lambda: client.group_participants_update(args.group_jid, [add_remove_participant_jid], "add", timeout=args.timeout),
+                    lambda: client.group_participants_update(args.group_jid, [mutation_jid], "add", timeout=args.timeout),
                 )
             else:
                 ok &= await participant_step(

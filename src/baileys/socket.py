@@ -996,7 +996,8 @@ class WhatsAppClient:
         await self.ev.emit("groups.update", [{"id": jid, "subject": subject}])
 
     async def group_update_description(self, jid: str, description: str | None, *, timeout: float = 30) -> None:
-        await self._query_checked(group_update_description_node(jid, description, self.queries.next_tag()), timeout=timeout)
+        metadata = await self.group_metadata(jid, timeout=timeout)
+        await self._query_checked(group_update_description_node(jid, description, self.queries.next_tag(), previous_id=metadata.desc_id), timeout=timeout)
         await self.ev.emit("groups.update", [{"id": jid, "desc": description}])
 
     async def group_participants_update(

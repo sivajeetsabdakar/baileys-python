@@ -15,6 +15,7 @@ from .wabinary import BinaryNode
 class GroupParticipant:
     jid: str
     admin: str | None = None
+    phone_number: str | None = None
 
 
 @dataclass(frozen=True)
@@ -118,7 +119,13 @@ def parse_group_metadata(node: BinaryNode) -> GroupMetadata:
     if isinstance(group.content, list):
         for child in group.content:
             if child.tag == "participant" and child.attrs.get("jid"):
-                participants.append(GroupParticipant(jid=child.attrs["jid"], admin=child.attrs.get("type")))
+                participants.append(
+                    GroupParticipant(
+                        jid=child.attrs["jid"],
+                        admin=child.attrs.get("type"),
+                        phone_number=child.attrs.get("phone_number"),
+                    )
+                )
             elif child.tag == "description":
                 desc_id = child.attrs.get("id")
                 body = find_child(child, "body")
