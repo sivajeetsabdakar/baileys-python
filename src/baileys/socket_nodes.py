@@ -31,6 +31,17 @@ class SocketNodeKind(str, Enum):
     UNKNOWN = "unknown"
 
 
+class IQError(RuntimeError):
+    def __init__(self, code: str | None, text: str | None, node: BinaryNode):
+        self.code = code
+        self.text = text
+        self.node = node
+        message = "iq error"
+        if code or text:
+            message = f"iq error code={code or ''} text={text or ''}".strip()
+        super().__init__(message)
+
+
 def summarize_node(node: BinaryNode) -> str:
     child_tags: list[str] = []
     if isinstance(node.content, list):
@@ -45,6 +56,22 @@ def find_child(node: BinaryNode | None, tag: str) -> BinaryNode | None:
         if child.tag == tag:
             return child
     return None
+
+
+def parse_iq_error(node: BinaryNode) -> IQError | None:
+    if node.tag != "iq" and node.tag != "ack":
+        return None
+    error = find_child(node, "error")
+    if node.attrs.get("type") != "error" and error is None and not node.attrs.get("error"):
+        return None
+    attrs = error.attrs if error is not None else node.attrs
+    return IQError(code=attrs.get("code") or attrs.get("error"), text=attrs.get("text") or attrs.get("reason"), node=node)
+
+
+def raise_for_iq_error(node: BinaryNode) -> None:
+    error = parse_iq_error(node)
+    if error is not None:
+        raise error
 
 
 def node_content_bytes(node: BinaryNode | None) -> bytes | None:

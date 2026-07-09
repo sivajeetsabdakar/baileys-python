@@ -118,6 +118,7 @@ from .notifications import (
     parse_notification_info,
     parse_offline_info,
 )
+from .socket_nodes import IQError, parse_iq_error, raise_for_iq_error
 from .pairing_code import (
     PairDeviceRefs,
     PairSuccess,
@@ -179,6 +180,7 @@ __all__ = [
     "HistoryChat",
     "HistoryContact",
     "HistorySyncResult",
+    "IQError",
     "InMemoryStore",
     "JidParts",
     "JsonCredentialStore",
@@ -310,11 +312,13 @@ __all__ = [
     "parse_dirty_info",
     "parse_notification_info",
     "parse_offline_info",
+    "parse_iq_error",
     "pairing_code_finish_node",
     "pairing_code_hello_node",
     "pairing_code_request_node",
     "phone_number_to_jid",
     "read_media_payload",
+    "raise_for_iq_error",
     "sha256",
     "stream_error_to_disconnect",
     "UnsupportedMessageContent",

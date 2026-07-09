@@ -7,7 +7,12 @@ from baileys.auth_state import AuthState, JsonCredentialStore
 from baileys.generated import WAProto_pb2 as proto
 from baileys.media import EncryptedMedia, MediaPayload, MediaUploadResult, media_message, read_media_payload
 import baileys.message_send as message_send_module
-from baileys.message_send import OutboundMessage, build_proto_message_node, normalize_message_content
+from baileys.message_send import (
+    OutboundMessage,
+    UnsupportedMessageContent,
+    build_proto_message_node,
+    normalize_message_content,
+)
 from baileys.receipts import RetryRequest
 from baileys.socket import WhatsAppClient, make_socket
 from baileys.wabinary import BinaryNode
@@ -38,6 +43,29 @@ def test_message_content_builders_cover_common_shapes():
     assert kind == "protocol"
     assert delete.protocolMessage.type == proto.Message.ProtocolMessage.Type.REVOKE
 
+    pin, kind = normalize_message_content({"pin": {"key": key, "pin": True, "duration": 3600}})
+    assert kind == "text"
+    assert pin.pinInChatMessage.key.id == "m1"
+    assert pin.pinInChatMessage.type == proto.Message.PinInChatMessage.PIN_FOR_ALL
+    assert pin.messageContextInfo.messageAddOnDurationInSecs == 3600
+
+    unpin, kind = normalize_message_content({"pin": {"key": key, "pin": False}})
+    assert kind == "text"
+    assert unpin.pinInChatMessage.type == proto.Message.PinInChatMessage.UNPIN_FOR_ALL
+    assert unpin.messageContextInfo.messageAddOnDurationInSecs == 0
+
+    poll, kind = normalize_message_content({"poll": {"name": "Choose", "values": ["One", "Two"], "selectable_count": 1}})
+    assert kind == "poll"
+    assert poll.pollCreationMessageV3.name == "Choose"
+    assert [item.optionName for item in poll.pollCreationMessageV3.options] == ["One", "Two"]
+
+    multi_poll, kind = normalize_message_content(
+        {"poll": {"name": "Choose many", "values": ["One", "Two"], "selectable_count": 2}}
+    )
+    assert kind == "poll"
+    assert multi_poll.pollCreationMessage.name == "Choose many"
+    assert multi_poll.pollCreationMessage.selectableOptionsCount == 2
+
     location, kind = normalize_message_content({"location": {"latitude": 12.3, "longitude": 45.6, "name": "Spot"}})
     assert kind == "location"
     assert location.locationMessage.degreesLatitude == 12.3
@@ -46,6 +74,30 @@ def test_message_content_builders_cover_common_shapes():
     contact, kind = normalize_message_content({"contact": {"display_name": "Alice", "vcard": "BEGIN:VCARD"}})
     assert kind == "contact"
     assert contact.contactMessage.displayName == "Alice"
+
+
+def test_message_content_builders_reject_invalid_poll_and_pin():
+    key = {"remote_jid": "chat@s.whatsapp.net", "id": "m1", "from_me": False}
+    try:
+        normalize_message_content({"pin": {"id": key}})
+    except UnsupportedMessageContent as exc:
+        assert "pin content requires a key" in str(exc)
+    else:
+        raise AssertionError("expected pin validation error")
+
+    try:
+        normalize_message_content({"poll": {"name": "Bad", "values": [], "selectable_count": 1}})
+    except UnsupportedMessageContent as exc:
+        assert "poll content requires at least one option" in str(exc)
+    else:
+        raise AssertionError("expected poll option validation error")
+
+    try:
+        normalize_message_content({"poll": {"name": "Bad", "values": ["One"], "selectable_count": 2}})
+    except UnsupportedMessageContent as exc:
+        assert "poll selectable_count" in str(exc)
+    else:
+        raise AssertionError("expected poll selectable count validation error")
 
 
 def test_media_payload_and_message_builders(tmp_path):

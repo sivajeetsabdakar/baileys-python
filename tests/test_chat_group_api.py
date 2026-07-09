@@ -15,6 +15,7 @@ from baileys.chat_groups import (
     parse_privacy_settings,
     profile_picture_url_node,
 )
+from baileys.socket_nodes import IQError, parse_iq_error
 from baileys.socket import make_socket
 from baileys.wabinary import BinaryNode
 
@@ -64,6 +65,20 @@ def test_group_nodes_and_parsers_match_common_shapes():
     assert parsed.subject == "Test"
     assert parsed.desc == "hello"
     assert parsed.participants[0].admin == "admin"
+
+
+def test_iq_error_parser_exposes_server_code_and_text():
+    node = BinaryNode(
+        "iq",
+        {"type": "error", "id": "g1"},
+        [BinaryNode("error", {"code": "463", "text": "account_reachout_restricted"})],
+    )
+
+    error = parse_iq_error(node)
+
+    assert isinstance(error, IQError)
+    assert error.code == "463"
+    assert error.text == "account_reachout_restricted"
 
 
 def test_privacy_profile_and_on_whatsapp_nodes_parse():
@@ -175,6 +190,36 @@ def test_client_phase5_methods_call_query_and_emit_events(tmp_path):
         assert client.groupMetadata.__func__ is client.group_metadata.__func__
         assert client.fetchPrivacySettings.__func__ is client.fetch_privacy_settings.__func__
         assert b.GroupMetadata is not None
+
+    asyncio.run(scenario())
+
+
+def test_group_participant_update_raises_iq_error_and_skips_event(tmp_path):
+    async def scenario():
+        store = JsonCredentialStore(tmp_path / "creds.json")
+        store.save_credentials(_creds_with_app_state())
+        client = make_socket(AuthState.from_store(store))
+        participant_updates = []
+        client.ev.on("group-participants.update", lambda payload: participant_updates.append(payload))
+
+        async def fake_query(node, **kwargs):
+            return BinaryNode(
+                "iq",
+                {"type": "error", "id": node.attrs.get("id", "x")},
+                [BinaryNode("error", {"code": "463", "text": "account_reachout_restricted"})],
+            )
+
+        client.query = fake_query  # type: ignore[method-assign]
+
+        try:
+            await client.group_participants_update("123@g.us", ["a@s.whatsapp.net"], "add")
+        except IQError as exc:
+            assert exc.code == "463"
+            assert exc.text == "account_reachout_restricted"
+        else:
+            raise AssertionError("expected IQError")
+
+        assert participant_updates == []
 
     asyncio.run(scenario())
 

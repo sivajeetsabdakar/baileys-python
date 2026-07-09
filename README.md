@@ -9,8 +9,8 @@ the production implementation target.
 
 ## Current State
 
-The product package has live-proven auth/inbound foundations and offline-tested
-outbound/chat/group API foundations:
+The product package has live-proven auth, inbound, outbound, media, app-state,
+and Phase 5 API foundations:
 
 - installable Python package under `src/baileys`
 - generated WAProto and WABinary token package data
@@ -28,6 +28,7 @@ outbound/chat/group API foundations:
   `scripts/message_content_probe.py` and `scripts/send_media_probe.py`
 - product chat, presence, profile, privacy, blocklist, and group method
   surfaces with Baileys-compatible aliases
+- explicit IQ errors for account-side server rejections in public query APIs
 - encrypted app-state patch encoding plus product app-state snapshot
   fetch/decrypt diagnostics, blocked-key tracking, live key-share ingestion,
   and app-state replay proof on a freshly linked test session

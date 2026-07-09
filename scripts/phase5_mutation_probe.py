@@ -49,6 +49,20 @@ async def run_step(label: str, probe: Probe) -> bool:
         return False
 
 
+async def participant_step(label: str, probe: Probe) -> bool:
+    async def checked() -> object:
+        result = await probe()
+        if not result:
+            raise RuntimeError("empty participant update result")
+        failures = [item for item in result if getattr(item, "status", "200") != "200"]
+        if failures:
+            statuses = ", ".join(f"{item.jid}:{item.status}" for item in failures)
+            raise RuntimeError(f"participant update failed: {statuses}")
+        return result
+
+    return await run_step(label, checked)
+
+
 async def main() -> int:
     parser = argparse.ArgumentParser(description="Run explicit Phase 5 live mutation checks.")
     parser.add_argument("--creds-path", default=str(ROOT / "auth" / "product_qr_creds.json"))
@@ -59,14 +73,26 @@ async def main() -> int:
     parser.add_argument("--chat-jid")
     parser.add_argument("--profile-name", default="Baileys Python")
     parser.add_argument("--profile-status", default="Testing Baileys Python")
+    parser.add_argument("--include-group-details", action="store_true", help="update and revert group subject/description")
+    parser.add_argument("--group-add-remove", action="store_true", help="add and remove a participant from --group-jid")
+    parser.add_argument("--add-remove-participant", help="participant used only for group add/remove checks")
+    parser.add_argument("--restore-after-remove", action="store_true", help="add the add/remove participant back after remove")
+    parser.add_argument("--create-leave-group", action="store_true", help="create a temporary group and leave it")
+    parser.add_argument("--create-subject", default="Baileys Python Probe")
     parser.add_argument("--skip-profile-picture", action="store_true")
     args = parser.parse_args()
 
     selected = []
     if args.group_jid:
         selected.append("group settings/invite")
+    if args.group_jid and args.include_group_details:
+        selected.append("group subject/description")
     if args.group_jid and args.participant:
         selected.append("group promote/demote")
+    if args.group_jid and (args.add_remove_participant or args.participant) and args.group_add_remove:
+        selected.append("group add/remove")
+    if args.create_leave_group:
+        selected.append("temporary group create/leave")
     if args.chat_jid:
         selected.append("chat archive/mute/pin/star")
     selected.append("profile name/status")
@@ -84,6 +110,7 @@ async def main() -> int:
         await client.connect_and_wait(success_timeout=args.timeout)
         me = client.auth_state.credentials.get("me", {}).get("id", "")
         participant_jid = phone_to_jid(args.participant) if args.participant else ""
+        add_remove_participant_jid = phone_to_jid(args.add_remove_participant) if args.add_remove_participant else participant_jid
         chat_jid = phone_to_jid(args.chat_jid) if args.chat_jid else ""
 
         if args.group_jid:
@@ -99,6 +126,7 @@ async def main() -> int:
                 }
 
             ok &= await run_step("GROUP_METADATA", group_metadata)
+            metadata = await client.group_metadata(args.group_jid, timeout=args.timeout)
             ok &= await run_step(
                 "GROUP_SETTING_ANNOUNCEMENT",
                 lambda: client.group_setting_update(args.group_jid, "announcement", timeout=args.timeout),
@@ -109,15 +137,90 @@ async def main() -> int:
             )
             ok &= await run_step("GROUP_REVOKE_INVITE", lambda: client.group_revoke_invite(args.group_jid, timeout=args.timeout))
 
+            if args.include_group_details:
+                original_subject = metadata.subject or "Baileys Python Test"
+                original_desc = metadata.desc
+                probe_subject = f"{original_subject} probe"
+                probe_desc = f"Baileys Python description probe {int(time.time())}"
+                ok &= await run_step(
+                    "GROUP_SUBJECT_SET",
+                    lambda: client.group_update_subject(args.group_jid, probe_subject, timeout=args.timeout),
+                )
+                ok &= await run_step(
+                    "GROUP_SUBJECT_REVERT",
+                    lambda: client.group_update_subject(args.group_jid, original_subject, timeout=args.timeout),
+                )
+                ok &= await run_step(
+                    "GROUP_DESCRIPTION_SET",
+                    lambda: client.group_update_description(args.group_jid, probe_desc, timeout=args.timeout),
+                )
+                ok &= await run_step(
+                    "GROUP_DESCRIPTION_REVERT",
+                    lambda: client.group_update_description(args.group_jid, original_desc, timeout=args.timeout),
+                )
+
         if args.group_jid and participant_jid:
-            ok &= await run_step(
+            ok &= await participant_step(
                 "GROUP_PROMOTE",
                 lambda: client.group_participants_update(args.group_jid, [participant_jid], "promote", timeout=args.timeout),
             )
-            ok &= await run_step(
+            ok &= await participant_step(
                 "GROUP_DEMOTE",
                 lambda: client.group_participants_update(args.group_jid, [participant_jid], "demote", timeout=args.timeout),
             )
+
+        if args.group_jid and args.group_add_remove and add_remove_participant_jid:
+            metadata = await client.group_metadata(args.group_jid, timeout=args.timeout)
+            is_member = any(item.jid == add_remove_participant_jid for item in metadata.participants)
+            if is_member:
+                ok &= await participant_step(
+                    "GROUP_REMOVE",
+                    lambda: client.group_participants_update(args.group_jid, [add_remove_participant_jid], "remove", timeout=args.timeout),
+                )
+                ok &= await participant_step(
+                    "GROUP_ADD_RESTORE",
+                    lambda: client.group_participants_update(args.group_jid, [add_remove_participant_jid], "add", timeout=args.timeout),
+                )
+            else:
+                ok &= await participant_step(
+                    "GROUP_ADD",
+                    lambda: client.group_participants_update(args.group_jid, [add_remove_participant_jid], "add", timeout=args.timeout),
+                )
+                ok &= await participant_step(
+                    "GROUP_REMOVE",
+                    lambda: client.group_participants_update(args.group_jid, [add_remove_participant_jid], "remove", timeout=args.timeout),
+                )
+                if args.restore_after_remove:
+                    ok &= await participant_step(
+                        "GROUP_ADD_RESTORE",
+                        lambda: client.group_participants_update(
+                            args.group_jid,
+                            [add_remove_participant_jid],
+                            "add",
+                            timeout=args.timeout,
+                        ),
+                    )
+
+        if args.create_leave_group:
+            create_participants = [participant_jid] if participant_jid else []
+
+            async def create_and_leave():
+                metadata = await client.group_create(args.create_subject, create_participants, timeout=args.timeout)
+                if args.include_group_details:
+                    await client.group_update_subject(metadata.id, f"{args.create_subject} Updated", timeout=args.timeout)
+                    await client.group_update_description(
+                        metadata.id,
+                        f"Baileys Python temporary group probe {int(time.time())}",
+                        timeout=args.timeout,
+                    )
+                if args.group_add_remove and participant_jid:
+                    await client.group_participants_update(metadata.id, [participant_jid], "remove", timeout=args.timeout)
+                    await client.group_participants_update(metadata.id, [participant_jid], "add", timeout=args.timeout)
+                    await client.group_participants_update(metadata.id, [participant_jid], "remove", timeout=args.timeout)
+                await client.group_leave(metadata.id, timeout=args.timeout)
+                return {"id": metadata.id, "subject": metadata.subject, "size": metadata.size}
+
+            ok &= await run_step("GROUP_CREATE_LEAVE", create_and_leave)
 
         if chat_jid:
             ok &= await run_step("CHAT_ARCHIVE_ON", lambda: client.archive_chat(chat_jid, True, timeout=args.timeout))

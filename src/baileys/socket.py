@@ -127,6 +127,7 @@ from .socket_nodes import (
     logout_node,
     offline_batch_node,
     passive_active_node,
+    raise_for_iq_error,
     server_ping_reply,
     unified_session_node,
 )
@@ -528,6 +529,11 @@ class WhatsAppClient:
                 waiter.cancel()
             self.queries.discard(tag_id)
             raise
+
+    async def _query_checked(self, node: BinaryNode, *, timeout: float = 30, drive_receive: bool = True) -> BinaryNode:
+        result = await self.query(node, timeout=timeout, drive_receive=drive_receive)
+        raise_for_iq_error(result)
+        return result
 
     async def receive_nodes(self, timeout: float = 30) -> list[BinaryNode]:
         if self._web is None:
@@ -970,27 +976,27 @@ class WhatsAppClient:
         return media_conn
 
     async def group_metadata(self, jid: str, *, timeout: float = 30) -> GroupMetadata:
-        result = await self.query(group_metadata_node(jid, self.queries.next_tag()), timeout=timeout, drive_receive=True)
+        result = await self._query_checked(group_metadata_node(jid, self.queries.next_tag()), timeout=timeout)
         metadata = parse_group_metadata(result)
         await self.ev.emit("groups.update", [metadata])
         return metadata
 
     async def group_create(self, subject: str, participants: list[str], *, timeout: float = 30) -> GroupMetadata:
-        result = await self.query(group_create_node(subject, participants, self.queries.next_tag()), timeout=timeout, drive_receive=True)
+        result = await self._query_checked(group_create_node(subject, participants, self.queries.next_tag()), timeout=timeout)
         metadata = parse_group_metadata(result)
         await self.ev.emit("groups.update", [metadata])
         return metadata
 
     async def group_leave(self, jid: str, *, timeout: float = 30) -> None:
-        await self.query(group_leave_node(jid, self.queries.next_tag()), timeout=timeout, drive_receive=True)
+        await self._query_checked(group_leave_node(jid, self.queries.next_tag()), timeout=timeout)
         await self.ev.emit("groups.update", [{"id": jid, "left": True}])
 
     async def group_update_subject(self, jid: str, subject: str, *, timeout: float = 30) -> None:
-        await self.query(group_update_subject_node(jid, subject, self.queries.next_tag()), timeout=timeout, drive_receive=True)
+        await self._query_checked(group_update_subject_node(jid, subject, self.queries.next_tag()), timeout=timeout)
         await self.ev.emit("groups.update", [{"id": jid, "subject": subject}])
 
     async def group_update_description(self, jid: str, description: str | None, *, timeout: float = 30) -> None:
-        await self.query(group_update_description_node(jid, description, self.queries.next_tag()), timeout=timeout, drive_receive=True)
+        await self._query_checked(group_update_description_node(jid, description, self.queries.next_tag()), timeout=timeout)
         await self.ev.emit("groups.update", [{"id": jid, "desc": description}])
 
     async def group_participants_update(
@@ -1001,59 +1007,59 @@ class WhatsAppClient:
         *,
         timeout: float = 30,
     ) -> list[ParticipantUpdateResult]:
-        result = await self.query(group_participants_update_node(jid, participants, action, self.queries.next_tag()), timeout=timeout, drive_receive=True)
+        result = await self._query_checked(group_participants_update_node(jid, participants, action, self.queries.next_tag()), timeout=timeout)
         updates = parse_participant_update(result, action)
         await self.ev.emit("group-participants.update", {"id": jid, "participants": participants, "action": action, "results": updates})
         return updates
 
     async def group_invite_code(self, jid: str, *, timeout: float = 30) -> str | None:
-        result = await self.query(group_invite_code_node(jid, self.queries.next_tag()), timeout=timeout, drive_receive=True)
+        result = await self._query_checked(group_invite_code_node(jid, self.queries.next_tag()), timeout=timeout)
         return parse_invite_code(result)
 
     async def group_revoke_invite(self, jid: str, *, timeout: float = 30) -> str | None:
-        result = await self.query(group_revoke_invite_node(jid, self.queries.next_tag()), timeout=timeout, drive_receive=True)
+        result = await self._query_checked(group_revoke_invite_node(jid, self.queries.next_tag()), timeout=timeout)
         return parse_invite_code(result)
 
     async def group_accept_invite(self, code: str, *, timeout: float = 30) -> str | None:
-        result = await self.query(group_accept_invite_node(code, self.queries.next_tag()), timeout=timeout, drive_receive=True)
+        result = await self._query_checked(group_accept_invite_node(code, self.queries.next_tag()), timeout=timeout)
         group_jid = parse_accept_invite(result)
         if group_jid:
             await self.ev.emit("groups.update", [{"id": group_jid, "joined": True}])
         return group_jid
 
     async def group_setting_update(self, jid: str, setting: str, value: str = "", *, timeout: float = 30) -> None:
-        await self.query(group_setting_update_node(jid, setting, value, self.queries.next_tag()), timeout=timeout, drive_receive=True)
+        await self._query_checked(group_setting_update_node(jid, setting, value, self.queries.next_tag()), timeout=timeout)
         await self.ev.emit("groups.update", [{"id": jid, "setting": setting, "value": value}])
 
     async def fetch_privacy_settings(self, *, timeout: float = 30) -> dict[str, str]:
-        result = await self.query(privacy_fetch_node(self.queries.next_tag()), timeout=timeout, drive_receive=True)
+        result = await self._query_checked(privacy_fetch_node(self.queries.next_tag()), timeout=timeout)
         return parse_privacy_settings(result)
 
     async def update_privacy_setting(self, name: str, value: str, *, timeout: float = 30) -> None:
-        await self.query(privacy_update_node(name, value, self.queries.next_tag()), timeout=timeout, drive_receive=True)
+        await self._query_checked(privacy_update_node(name, value, self.queries.next_tag()), timeout=timeout)
 
     async def fetch_blocklist(self, *, timeout: float = 30) -> list[str]:
-        result = await self.query(blocklist_fetch_node(self.queries.next_tag()), timeout=timeout, drive_receive=True)
+        result = await self._query_checked(blocklist_fetch_node(self.queries.next_tag()), timeout=timeout)
         return parse_blocklist(result)
 
     async def update_block_status(self, jid: str, action: str, *, timeout: float = 30) -> None:
-        await self.query(block_status_node(jid, action, self.queries.next_tag()), timeout=timeout, drive_receive=True)
+        await self._query_checked(block_status_node(jid, action, self.queries.next_tag()), timeout=timeout)
 
     async def profile_picture_url(self, jid: str, picture_type: str = "preview", *, timeout: float = 30) -> str | None:
-        result = await self.query(profile_picture_url_node(jid, self.queries.next_tag(), picture_type), timeout=timeout, drive_receive=True)
+        result = await self._query_checked(profile_picture_url_node(jid, self.queries.next_tag(), picture_type), timeout=timeout)
         return parse_profile_picture_url(result)
 
     async def update_profile_status(self, status: str, *, timeout: float = 30) -> None:
-        await self.query(profile_status_update_node(status, self.queries.next_tag()), timeout=timeout, drive_receive=True)
+        await self._query_checked(profile_status_update_node(status, self.queries.next_tag()), timeout=timeout)
 
     async def update_profile_name(self, name: str, *, timeout: float = 30) -> None:
         await self.chat_modify({"pushNameSetting": name}, "", timeout=timeout)
 
     async def update_profile_picture(self, jid: str, data: bytes, *, timeout: float = 30) -> None:
-        await self.query(profile_picture_update_node(jid, data, self.queries.next_tag(), own_jid=_me_id(self.auth_state.credentials)), timeout=timeout, drive_receive=True)
+        await self._query_checked(profile_picture_update_node(jid, data, self.queries.next_tag(), own_jid=_me_id(self.auth_state.credentials)), timeout=timeout)
 
     async def remove_profile_picture(self, jid: str, *, timeout: float = 30) -> None:
-        await self.query(profile_picture_remove_node(jid, self.queries.next_tag(), own_jid=_me_id(self.auth_state.credentials)), timeout=timeout, drive_receive=True)
+        await self._query_checked(profile_picture_remove_node(jid, self.queries.next_tag(), own_jid=_me_id(self.auth_state.credentials)), timeout=timeout)
 
     async def on_whatsapp(self, *jids: str, timeout: float = 30) -> list[dict[str, Any]]:
         if not jids:
@@ -1076,10 +1082,9 @@ class WhatsAppClient:
         last_error: TimeoutError | asyncio.TimeoutError | None = None
 
         async def _query_one(phone_jids: list[str], query_timeout: float) -> list[dict[str, Any]]:
-            result = await self.query(
+            result = await self._query_checked(
                 on_whatsapp_node(phone_jids, self.queries.next_tag()),
                 timeout=query_timeout,
-                drive_receive=True,
             )
             return parse_on_whatsapp(result)
 
@@ -1142,7 +1147,7 @@ class WhatsAppClient:
         except MissingAppStateKey as exc:
             await self.ev.emit("app-state.patch_error", {"jid": jid, "modification": modification, "error": exc})
             raise
-        result = await self.query(encoded.node, timeout=timeout, drive_receive=True)
+        result = await self._query_checked(encoded.node, timeout=timeout)
         await self._commit_credentials(working)
         await self.ev.emit("chats.update", [{"id": jid, **modification}])
         return result

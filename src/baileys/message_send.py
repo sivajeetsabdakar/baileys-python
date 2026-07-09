@@ -119,6 +119,47 @@ def edit_message(key: proto.MessageKey | dict[str, Any], text: str) -> proto.Mes
     return message
 
 
+def pin_message(key: proto.MessageKey | dict[str, Any], *, pin: bool = True, duration: int = 86400) -> proto.Message:
+    message = proto.Message()
+    message.pinInChatMessage.key.CopyFrom(_coerce_message_key(key))
+    message.pinInChatMessage.type = (
+        proto.Message.PinInChatMessage.PIN_FOR_ALL if pin else proto.Message.PinInChatMessage.UNPIN_FOR_ALL
+    )
+    message.pinInChatMessage.senderTimestampMs = int(time.time() * 1000)
+    message.messageContextInfo.messageAddOnDurationInSecs = int(duration) if pin else 0
+    message.messageContextInfo.messageSecret = os.urandom(32)
+    return message
+
+
+def poll_message(
+    name: str,
+    values: Iterable[str],
+    *,
+    selectable_count: int = 1,
+    to_announcement_group: bool = False,
+) -> proto.Message:
+    options = [str(value) for value in values]
+    if not options:
+        raise UnsupportedMessageContent("poll content requires at least one option")
+    if selectable_count < 0 or selectable_count > len(options):
+        raise UnsupportedMessageContent("poll selectable_count must be between 0 and option count")
+
+    message = proto.Message()
+    message.messageContextInfo.messageSecret = os.urandom(32)
+    target = (
+        message.pollCreationMessageV2
+        if to_announcement_group
+        else message.pollCreationMessageV3
+        if selectable_count == 1
+        else message.pollCreationMessage
+    )
+    target.name = name
+    target.selectableOptionsCount = selectable_count
+    for option_name in options:
+        target.options.add().optionName = option_name
+    return message
+
+
 def location_message(
     latitude: float,
     longitude: float,
@@ -190,6 +231,30 @@ def normalize_message_content(content: str | proto.Message | dict[str, Any]) -> 
         if not isinstance(edit, dict) or "key" not in edit or "text" not in edit:
             raise UnsupportedMessageContent("edit content requires key and text")
         return edit_message(edit["key"], str(edit["text"])), "protocol"
+    if "pin" in content:
+        pin = content["pin"]
+        if not isinstance(pin, dict) or "key" not in pin:
+            raise UnsupportedMessageContent("pin content requires a key")
+        return (
+            pin_message(pin["key"], pin=bool(pin.get("pin", True)), duration=int(pin.get("duration", 86400))),
+            "text",
+        )
+    if "poll" in content:
+        poll = content["poll"]
+        if not isinstance(poll, dict) or "name" not in poll or "values" not in poll:
+            raise UnsupportedMessageContent("poll content requires name and values")
+        values = poll["values"]
+        if not isinstance(values, list):
+            raise UnsupportedMessageContent("poll values must be a list")
+        return (
+            poll_message(
+                str(poll["name"]),
+                [str(value) for value in values],
+                selectable_count=int(poll.get("selectable_count", poll.get("selectableCount", 1))),
+                to_announcement_group=bool(poll.get("to_announcement_group", poll.get("toAnnouncementGroup", False))),
+            ),
+            "poll",
+        )
     if "location" in content:
         location = content["location"]
         if not isinstance(location, dict):
@@ -432,6 +497,10 @@ def _message_type_for_proto(message: proto.Message) -> str:
     for field, message_type in (
         ("reactionMessage", "reaction"),
         ("protocolMessage", "text"),
+        ("pollCreationMessage", "poll"),
+        ("pollCreationMessageV2", "poll"),
+        ("pollCreationMessageV3", "poll"),
+        ("pinInChatMessage", "text"),
         ("locationMessage", "location"),
         ("contactMessage", "contact"),
         ("contactsArrayMessage", "contacts"),

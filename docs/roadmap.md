@@ -17,7 +17,7 @@ Baileys names such as `sendMessage`, `relayMessage`, `groupMetadata`,
 | 1 | Protocol foundation | Done |
 | 2 | Auth and socket lifecycle | Done |
 | 3 | Event/store and inbound pipeline | Done |
-| 4 | Outbound messages and media breadth | Partial |
+| 4 | Outbound messages and media breadth | Done |
 | 5 | Chats, profile, privacy, groups | Partial |
 | 6 | History and app-state completeness | In progress |
 | 7 | Business, newsletters, communities, edge surfaces | Not started |
@@ -134,7 +134,7 @@ tests are stable.
   `--require-group`; the run received a sender-key distribution message and a
   decrypted group text message.
 
-## Phase 4 In Progress
+## Phase 4 Delivered
 
 - Added product outbound APIs on `WhatsAppClient`: `send_message`,
   `relay_message`, `download_media_message`, and `send_media_message`.
@@ -144,7 +144,8 @@ tests are stable.
   sends, group/USync fanout, Signal session assertion, credential persistence
   after successful relay, and recent outbound replay for retry receipts.
 - Added message content builders for text, extended text, mentions, quote keys,
-  reactions, edit, delete, location, contact, and contact-list messages.
+  reactions, edit, delete, location, contact, contact-list, poll, pin, and
+  unpin messages.
 - Added typed errors for unsupported message content instead of sending
   malformed payloads.
 - Added media payload helpers for bytes and file paths plus generic
@@ -170,6 +171,8 @@ tests are stable.
 - Group text send is live-proven with ACK against the dedicated test group.
 - Reaction add/remove, edit, and delete are live-proven with ACK against the
   dedicated test peer.
+- Location, contact, poll, pin, and unpin sends are live-proven with ACK
+  through `scripts/message_content_probe.py --include-extra`.
 - Image, video, audio, document, and sticker send/download/decrypt are
   live-proven with ACK using generated samples and file-backed fixtures.
 
@@ -207,12 +210,24 @@ tests are stable.
   per-collection sync versions.
 - Group announcement mode change/revert, invite revoke, participant promote,
   and participant demote are live-proven against the dedicated test group.
-- Profile status and profile picture update are live-proven.
-- Profile name and chat patch mutations are offline-covered through the
-  encrypted app-state patch builder. Fresh QR pairing, app-state snapshot
-  request, external app-state blob download/decrypt, snapshot metadata decode,
-  app-state key-share ingestion, and full app-state replay are live-proven
-  through `scripts/app_state_key_probe.py`.
+- Group subject and description set/revert are live-proven against the
+  dedicated test group.
+- Profile name, profile status, and profile picture updates are live-proven.
+- Chat archive, mute, pin, and star mutations are live-proven on a refreshed
+  saved session with app-state keys.
+- Fresh QR pairing, app-state snapshot request, external app-state blob
+  download/decrypt, snapshot metadata decode, app-state key-share ingestion,
+  and full app-state replay are live-proven through
+  `scripts/app_state_key_probe.py`.
+- Group participant add and temporary group create/leave remain account-gated
+  in the current live account. The server currently rejects participant add
+  with `account_reachout_restricted`, and group create does not return a
+  response before timeout. Product APIs now raise explicit IQ errors for these
+  server-side rejections instead of returning empty success results.
+- The current live test group is temporarily single-member after the
+  account-side add restriction, so participant-dependent group mutation probes
+  now fail fast until that group is restored or a fresh disposable group is
+  available.
 
 ## Phase 6 In Progress
 

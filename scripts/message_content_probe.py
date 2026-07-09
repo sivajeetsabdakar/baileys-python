@@ -39,6 +39,7 @@ async def main() -> int:
     parser.add_argument("--force-sessions", action="store_true")
     parser.add_argument("--include-phash", action="store_true")
     parser.add_argument("--participant", help="message key participant for group operations")
+    parser.add_argument("--include-extra", action="store_true", help="also send location, contact, poll, pin, and unpin")
     args = parser.parse_args()
 
     client = make_socket(args.creds_path)
@@ -124,6 +125,98 @@ async def main() -> int:
             f"participants={delete.participant_jids} related_response={delete.acked}",
             flush=True,
         )
+
+        if args.include_extra:
+            location = await client.send_message(
+                args.to,
+                {
+                    "location": {
+                        "latitude": 19.0760,
+                        "longitude": 72.8777,
+                        "name": "Mumbai",
+                        "address": "Mumbai, India",
+                    }
+                },
+                use_usync=args.use_usync or args.to.endswith("@g.us"),
+                force_sessions=args.force_sessions,
+                include_phash=args.include_phash,
+                timeout=args.timeout,
+                wait_for_ack=args.watch,
+            )
+            print(
+                f"LOCATION_SENT id={location.message_id} participants={location.participant_jids} "
+                f"related_response={location.acked}",
+                flush=True,
+            )
+
+            contact = await client.send_message(
+                args.to,
+                {
+                    "contact": {
+                        "display_name": "Baileys Python Test",
+                        "vcard": (
+                            "BEGIN:VCARD\nVERSION:3.0\nFN:Baileys Python Test\n"
+                            "TEL;type=CELL:+910000000000\nEND:VCARD"
+                        ),
+                    }
+                },
+                use_usync=args.use_usync or args.to.endswith("@g.us"),
+                force_sessions=args.force_sessions,
+                include_phash=args.include_phash,
+                timeout=args.timeout,
+                wait_for_ack=args.watch,
+            )
+            print(
+                f"CONTACT_SENT id={contact.message_id} participants={contact.participant_jids} "
+                f"related_response={contact.acked}",
+                flush=True,
+            )
+
+            poll = await client.send_message(
+                args.to,
+                {"poll": {"name": "Baileys Python poll", "values": ["One", "Two"], "selectable_count": 1}},
+                use_usync=args.use_usync or args.to.endswith("@g.us"),
+                force_sessions=args.force_sessions,
+                include_phash=args.include_phash,
+                timeout=args.timeout,
+                wait_for_ack=args.watch,
+            )
+            poll_key = message_key(args.to, poll.message_id, participant=participant)
+            print(
+                f"POLL_SENT id={poll.message_id} participants={poll.participant_jids} "
+                f"related_response={poll.acked}",
+                flush=True,
+            )
+
+            pin = await client.send_message(
+                args.to,
+                {"pin": {"key": poll_key, "pin": True, "duration": 86400}},
+                use_usync=args.use_usync or args.to.endswith("@g.us"),
+                force_sessions=args.force_sessions,
+                include_phash=args.include_phash,
+                timeout=args.timeout,
+                wait_for_ack=args.watch,
+            )
+            print(
+                f"PIN_SENT id={pin.message_id} target={poll.message_id} "
+                f"participants={pin.participant_jids} related_response={pin.acked}",
+                flush=True,
+            )
+
+            unpin = await client.send_message(
+                args.to,
+                {"pin": {"key": poll_key, "pin": False}},
+                use_usync=args.use_usync or args.to.endswith("@g.us"),
+                force_sessions=args.force_sessions,
+                include_phash=args.include_phash,
+                timeout=args.timeout,
+                wait_for_ack=args.watch,
+            )
+            print(
+                f"UNPIN_SENT id={unpin.message_id} target={poll.message_id} "
+                f"participants={unpin.participant_jids} related_response={unpin.acked}",
+                flush=True,
+            )
     finally:
         await client.close()
     return 0
