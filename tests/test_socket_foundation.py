@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 
 import baileys as b
 from baileys import AuthState, JsonCredentialStore, makeWASocket, make_socket
+from baileys.app_state import chat_modification_to_app_patch, encode_syncd_patch, generate_snapshot_mac, LTHashState
 from baileys.auth_store import creds_from_generated_signal_material
 from baileys.crypto import hmac_sign
 from baileys.message_send import OutboundMessage
@@ -19,6 +21,7 @@ from baileys.socket_nodes import find_child
 from baileys import socket as socket_module
 from baileys.socket import WhatsAppClient, _session_key_for_jid
 from baileys.wabinary import BinaryNode
+from baileys.whatsapp_keys import expand_app_state_keys
 from signal_protocol import curve, identity_key
 
 
@@ -252,6 +255,94 @@ def test_dispatch_dirty_emits_app_state_dirty(tmp_path):
         assert kind.value == "dirty"
         assert dirty[0].type == "groups"
         assert dirty[0].timestamp == 123
+
+    asyncio.run(scenario())
+
+
+def test_app_state_key_update_unblocks_matching_collections(tmp_path):
+    async def scenario():
+        key_id = base64.b64encode(b"k" * 32).decode("ascii")
+        store = JsonCredentialStore(tmp_path / "creds.json")
+        creds = _minimal_creds()
+        creds["app_state_blocked_collections"] = {"regular_low": key_id, "regular": "other"}
+        store.save_credentials(creds)
+        client = make_socket(AuthState.from_store(store))
+        events = []
+        client.ev.on("app-state.keys.update", lambda payload: events.append(payload))
+
+        unblocked = await client._record_app_state_key_updates([key_id])
+
+        saved = store.load_credentials()
+        assert unblocked == ["regular_low"]
+        assert saved["app_state_blocked_collections"] == {"regular": "other"}
+        assert events[-1] == {"key_ids": [key_id], "unblocked_collections": ["regular_low"]}
+
+    asyncio.run(scenario())
+
+
+def test_sync_app_state_applies_snapshot_and_persists_version(tmp_path, monkeypatch):
+    async def scenario():
+        key_id = base64.b64encode(b"k" * 32).decode("ascii")
+        store = JsonCredentialStore(tmp_path / "creds.json")
+        creds = _minimal_creds()
+        creds["myAppStateKeyId"] = key_id
+        creds["app_state_sync_keys"] = {key_id: {"keyData": base64.b64encode(b"a" * 32).decode("ascii")}}
+        store.save_credentials(creds)
+        client = make_socket(AuthState.from_store(store))
+
+        encoded = encode_syncd_patch(
+            chat_modification_to_app_patch({"archive": True}, "chat@s.whatsapp.net"),
+            key_id,
+            LTHashState(),
+            b"a" * 32,
+        )
+        snapshot = proto.SyncdSnapshot()
+        snapshot.version.version = encoded.state.version
+        snapshot.keyId.id = b"k" * 32
+        snapshot.records.append(encoded.patch.mutations[0].record)
+        keys = expand_app_state_keys(b"a" * 32)
+        snapshot.mac = generate_snapshot_mac(encoded.state.hash, encoded.state.version, "regular_low", keys.snapshot_mac_key)
+
+        blob = proto.ExternalBlobReference()
+        blob.directPath = "/snapshot"
+        response = BinaryNode(
+            "iq",
+            {},
+            [
+                BinaryNode(
+                    "sync",
+                    {},
+                    [
+                        BinaryNode(
+                            "collection",
+                            {"name": "regular_low", "version": "0"},
+                            [BinaryNode("snapshot", {}, blob.SerializeToString())],
+                        )
+                    ],
+                )
+            ],
+        )
+        queries = []
+
+        async def fake_query(node, **_kwargs):
+            queries.append(node)
+            return response
+
+        async def fake_download(blob_ref, **_kwargs):
+            assert blob_ref.directPath == "/snapshot"
+            return snapshot.SerializeToString()
+
+        client.query = fake_query
+        monkeypatch.setattr(socket_module, "download_external_blob", fake_download)
+
+        result = await client.sync_app_state(["regular_low"], force_snapshot=True)
+
+        assert queries[0].content[0].content[0].attrs["return_snapshot"] == "true"
+        assert len(result) == 1
+        assert result[0].state.hash == encoded.state.hash
+        assert result[0].mutations[0].index == ["archive", "chat@s.whatsapp.net"]
+        saved = store.load_credentials()
+        assert saved["app_state_sync_versions"]["regular_low"] == encoded.state.to_json()
 
     asyncio.run(scenario())
 

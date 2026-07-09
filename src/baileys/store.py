@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from typing import Any, Iterable
 
 from .events import EventEmitter, ListenerRef
+from .history import HistorySyncResult
 from .messages import MessageKey, MessageUpsert, WAMessage
 
 
@@ -50,9 +51,13 @@ class InMemoryStore:
         async def on_message_receipt_update(updates: list[dict[str, Any]]) -> None:
             self.apply_message_receipt_update(updates)
 
+        async def on_history_set(history: HistorySyncResult) -> None:
+            self.apply_history_sync(history)
+
         self._listener_refs.append(events.on("messages.upsert", on_messages_upsert))
         self._listener_refs.append(events.on("messages.update", on_messages_update))
         self._listener_refs.append(events.on("message-receipt.update", on_message_receipt_update))
+        self._listener_refs.append(events.on("messaging-history.set", on_history_set))
 
     def unbind(self, events: EventEmitter) -> None:
         for ref in self._listener_refs:
@@ -130,6 +135,54 @@ class InMemoryStore:
             stored.pop("user_jid", None)
             self.message_receipts.setdefault(_message_key_tuple(key), {}).setdefault(user_jid, {}).update(stored)
         return StoreUpdate()
+
+    def apply_history_sync(self, history: HistorySyncResult) -> "StoreUpdate":
+        changed_chats: dict[str, Chat] = {}
+        changed_contacts: dict[str, Contact] = {}
+        for item in history.chats:
+            chat = self.chats.get(item.id)
+            if chat is None:
+                chat = Chat(id=item.id)
+                self.chats[item.id] = chat
+            if item.conversation_timestamp is not None:
+                chat.conversation_timestamp = item.conversation_timestamp
+            if item.name:
+                chat.name = item.name
+            chat.unread_count = item.unread_count
+            changed_chats[item.id] = chat
+
+        for item in history.contacts:
+            contact = self.contacts.get(item.id)
+            if contact is None:
+                contact = Contact(id=item.id)
+                self.contacts[item.id] = contact
+            if item.name:
+                contact.name = item.name
+            if item.notify:
+                contact.notify = item.notify
+            changed_contacts[item.id] = contact
+
+        for info in history.messages:
+            jid = info.key.remoteJid or None
+            if not jid:
+                continue
+            message = WAMessage(
+                key=MessageKey(
+                    remote_jid=jid,
+                    id=info.key.id or None,
+                    from_me=info.key.fromMe,
+                    participant=info.key.participant or None,
+                ),
+                message=info.message if info.HasField("message") else None,
+                message_timestamp=int(info.messageTimestamp) if info.messageTimestamp else None,
+                push_name=info.pushName or None,
+                broadcast=bool(info.broadcast),
+            )
+            bucket = self.messages.setdefault(jid, [])
+            if not _has_message(bucket, message):
+                bucket.append(message)
+
+        return StoreUpdate(chats=list(changed_chats.values()), contacts=list(changed_contacts.values()))
 
     def load_messages(self, jid: str, count: int | None = None) -> list[WAMessage]:
         messages = self.messages.get(jid, [])

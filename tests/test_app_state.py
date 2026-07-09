@@ -3,15 +3,18 @@ from __future__ import annotations
 import base64
 
 from baileys.app_state import (
+    apply_app_state_sync,
     app_state_patch_node,
     app_state_sync_request_node,
     app_state_sync_key_request_message,
     chat_modification_to_app_patch,
     decode_syncd_snapshot,
     encode_syncd_patch,
+    extract_app_state_sync_data,
     inject_app_state_sync_key_share,
     extract_app_state_snapshot_info,
     generate_snapshot_mac,
+    AppStateCollectionSync,
     LTHashState,
     lt_hash_subtract_then_add,
     MissingAppStateKey,
@@ -136,6 +139,89 @@ def test_decode_syncd_snapshot_skips_bad_value_mac():
 
     assert decoded.mutations == []
     assert decoded.state.hash == bytes(128)
+
+
+def test_extract_app_state_sync_data_decodes_snapshot_and_patch_nodes():
+    async def scenario():
+        creds = _app_state_creds()
+        encoded = encode_syncd_patch(
+            chat_modification_to_app_patch({"archive": True}, "chat@s.whatsapp.net"),
+            creds["myAppStateKeyId"],
+            LTHashState(),
+            b"a" * 32,
+        )
+        snapshot = proto.SyncdSnapshot()
+        snapshot.version.version = encoded.state.version
+        snapshot.keyId.id = b"k" * 32
+        snapshot.records.append(encoded.patch.mutations[0].record)
+
+        blob = proto.ExternalBlobReference()
+        blob.directPath = "/snapshot"
+        node = BinaryNode(
+            "iq",
+            {},
+            [
+                BinaryNode(
+                    "sync",
+                    {},
+                    [
+                        BinaryNode(
+                            "collection",
+                            {"name": "regular_low", "version": "4", "has_more_patches": "true"},
+                            [
+                                BinaryNode("snapshot", {}, blob.SerializeToString()),
+                                BinaryNode("patches", {}, [BinaryNode("patch", {}, encoded.patch.SerializeToString())]),
+                            ],
+                        )
+                    ],
+                )
+            ],
+        )
+
+        async def fake_download(_blob):
+            return snapshot.SerializeToString()
+
+        syncs = await extract_app_state_sync_data(node, fake_download)
+
+        sync = syncs["regular_low"]
+        assert sync.has_more_patches is True
+        assert sync.snapshot is not None
+        assert sync.snapshot.version.version == 1
+        assert len(sync.patches) == 1
+        assert sync.patches[0].version.version == 5
+
+    __import__("asyncio").run(scenario())
+
+
+def test_apply_app_state_sync_downloads_external_patch_mutations():
+    async def scenario():
+        creds = _app_state_creds()
+        patch_create = chat_modification_to_app_patch({"archive": True}, "chat@s.whatsapp.net")
+        encoded = encode_syncd_patch(patch_create, creds["myAppStateKeyId"], LTHashState(), b"a" * 32)
+        patch = proto.SyncdPatch()
+        patch.CopyFrom(encoded.patch)
+        patch.version.version = encoded.state.version
+        external = proto.SyncdMutations()
+        external.mutations.extend(patch.mutations)
+        del patch.mutations[:]
+        patch.externalMutations.directPath = "/external-patch"
+
+        sync = AppStateCollectionSync("regular_low", False, patches=[patch])
+
+        async def fake_download(blob):
+            assert blob.directPath == "/external-patch"
+            return external.SerializeToString()
+
+        result = await apply_app_state_sync(sync, creds, download_blob=fake_download)
+
+        assert result.collection == "regular_low"
+        assert result.state.hash == encoded.state.hash
+        assert result.state.version == 1
+        assert len(result.mutations) == 1
+        assert result.mutations[0].index == ["archive", "chat@s.whatsapp.net"]
+        assert creds["app_state_sync_versions"]["regular_low"] == result.state.to_json()
+
+    __import__("asyncio").run(scenario())
 
 
 def test_app_state_key_share_updates_credentials():

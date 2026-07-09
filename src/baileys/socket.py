@@ -11,12 +11,15 @@ import websockets
 
 from .auth_state import AuthState, JsonCredentialStore, MultiFileAuthState
 from .app_state import (
+    AppliedAppStateSync,
     AppStateSnapshotInfo,
     MissingAppStateKey,
     WA_PATCH_NAMES,
+    apply_app_state_sync,
     app_state_patch_node,
     app_state_sync_request_node,
     app_state_sync_key_request_message,
+    extract_app_state_sync_data,
     extract_app_state_snapshot_info,
     inject_app_state_sync_key_share,
 )
@@ -30,6 +33,7 @@ from .disconnect import (
     stream_error_to_disconnect,
 )
 from .generated import WAProto_pb2 as proto
+from .history import download_and_process_history_sync_notification, get_history_sync_notification
 from .noise import NoiseHandshake
 from .registration import build_registration_payload
 from .defaults import DEFAULT_ORIGIN, DEFAULT_USER_AGENT, INITIAL_PREKEY_COUNT, MIN_PREKEY_COUNT, WA_WEBSOCKET_URL
@@ -582,11 +586,27 @@ class WhatsAppClient:
             for message in upsert.messages:
                 if message.message is not None:
                     key_ids.extend(inject_app_state_sync_key_share(self.auth_state.credentials, message.message))
+                    history_notification = get_history_sync_notification(message.message)
+                    if history_notification is not None:
+                        try:
+                            history = await download_and_process_history_sync_notification(history_notification, timeout=45)
+                        except Exception as exc:
+                            await self.ev.emit("messaging-history.error", {"message": message, "error": exc})
+                        else:
+                            await self.ev.emit("messaging-history.set", history)
             if key_ids:
-                await self._commit_credentials(self.auth_state.credentials)
-                await self.ev.emit("app-state.keys.update", {"key_ids": key_ids})
+                await self._record_app_state_key_updates(key_ids)
             await self.send_ack(node)
             await self.ev.emit("messages.upsert", upsert)
+
+    async def _record_app_state_key_updates(self, key_ids: list[str]) -> list[str]:
+        blocked = self.auth_state.credentials.get("app_state_blocked_collections") or {}
+        unblocked = [collection for collection, key_id in list(blocked.items()) if key_id in key_ids]
+        for collection in unblocked:
+            blocked.pop(collection, None)
+        await self._commit_credentials(self.auth_state.credentials)
+        await self.ev.emit("app-state.keys.update", {"key_ids": key_ids, "unblocked_collections": unblocked})
+        return unblocked
 
     async def dispatch_notification_node(self, node: BinaryNode) -> NotificationInfo | None:
         info = parse_notification_info(node)
@@ -1183,6 +1203,55 @@ class WhatsAppClient:
         await self.ev.emit("app-state.snapshots", snapshots)
         return snapshots
 
+    async def sync_app_state(
+        self,
+        collections: list[str] | tuple[str, ...] = WA_PATCH_NAMES,
+        *,
+        timeout: float = 30,
+        force_snapshot: bool = False,
+        validate_macs: bool = True,
+    ) -> list[AppliedAppStateSync]:
+        node = app_state_sync_request_node(
+            list(collections),
+            self.queries.next_tag(),
+            versions=self.auth_state.credentials.get("app_state_sync_versions") or {},
+            force_snapshot=force_snapshot,
+        )
+        result = await self.query(node, timeout=timeout, drive_receive=True)
+        download = lambda blob: download_external_blob(blob, timeout=int(timeout))
+        syncs = await extract_app_state_sync_data(result, download)
+        applied: list[AppliedAppStateSync] = []
+        blocked = self.auth_state.credentials.setdefault("app_state_blocked_collections", {})
+        changed = False
+        for sync in syncs.values():
+            try:
+                item = await apply_app_state_sync(
+                    sync,
+                    self.auth_state.credentials,
+                    download_blob=download,
+                    validate_macs=validate_macs,
+                )
+            except MissingAppStateKey as exc:
+                key_id = _missing_app_state_key_id(exc)
+                if key_id and blocked.get(sync.collection) != key_id:
+                    blocked[sync.collection] = key_id
+                    changed = True
+                await self.ev.emit("app-state.sync_blocked", {"collection": sync.collection, "error": exc, "key_id": key_id})
+                continue
+            applied.append(item)
+            if sync.collection in blocked:
+                blocked.pop(sync.collection, None)
+            changed = True
+
+        if changed:
+            await self._commit_credentials(self.auth_state.credentials)
+        if applied:
+            await self.ev.emit("app-state.sync", applied)
+            for item in applied:
+                if item.mutations:
+                    await self.ev.emit("app-state.mutations", {"collection": item.collection, "mutations": item.mutations})
+        return applied
+
     async def archive_chat(self, jid: str, archive: bool = True, *, timeout: float = 30) -> BinaryNode:
         return await self.chat_modify({"archive": archive}, jid, timeout=timeout)
 
@@ -1712,6 +1781,7 @@ class WhatsAppClient:
     chatModify = chat_modify
     requestAppStateSyncKey = request_app_state_sync_key
     fetchAppStateSnapshots = fetch_app_state_snapshots
+    syncAppState = sync_app_state
     initializeSession = initialize_session
     requestPairingCode = request_pairing_code
     digestKeyBundle = digest_key_bundle
@@ -1766,6 +1836,17 @@ def _first_child(node: BinaryNode, tag: str) -> BinaryNode | None:
     for child in node.content:
         if child.tag == tag:
             return child
+    return None
+
+
+def _missing_app_state_key_id(exc: MissingAppStateKey) -> str | None:
+    text = str(exc)
+    marker = "app-state key '"
+    if marker in text:
+        return text.split(marker, 1)[1].split("'", 1)[0]
+    marker = 'key "'
+    if marker in text:
+        return text.split(marker, 1)[1].split('"', 1)[0]
     return None
 
 

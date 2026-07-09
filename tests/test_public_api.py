@@ -36,6 +36,12 @@ def test_public_api_exports_core_building_blocks():
     assert bpt.DirtyInfo
     assert bpt.OfflineInfo
     assert bpt.CallInfo
+    assert bpt.HistorySyncResult
+    assert bpt.HistoryChat
+    assert bpt.HistoryContact
+    assert bpt.LidPnMapping
+    assert callable(bpt.process_history_sync)
+    assert callable(bpt.get_history_sync_notification)
     assert bpt.MessageUpsert
     assert bpt.WAMessage
     assert bpt.QueryManager
@@ -44,6 +50,12 @@ def test_public_api_exports_core_building_blocks():
     assert bpt.RetryRequest
     assert bpt.RetryOutcome
     assert bpt.AppStateKeys
+    assert bpt.AppStateCollectionSync
+    assert bpt.AppliedAppStateSync
+    assert bpt.DecodedAppStatePatch
+    assert callable(bpt.extract_app_state_sync_data)
+    assert callable(bpt.decode_syncd_patch)
+    assert callable(bpt.apply_app_state_sync)
     assert bpt.MediaKeys
     assert bpt.PreKeyNodeResult
     assert bpt.PreKeyMaintenanceResult

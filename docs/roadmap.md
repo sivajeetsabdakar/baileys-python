@@ -227,11 +227,20 @@ tests are stable.
   decrypts `SyncActionData`, applies LT hash/index-map updates, exposes typed
   decoded mutations, and preserves missing-key errors so blocked collections
   can be retried after key-share delivery.
+- App-state sync application now extracts snapshots and inline/external patch
+  nodes from sync responses, downloads external mutation blobs, validates patch
+  and snapshot MACs, persists per-collection LT hash state, and emits decoded
+  mutation events from `WhatsAppClient.sync_app_state()` /
+  `syncAppState`.
+- History sync processing now inflates inline bootstrap payloads, downloads
+  and decrypts `md-msg-hist` payloads, parses `HistorySync` chats, contacts,
+  messages, LID/PN mappings, push names, and binds `messaging-history.set`
+  into the in-memory store.
 - Live proof against the dedicated saved session reports all five core
   collections blocked on key `AAAAAP9V`: `critical_block`,
   `critical_unblock_low`, `regular`, `regular_high`, and `regular_low`.
-- Patch-sequence application, history sync processing, and peer key-share
-  response handling remain open.
+- Peer key-share response delivery and broader live history/app-state replay
+  proof remain open.
 
 ## Live Harness
 

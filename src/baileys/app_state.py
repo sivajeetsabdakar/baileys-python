@@ -111,6 +111,34 @@ class DecodedAppStateSnapshot:
     snapshot_mac_valid: bool | None = None
 
 
+@dataclass(frozen=True)
+class AppStateCollectionSync:
+    collection: str
+    has_more_patches: bool
+    snapshot: proto.SyncdSnapshot | None = None
+    patches: list[proto.SyncdPatch] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class DecodedAppStatePatch:
+    collection: str
+    version: int
+    state: LTHashState
+    mutations: list[AppStateMutation]
+    patch_mac_valid: bool | None = None
+    snapshot_mac_valid: bool | None = None
+
+
+@dataclass(frozen=True)
+class AppliedAppStateSync:
+    collection: str
+    state: LTHashState
+    mutations: list[AppStateMutation]
+    snapshot: DecodedAppStateSnapshot | None = None
+    patches: list[DecodedAppStatePatch] = field(default_factory=list)
+    has_more_patches: bool = False
+
+
 def store_app_state_sync_key(credentials: dict[str, Any], key_id: str, key_data: proto.Message.AppStateSyncKeyData) -> None:
     credentials.setdefault("app_state_sync_keys", {})[key_id] = {
         "keyData": b64(key_data.keyData),
@@ -184,10 +212,35 @@ async def extract_app_state_snapshot_info(
     download_blob: Callable[[proto.ExternalBlobReference], Awaitable[bytes]],
 ) -> list[AppStateSnapshotInfo]:
     snapshots: list[AppStateSnapshotInfo] = []
+    syncs = await extract_app_state_sync_data(node, download_blob)
+    for sync in syncs.values():
+        if sync.snapshot is None:
+            continue
+        snapshot = sync.snapshot
+        key_id = b64(snapshot.keyId.id) if snapshot.HasField("keyId") and snapshot.keyId.id else None
+        snapshots.append(
+            AppStateSnapshotInfo(
+                collection=sync.collection,
+                version=int(snapshot.version.version) if snapshot.HasField("version") else 0,
+                records=len(snapshot.records),
+                key_id=key_id,
+                has_key=bool(key_id and _app_state_key_data(credentials, key_id)),
+                has_more_patches=sync.has_more_patches,
+            )
+        )
+    return snapshots
+
+
+async def extract_app_state_sync_data(
+    node: BinaryNode,
+    download_blob: Callable[[proto.ExternalBlobReference], Awaitable[bytes]],
+) -> dict[str, AppStateCollectionSync]:
+    syncs: dict[str, AppStateCollectionSync] = {}
     for sync in _children(node, "sync"):
         for collection in _children(sync, "collection"):
             name = collection.attrs.get("name") or ""
             has_more = collection.attrs.get("has_more_patches") == "true"
+            snapshot: proto.SyncdSnapshot | None = None
             for snapshot_node in _children(collection, "snapshot"):
                 if not isinstance(snapshot_node.content, bytes):
                     continue
@@ -196,18 +249,28 @@ async def extract_app_state_snapshot_info(
                 snapshot_data = await download_blob(blob)
                 snapshot = proto.SyncdSnapshot()
                 snapshot.ParseFromString(snapshot_data)
-                key_id = b64(snapshot.keyId.id) if snapshot.HasField("keyId") and snapshot.keyId.id else None
-                snapshots.append(
-                    AppStateSnapshotInfo(
-                        collection=name,
-                        version=int(snapshot.version.version) if snapshot.HasField("version") else 0,
-                        records=len(snapshot.records),
-                        key_id=key_id,
-                        has_key=bool(key_id and _app_state_key_data(credentials, key_id)),
-                        has_more_patches=has_more,
-                    )
-                )
-    return snapshots
+                break
+
+            patches: list[proto.SyncdPatch] = []
+            patch_nodes = _children(collection, "patch")
+            for patches_node in _children(collection, "patches"):
+                patch_nodes.extend(_children(patches_node, "patch"))
+            for patch_node in patch_nodes:
+                if not isinstance(patch_node.content, bytes):
+                    continue
+                patch = proto.SyncdPatch()
+                patch.ParseFromString(patch_node.content)
+                if not patch.HasField("version") and collection.attrs.get("version") is not None:
+                    patch.version.version = int(collection.attrs["version"]) + 1
+                patches.append(patch)
+
+            syncs[name] = AppStateCollectionSync(
+                collection=name,
+                has_more_patches=has_more,
+                snapshot=snapshot,
+                patches=patches,
+            )
+    return syncs
 
 
 def app_state_patch_node(
@@ -401,6 +464,125 @@ def decode_syncd_snapshot(
     return DecodedAppStateSnapshot(info=info, state=state, mutations=mutations, snapshot_mac_valid=snapshot_mac_valid)
 
 
+async def decode_syncd_patch(
+    collection: str,
+    patch: proto.SyncdPatch,
+    state: LTHashState,
+    credentials: dict[str, Any],
+    *,
+    download_blob: Callable[[proto.ExternalBlobReference], Awaitable[bytes]] | None = None,
+    minimum_version_number: int | None = None,
+    validate_macs: bool = True,
+) -> DecodedAppStatePatch:
+    patch = copy.deepcopy(patch)
+    if patch.HasField("externalMutations"):
+        if download_blob is None:
+            raise ValueError("external app-state mutations require a download_blob callback")
+        mutations_data = await download_blob(patch.externalMutations)
+        external = proto.SyncdMutations()
+        external.ParseFromString(mutations_data)
+        patch.mutations.extend(external.mutations)
+
+    version = int(patch.version.version) if patch.HasField("version") else state.version + 1
+    working = copy.deepcopy(state)
+    working.version = version
+
+    patch_mac_valid: bool | None = None
+    key_id = b64(patch.keyId.id) if patch.HasField("keyId") and patch.keyId.id else None
+    key_data = _app_state_key_data(credentials, key_id) if key_id else None
+    if validate_macs:
+        if not key_id or not key_data:
+            raise MissingAppStateKey(f"failed to find app-state key {key_id!r} to decode {collection}")
+        keys = expand_app_state_keys(key_data)
+        value_macs = [_record_value_mac(mutation.record) for mutation in patch.mutations if mutation.HasField("record")]
+        expected_patch_mac = generate_patch_mac(patch.snapshotMac, value_macs, version, collection, keys.patch_mac_key)
+        patch_mac_valid = expected_patch_mac == patch.patchMac
+        if not patch_mac_valid:
+            raise ValueError("Invalid patch mac")
+
+    should_emit = minimum_version_number is None or version > minimum_version_number
+    decoded_state, mutations = decode_syncd_mutations(
+        patch.mutations,
+        working,
+        credentials,
+        collection,
+        validate_macs=validate_macs,
+        emit_mutations=should_emit,
+    )
+
+    snapshot_mac_valid: bool | None = None
+    if validate_macs and key_data and patch.snapshotMac:
+        keys = expand_app_state_keys(key_data)
+        expected_snapshot_mac = generate_snapshot_mac(decoded_state.hash, decoded_state.version, collection, keys.snapshot_mac_key)
+        snapshot_mac_valid = expected_snapshot_mac == patch.snapshotMac
+
+    return DecodedAppStatePatch(
+        collection=collection,
+        version=version,
+        state=decoded_state,
+        mutations=mutations,
+        patch_mac_valid=patch_mac_valid,
+        snapshot_mac_valid=snapshot_mac_valid,
+    )
+
+
+async def apply_app_state_sync(
+    sync: AppStateCollectionSync,
+    credentials: dict[str, Any],
+    *,
+    download_blob: Callable[[proto.ExternalBlobReference], Awaitable[bytes]] | None = None,
+    minimum_version_number: int | None = None,
+    validate_macs: bool = True,
+) -> AppliedAppStateSync:
+    stored_state = LTHashState.from_json((credentials.get("app_state_sync_versions") or {}).get(sync.collection))
+    decoded_snapshot: DecodedAppStateSnapshot | None = None
+    patches: list[DecodedAppStatePatch] = []
+    mutations: list[AppStateMutation] = []
+    state = stored_state
+
+    if sync.snapshot is not None:
+        decoded_snapshot = decode_syncd_snapshot(
+            sync.collection,
+            sync.snapshot,
+            credentials,
+            minimum_version_number=minimum_version_number,
+            validate_macs=validate_macs,
+        )
+        state = decoded_snapshot.state
+        mutations.extend(decoded_snapshot.mutations)
+
+    for patch in sync.patches:
+        try:
+            decoded_patch = await decode_syncd_patch(
+                sync.collection,
+                patch,
+                state,
+                credentials,
+                download_blob=download_blob,
+                minimum_version_number=minimum_version_number,
+                validate_macs=validate_macs,
+            )
+        except MissingAppStateKey:
+            raise
+        except Exception:
+            continue
+        patches.append(decoded_patch)
+        state = decoded_patch.state
+        mutations.extend(decoded_patch.mutations)
+        if decoded_patch.snapshot_mac_valid is False:
+            break
+
+    credentials.setdefault("app_state_sync_versions", {})[sync.collection] = state.to_json()
+    return AppliedAppStateSync(
+        collection=sync.collection,
+        state=state,
+        mutations=mutations,
+        snapshot=decoded_snapshot,
+        patches=patches,
+        has_more_patches=sync.has_more_patches,
+    )
+
+
 def chat_modification_to_app_patch(modification: dict[str, Any], jid: str) -> AppPatchCreate:
     value = proto.SyncActionValue()
     value.timestamp = int(time.time() * 1000)
@@ -521,6 +703,12 @@ def _mutation_record(item: proto.SyncdMutation | proto.SyncdRecord) -> tuple[int
             return item.operation, proto.SyncdRecord()
         return item.operation, item.record
     return proto.SyncdMutation.SET, item
+
+
+def _record_value_mac(record: proto.SyncdRecord) -> bytes:
+    if not record.HasField("value") or len(record.value.blob) < 32:
+        return b""
+    return record.value.blob[-32:]
 
 
 def _mix_lthash_mutation(state: LTHashState, index_mac: bytes, value_mac: bytes, operation: int) -> None:
