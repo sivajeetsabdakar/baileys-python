@@ -236,14 +236,17 @@ tests are stable.
   and decrypts `md-msg-hist` payloads, parses `HistorySync` chats, contacts,
   messages, LID/PN mappings, push names, and binds `messaging-history.set`
   into the in-memory store.
+- Live saved-session proof received and processed a
+  `HISTORY_SYNC_NOTIFICATION` push-name sync with 14 contacts and no history
+  processing errors.
 - Live proof against the dedicated saved session reports all five core
   collections blocked on key `AAAAAP9V`: `critical_block`,
   `critical_unblock_low`, `regular`, `regular_high`, and `regular_low`.
 - A direct app-state sync-key request for `AAAAAP9V` is ACKed by the server,
   but the primary device does not return an `APP_STATE_SYNC_KEY_SHARE` during
   the probe window on the current saved sessions.
-- Peer key-share response delivery and broader live history/app-state replay
-  proof remain open.
+- Peer key-share response delivery and broader app-state replay proof remain
+  open.
 
 ## Live Harness
 
