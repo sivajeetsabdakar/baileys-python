@@ -615,6 +615,37 @@ def chat_modification_to_app_patch(modification: dict[str, Any], jid: str) -> Ap
     if "pushNameSetting" in modification:
         value.pushNameSetting.name = str(modification["pushNameSetting"])
         return AppPatchCreate("critical_block", ["setting_pushName"], value, 1)
+    if "addLabel" in modification:
+        label = modification["addLabel"]
+        label_id = str(label["id"])
+        value.labelEditAction.name = str(label.get("name") or "")
+        if label.get("color") is not None:
+            value.labelEditAction.color = int(label["color"])
+        if label.get("predefinedId") is not None:
+            value.labelEditAction.predefinedId = int(label["predefinedId"])
+        value.labelEditAction.deleted = bool(label.get("deleted", False))
+        if label.get("orderIndex") is not None:
+            value.labelEditAction.orderIndex = int(label["orderIndex"])
+        if label.get("isActive") is not None:
+            value.labelEditAction.isActive = bool(label["isActive"])
+        if label.get("type") is not None:
+            value.labelEditAction.type = int(label["type"])
+        if label.get("isImmutable") is not None:
+            value.labelEditAction.isImmutable = bool(label["isImmutable"])
+        if label.get("muteEndTimeMs") is not None:
+            value.labelEditAction.muteEndTimeMs = int(label["muteEndTimeMs"])
+        return AppPatchCreate("regular", ["label_edit", label_id], value, 2)
+    if "addChatLabel" in modification or "removeChatLabel" in modification:
+        action = modification.get("addChatLabel") or modification.get("removeChatLabel")
+        label_id = str(action["labelId"])
+        value.labelAssociationAction.labeled = "addChatLabel" in modification
+        return AppPatchCreate("regular", ["label_jid", label_id, jid], value, 3)
+    if "addMessageLabel" in modification or "removeMessageLabel" in modification:
+        action = modification.get("addMessageLabel") or modification.get("removeMessageLabel")
+        label_id = str(action["labelId"])
+        message_id = str(action["messageId"])
+        value.labelAssociationAction.labeled = "addMessageLabel" in modification
+        return AppPatchCreate("regular", ["label_message", label_id, jid, message_id, "0", "0"], value, 3)
     raise ValueError(f"unsupported chat modification keys: {', '.join(sorted(modification))}")
 
 

@@ -36,6 +36,10 @@ def test_public_api_exports_core_building_blocks():
     assert bpt.DirtyInfo
     assert bpt.OfflineInfo
     assert bpt.CallInfo
+    assert bpt.CatalogResult
+    assert bpt.Product
+    assert bpt.MexError
+    assert bpt.NewsletterMetadata
     assert bpt.HistorySyncResult
     assert bpt.HistoryChat
     assert bpt.HistoryContact
@@ -79,6 +83,24 @@ def test_public_api_exports_core_building_blocks():
     assert callable(bpt.parse_dirty_info)
     assert callable(bpt.parse_offline_info)
     assert callable(bpt.parse_call_info)
+    assert callable(bpt.catalog_node)
+    assert callable(bpt.parse_catalog)
+    assert callable(bpt.wmex_query_node)
+    assert callable(bpt.parse_wmex_result)
+    assert callable(bpt.newsletter_metadata_query)
+    assert callable(bpt.parse_newsletter_metadata)
+    assert callable(bpt.community_metadata_node)
+    assert callable(bpt.community_create_node)
+    assert callable(bpt.parse_community_metadata)
+    assert hasattr(bpt.WhatsAppClient, "updateBusinessProfile")
+    assert hasattr(bpt.WhatsAppClient, "getCatalog")
+    assert hasattr(bpt.WhatsAppClient, "productCreate")
+    assert hasattr(bpt.WhatsAppClient, "executeWMexQuery")
+    assert hasattr(bpt.WhatsAppClient, "newsletterMetadata")
+    assert hasattr(bpt.WhatsAppClient, "communityMetadata")
+    assert hasattr(bpt.WhatsAppClient, "rejectCall")
+    assert hasattr(bpt.WhatsAppClient, "createCallLink")
+    assert hasattr(bpt.WhatsAppClient, "addChatLabel")
 
 
 def test_client_defaults_and_package_data_are_importable(tmp_path):

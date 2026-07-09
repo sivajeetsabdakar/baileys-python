@@ -19,8 +19,8 @@ Baileys names such as `sendMessage`, `relayMessage`, `groupMetadata`,
 | 3 | Event/store and inbound pipeline | Done |
 | 4 | Outbound messages and media breadth | Done |
 | 5 | Chats, profile, privacy, groups | Done |
-| 6 | History and app-state completeness | In progress |
-| 7 | Business, newsletters, communities, edge surfaces | Not started |
+| 6 | History and app-state completeness | Done |
+| 7 | Business, newsletters, communities, edge surfaces | Partial |
 | 8 | Core beta release hardening | Not started |
 | 9 | Full parity hardening | Not started |
 
@@ -228,7 +228,7 @@ tests are stable.
   response before timeout. Product APIs now raise explicit IQ errors for these
   server-side rejections instead of returning empty success results.
 
-## Phase 6 In Progress
+## Phase 6 Delivered
 
 - Added `WhatsAppClient.fetch_app_state_snapshots()` /
   `fetchAppStateSnapshots` for app-state collection snapshot requests.
@@ -261,6 +261,50 @@ tests are stable.
 - Saved reconnect with the refreshed session re-applies all five app-state
   collections with zero blocked collections, zero decrypt errors, and zero
   history processing errors.
+- Re-verification through `scripts/app_state_key_probe.py --sync-app-state`
+  applied all five app-state collections on a saved session without blocked
+  collections, decrypt errors, or history processing errors.
+
+## Phase 7 Partial
+
+- Added WAM binary telemetry encoding primitives with Pythonic
+  `encode_wam` and Baileys-style `encodeWAM` aliases. The encoder supports the
+  Node WAM packet header, globals, event ids, property ids, compact integer
+  values, strings, floats, and validation errors. The full generated event and
+  global constants table remains a data-generation follow-up.
+- Added MEX query helpers and response parsing for `w:mex` GraphQL stanzas,
+  including typed `MexError` failures for server-side GraphQL errors.
+- Added business/profile commerce APIs on `WhatsAppClient`: business profile
+  update, catalog reads, collection reads, order details, product create,
+  product update, and product delete, with Baileys-compatible aliases.
+- Added product/catalog node builders and parsers for catalog results, product
+  mutations, and product delete responses.
+- Added newsletter/MEX APIs for create, update, metadata, follow, unfollow,
+  mute, unmute, subscribers, admin count, ownership/demote/delete operations,
+  reactions, message fetch, and live-update subscription, with
+  Baileys-compatible aliases.
+- Added community APIs for metadata, create, linked group create, leave,
+  subject/description updates, participants update, invite fetch/revoke,
+  settings, member-add mode, and join-approval mode, with parsers and
+  Baileys-compatible aliases.
+- Added call helpers for call reject and call-link creation.
+- Added label app-state patch helpers for label edit, chat label association,
+  and message label association through `chat_modify`, plus common
+  Baileys-style aliases.
+- Added `scripts/phase7_live_probe.py` for read-only live checks of catalog,
+  MEX reachout/message-capping, newsletter metadata, and community metadata.
+- Offline tests cover WAM encoding, MEX response parsing, newsletter query
+  shapes, business/catalog/product nodes, community nodes/parsers, label
+  app-state patches, public exports, and client aliases.
+- Live read-only Phase 7 proof currently confirms account reachout timelock
+  MEX access. Catalog reads are account-gated on the current non-catalog
+  account with `item-not-found`, and message-capping MEX currently returns a
+  server GraphQL bad request for this account/request shape.
+- Remaining Phase 7 parity gaps are full WAM constants generation, WAM upload
+  submission, product media/cover-photo flows, newsletter live event
+  processing, enabled-account newsletter/community/business live mutations,
+  reporting token helpers, privacy-token helpers, and broader public-method
+  parity checks.
 
 ## Live Harness
 
@@ -287,11 +331,14 @@ tests are stable.
 - `scripts/app_state_key_probe.py` covers product app-state snapshot
   fetch/decrypt diagnostics, app-state sync application, blocked-key
   persistence, history event visibility, and app-state sync-key request probes.
+- `scripts/phase7_live_probe.py` covers read-only Phase 7 catalog, MEX,
+  newsletter metadata, and community metadata checks where the account has the
+  required capabilities.
 
 ## Current Verification
 
 - Offline compile check passes for `src`, `scripts`, and `examples`.
-- Offline test suite passes with 130 tests.
+- Offline test suite passes with 142 tests.
 - WABinary token and WAProto generated artifact checks pass.
 - Product QR pairing and saved reconnect pass against the dedicated test
   account.
@@ -306,5 +353,10 @@ tests are stable.
 - Live app-state key-share delivery and replay are proven on a freshly linked
   saved session. Profile-name/chat patch write probes can now be retried
   against that refreshed session.
+- Latest Phase 6 re-verification applied all five saved app-state collections
+  without blocked collections, decrypt errors, or history processing errors.
+- Latest Phase 7 read-only probe confirms account reachout timelock MEX access.
+  Catalog and message-capping checks are account/server-gated on the current
+  account and are reported as such by `scripts/phase7_live_probe.py`.
 - Public docs are kept to relative repository paths and avoid local machine
   setup details.

@@ -37,6 +37,8 @@ from .app_state import (
     lt_hash_subtract_then_add,
 )
 from .client import WhatsAppWebClient
+from .business import CatalogResult, Product, catalog_node, parse_catalog
+from .communities import community_create_node, community_metadata_node, parse_community_metadata
 from .crypto import (
     aes_decrypt_cbc,
     aes_decrypt_ctr,
@@ -108,6 +110,8 @@ from .message_send import (
     build_text_message_node,
 )
 from .messages import MessageKey, MessageUpsert, WAMessage, build_message_upsert
+from .mex import MexError, parse_wmex_result, wmex_query_node
+from .newsletter import NewsletterMetadata, newsletter_metadata_query, parse_newsletter_metadata
 from .notifications import (
     CallInfo,
     DirtyInfo,
@@ -152,6 +156,7 @@ from .receipts import (
 from .socket import MediaSendResult, ReconnectPolicy, SendMessageResult, SocketConfig, WhatsAppClient, make_socket, makeWASocket
 from .store import Chat, Contact, InMemoryStore, makeInMemoryStore, make_in_memory_store
 from .wabinary import BinaryNode, decode_binary_node, encode_binary_node
+from .wam import WAMBinaryInfo, WAMEncodeError, WAMEvent, WAMEventSpec, encodeWAM, encode_wam
 from .whatsapp_keys import AppStateKeys, MediaKeys, derive_media_keys, expand_app_state_keys, media_hkdf_info_key
 
 __all__ = [
@@ -166,6 +171,7 @@ __all__ = [
     "AppStateSnapshotInfo",
     "Chat",
     "CallInfo",
+    "CatalogResult",
     "Contact",
     "DirectorySignalKeyStore",
     "DisconnectError",
@@ -196,7 +202,9 @@ __all__ = [
     "MediaPayload",
     "MediaSendResult",
     "MediaUploadResult",
+    "MexError",
     "MultiFileAuthState",
+    "NewsletterMetadata",
     "NotificationInfo",
     "OfflineInfo",
     "OutboundMessage",
@@ -206,6 +214,7 @@ __all__ = [
     "PreKeyMaintenanceResult",
     "PreKeyNodeResult",
     "ParticipantUpdateResult",
+    "Product",
     "QRPairingRequest",
     "QueryManager",
     "QueryResult",
@@ -219,6 +228,10 @@ __all__ = [
     "SocketConfig",
     "TagGenerator",
     "WAMessage",
+    "WAMBinaryInfo",
+    "WAMEncodeError",
+    "WAMEvent",
+    "WAMEventSpec",
     "WA_PATCH_NAMES",
     "WhatsAppClient",
     "WhatsAppWebClient",
@@ -245,7 +258,10 @@ __all__ = [
     "build_receipt_node",
     "build_text_message_node",
     "can_ack_node",
+    "catalog_node",
     "chat_modification_to_app_patch",
+    "community_create_node",
+    "community_metadata_node",
     "decompress_if_required",
     "derive_media_keys",
     "derive_pairing_code_key",
@@ -257,6 +273,8 @@ __all__ = [
     "download_and_process_history_sync_notification",
     "download_history_sync",
     "encode_binary_node",
+    "encodeWAM",
+    "encode_wam",
     "encode_syncd_patch",
     "expand_app_state_keys",
     "extract_app_state_sync_data",
@@ -308,11 +326,15 @@ __all__ = [
     "parse_receipt_info",
     "parse_retry_request",
     "parse_call_info",
+    "parse_catalog",
+    "parse_community_metadata",
     "process_history_sync",
     "parse_dirty_info",
     "parse_notification_info",
     "parse_offline_info",
     "parse_iq_error",
+    "parse_newsletter_metadata",
+    "parse_wmex_result",
     "pairing_code_finish_node",
     "pairing_code_hello_node",
     "pairing_code_request_node",
@@ -327,4 +349,6 @@ __all__ = [
     "transfer_device",
     "useMultiFileAuthState",
     "use_multi_file_auth_state",
+    "newsletter_metadata_query",
+    "wmex_query_node",
 ]

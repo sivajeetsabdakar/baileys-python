@@ -71,6 +71,36 @@ from .chat_groups import (
     profile_picture_url_node,
     profile_status_update_node,
 )
+from .business import (
+    CatalogResult,
+    catalog_node,
+    collections_node,
+    order_details_node,
+    parse_catalog,
+    parse_product_mutation,
+    parse_product_delete,
+    product_create_node,
+    product_delete_node,
+    product_update_node,
+    update_business_profile_node,
+)
+from .communities import (
+    community_create_group_node,
+    community_create_node,
+    community_invite_code_node,
+    community_join_approval_mode_node,
+    community_leave_node,
+    community_member_add_mode_node,
+    community_metadata_node,
+    community_participants_update_node,
+    community_revoke_invite_node,
+    community_setting_update_node,
+    community_update_description_node,
+    community_update_subject_node,
+    parse_community_invite_code,
+    parse_community_metadata,
+    parse_community_participant_update,
+)
 from .media import (
     MediaConn,
     MediaPayload,
@@ -85,6 +115,20 @@ from .media import (
     upload_media,
 )
 from .message_send import OutboundMessage, build_message_content_node, build_proto_message_node
+from .mex import QUERY_IDS, XWA_PATHS, parse_wmex_result, wmex_query_node
+from .newsletter import (
+    NewsletterMetadata,
+    newsletter_create_query,
+    newsletter_fetch_messages_node,
+    newsletter_live_updates_node,
+    newsletter_metadata_query,
+    newsletter_owner_query,
+    newsletter_reaction_node,
+    newsletter_simple_query,
+    newsletter_update_query,
+    parse_live_update_duration,
+    parse_newsletter_metadata,
+)
 from .jid import is_jid_group, jid_decode_tuple, jid_encode, jid_normalized_user, phone_number_to_jid
 from .noise import generate_noise_key_pair
 from .pairing_code import (
@@ -124,6 +168,7 @@ from .socket_nodes import (
     SocketNodeKind,
     classify_node,
     client_ping_node,
+    find_child,
     logout_node,
     offline_batch_node,
     passive_active_node,
@@ -1062,6 +1107,234 @@ class WhatsAppClient:
     async def remove_profile_picture(self, jid: str, *, timeout: float = 30) -> None:
         await self._query_checked(profile_picture_remove_node(jid, self.queries.next_tag(), own_jid=_me_id(self.auth_state.credentials)), timeout=timeout)
 
+    async def update_business_profile(self, updates: dict[str, Any], *, timeout: float = 30) -> BinaryNode:
+        return await self._query_checked(update_business_profile_node(updates, self.queries.next_tag()), timeout=timeout)
+
+    async def get_catalog(
+        self,
+        jid: str | None = None,
+        *,
+        limit: int = 10,
+        cursor: str | None = None,
+        timeout: float = 30,
+    ) -> CatalogResult:
+        target = jid or self.auth_state.credentials.get("me", {}).get("id")
+        if not target:
+            raise RuntimeError("cannot fetch catalog before login")
+        result = await self._query_checked(catalog_node(target, self.queries.next_tag(), limit=limit, cursor=cursor), timeout=timeout)
+        return parse_catalog(result)
+
+    async def get_collections(self, jid: str | None = None, *, limit: int = 51, timeout: float = 30) -> BinaryNode:
+        target = jid or self.auth_state.credentials.get("me", {}).get("id")
+        if not target:
+            raise RuntimeError("cannot fetch collections before login")
+        return await self._query_checked(collections_node(target, self.queries.next_tag(), limit=limit), timeout=timeout)
+
+    async def get_order_details(self, order_id: str, token_base64: str, *, timeout: float = 30) -> BinaryNode:
+        return await self._query_checked(order_details_node(order_id, token_base64, self.queries.next_tag()), timeout=timeout)
+
+    async def product_create(self, product: dict[str, Any], *, timeout: float = 30) -> Any:
+        result = await self._query_checked(product_create_node(product, self.queries.next_tag()), timeout=timeout)
+        return parse_product_mutation(result, "product_catalog_add")
+
+    async def product_update(self, product_id: str, product: dict[str, Any], *, timeout: float = 30) -> Any:
+        result = await self._query_checked(product_update_node(product_id, product, self.queries.next_tag()), timeout=timeout)
+        return parse_product_mutation(result, "product_catalog_edit")
+
+    async def product_delete(self, product_ids: list[str], *, timeout: float = 30) -> dict[str, int]:
+        result = await self._query_checked(product_delete_node(product_ids, self.queries.next_tag()), timeout=timeout)
+        return {"deleted": parse_product_delete(result)}
+
+    async def execute_wmex_query(
+        self,
+        variables: dict[str, Any],
+        query_id: str,
+        data_path: str | None = None,
+        *,
+        timeout: float = 30,
+    ) -> Any:
+        result = await self._query_checked(wmex_query_node(variables, query_id, self.queries.next_tag()), timeout=timeout)
+        return parse_wmex_result(result, data_path)
+
+    async def newsletter_create(self, name: str, description: str | None = None, *, timeout: float = 30) -> NewsletterMetadata | None:
+        node, path = newsletter_create_query(name, description, self.queries.next_tag())
+        return parse_newsletter_metadata(parse_wmex_result(await self._query_checked(node, timeout=timeout), path))
+
+    async def newsletter_update(self, jid: str, updates: dict[str, Any], *, timeout: float = 30) -> Any:
+        node, path = newsletter_update_query(jid, updates, self.queries.next_tag())
+        return parse_wmex_result(await self._query_checked(node, timeout=timeout), path)
+
+    async def newsletter_metadata(self, kind: str, key: str, *, timeout: float = 30) -> NewsletterMetadata | None:
+        node, path = newsletter_metadata_query(kind, key, self.queries.next_tag())
+        return parse_newsletter_metadata(parse_wmex_result(await self._query_checked(node, timeout=timeout), path))
+
+    async def newsletter_follow(self, jid: str, *, timeout: float = 30) -> Any:
+        return await self._newsletter_simple(jid, "FOLLOW", timeout=timeout)
+
+    async def newsletter_unfollow(self, jid: str, *, timeout: float = 30) -> Any:
+        return await self._newsletter_simple(jid, "UNFOLLOW", timeout=timeout)
+
+    async def newsletter_mute(self, jid: str, *, timeout: float = 30) -> Any:
+        return await self._newsletter_simple(jid, "MUTE", timeout=timeout)
+
+    async def newsletter_unmute(self, jid: str, *, timeout: float = 30) -> Any:
+        return await self._newsletter_simple(jid, "UNMUTE", timeout=timeout)
+
+    async def newsletter_subscribers(self, jid: str, *, timeout: float = 30) -> Any:
+        return await self._newsletter_simple(jid, "SUBSCRIBERS", timeout=timeout)
+
+    async def newsletter_admin_count(self, jid: str, *, timeout: float = 30) -> int | None:
+        response = await self._newsletter_simple(jid, "ADMIN_COUNT", timeout=timeout)
+        return int(response["admin_count"]) if isinstance(response, dict) and response.get("admin_count") is not None else None
+
+    async def newsletter_change_owner(self, jid: str, new_owner_jid: str, *, timeout: float = 30) -> Any:
+        node, path = newsletter_owner_query(jid, new_owner_jid, "CHANGE_OWNER", self.queries.next_tag())
+        return parse_wmex_result(await self._query_checked(node, timeout=timeout), path)
+
+    async def newsletter_demote(self, jid: str, user_jid: str, *, timeout: float = 30) -> Any:
+        node, path = newsletter_owner_query(jid, user_jid, "DEMOTE", self.queries.next_tag())
+        return parse_wmex_result(await self._query_checked(node, timeout=timeout), path)
+
+    async def newsletter_delete(self, jid: str, *, timeout: float = 30) -> Any:
+        return await self._newsletter_simple(jid, "DELETE", timeout=timeout)
+
+    async def newsletter_react_message(self, jid: str, server_id: str, reaction: str | None = None) -> None:
+        await self.send_node(newsletter_reaction_node(jid, server_id, self.queries.next_tag(), reaction))
+
+    async def newsletter_fetch_messages(
+        self,
+        jid: str,
+        count: int,
+        since: int | None = None,
+        after: int | None = None,
+        *,
+        timeout: float = 30,
+    ) -> BinaryNode:
+        return await self._query_checked(newsletter_fetch_messages_node(jid, count, since, after, self.queries.next_tag()), timeout=timeout)
+
+    async def subscribe_newsletter_updates(self, jid: str, *, timeout: float = 30) -> dict[str, str] | None:
+        result = await self._query_checked(newsletter_live_updates_node(jid, self.queries.next_tag()), timeout=timeout)
+        duration = parse_live_update_duration(result)
+        return {"duration": duration} if duration else None
+
+    async def _newsletter_simple(self, jid: str, operation: str, *, timeout: float = 30) -> Any:
+        node, path = newsletter_simple_query(jid, operation, self.queries.next_tag())
+        return parse_wmex_result(await self._query_checked(node, timeout=timeout), path)
+
+    async def fetch_account_reachout_timelock(self, *, timeout: float = 30) -> Any:
+        return await self.execute_wmex_query({}, QUERY_IDS["REACHOUT_TIMELOCK"], XWA_PATHS["REACHOUT_TIMELOCK"], timeout=timeout)
+
+    async def fetch_message_capping_info(self, *, timeout: float = 30) -> Any:
+        return await self.execute_wmex_query({}, QUERY_IDS["MESSAGE_CAPPING_INFO"], XWA_PATHS["MESSAGE_CAPPING_INFO"], timeout=timeout)
+
+    async def community_metadata(self, jid: str, *, timeout: float = 30) -> GroupMetadata:
+        result = await self._query_checked(community_metadata_node(jid, self.queries.next_tag()), timeout=timeout)
+        metadata = parse_community_metadata(result)
+        await self.ev.emit("groups.update", [metadata])
+        return metadata
+
+    async def community_create(self, subject: str, description: str = "", *, timeout: float = 30) -> GroupMetadata:
+        result = await self._query_checked(community_create_node(subject, description, self.queries.next_tag()), timeout=timeout)
+        metadata = parse_community_metadata(result)
+        await self.ev.emit("groups.update", [metadata])
+        return metadata
+
+    async def community_create_group(
+        self,
+        subject: str,
+        participants: list[str],
+        parent_community_jid: str,
+        *,
+        timeout: float = 30,
+    ) -> GroupMetadata:
+        result = await self._query_checked(
+            community_create_group_node(subject, participants, parent_community_jid, self.queries.next_tag()),
+            timeout=timeout,
+        )
+        metadata = parse_community_metadata(result)
+        await self.ev.emit("groups.update", [metadata])
+        return metadata
+
+    async def community_leave(self, jid: str, *, timeout: float = 30) -> None:
+        await self._query_checked(community_leave_node(jid, self.queries.next_tag()), timeout=timeout)
+        await self.ev.emit("groups.update", [{"id": jid, "left": True}])
+
+    async def community_update_subject(self, jid: str, subject: str, *, timeout: float = 30) -> None:
+        await self._query_checked(community_update_subject_node(jid, subject, self.queries.next_tag()), timeout=timeout)
+        await self.ev.emit("groups.update", [{"id": jid, "subject": subject}])
+
+    async def community_update_description(self, jid: str, description: str | None, *, timeout: float = 30) -> None:
+        metadata = await self.community_metadata(jid, timeout=timeout)
+        await self._query_checked(community_update_description_node(jid, description, self.queries.next_tag(), previous_id=metadata.desc_id), timeout=timeout)
+        await self.ev.emit("groups.update", [{"id": jid, "desc": description}])
+
+    async def community_participants_update(
+        self,
+        jid: str,
+        participants: list[str],
+        action: str,
+        *,
+        timeout: float = 30,
+    ) -> list[ParticipantUpdateResult]:
+        result = await self._query_checked(community_participants_update_node(jid, participants, action, self.queries.next_tag()), timeout=timeout)
+        updates = parse_community_participant_update(result, action)
+        await self.ev.emit("group-participants.update", {"id": jid, "participants": participants, "action": action, "results": updates})
+        return updates
+
+    async def community_invite_code(self, jid: str, *, timeout: float = 30) -> str | None:
+        result = await self._query_checked(community_invite_code_node(jid, self.queries.next_tag()), timeout=timeout)
+        return parse_community_invite_code(result)
+
+    async def community_revoke_invite(self, jid: str, *, timeout: float = 30) -> str | None:
+        result = await self._query_checked(community_revoke_invite_node(jid, self.queries.next_tag()), timeout=timeout)
+        return parse_community_invite_code(result)
+
+    async def community_setting_update(self, jid: str, setting: str, *, timeout: float = 30) -> None:
+        await self._query_checked(community_setting_update_node(jid, setting, self.queries.next_tag()), timeout=timeout)
+
+    async def community_member_add_mode(self, jid: str, mode: str, *, timeout: float = 30) -> None:
+        await self._query_checked(community_member_add_mode_node(jid, mode, self.queries.next_tag()), timeout=timeout)
+
+    async def community_join_approval_mode(self, jid: str, mode: str, *, timeout: float = 30) -> None:
+        await self._query_checked(community_join_approval_mode_node(jid, mode, self.queries.next_tag()), timeout=timeout)
+
+    async def reject_call(self, call_id: str, call_from: str) -> None:
+        me = self.auth_state.credentials.get("me", {}).get("id")
+        if not me:
+            raise RuntimeError("cannot reject call before login")
+        await self.send_node(
+            BinaryNode(
+                "call",
+                {"from": me, "to": call_from},
+                [BinaryNode("reject", {"call-id": call_id, "call-creator": call_from, "count": "0"})],
+            )
+        )
+
+    async def create_call_link(self, call_type: str, *, start_time: int | None = None, timeout: float = 30) -> str | None:
+        content = [BinaryNode("event", {"start_time": str(start_time)})] if start_time is not None else None
+        result = await self.query(
+            BinaryNode("call", {"id": self.queries.next_tag(), "to": "@call"}, [BinaryNode("link_create", {"media": call_type}, content)]),
+            timeout=timeout,
+            drive_receive=True,
+        )
+        child = find_child(result, "link_create")
+        return child.attrs.get("token") if child is not None else None
+
+    async def add_label(self, jid: str, label: dict[str, Any], *, timeout: float = 30) -> BinaryNode:
+        return await self.chat_modify({"addLabel": label}, jid, timeout=timeout)
+
+    async def add_chat_label(self, jid: str, label_id: str, *, timeout: float = 30) -> BinaryNode:
+        return await self.chat_modify({"addChatLabel": {"labelId": label_id}}, jid, timeout=timeout)
+
+    async def remove_chat_label(self, jid: str, label_id: str, *, timeout: float = 30) -> BinaryNode:
+        return await self.chat_modify({"removeChatLabel": {"labelId": label_id}}, jid, timeout=timeout)
+
+    async def add_message_label(self, jid: str, message_id: str, label_id: str, *, timeout: float = 30) -> BinaryNode:
+        return await self.chat_modify({"addMessageLabel": {"messageId": message_id, "labelId": label_id}}, jid, timeout=timeout)
+
+    async def remove_message_label(self, jid: str, message_id: str, label_id: str, *, timeout: float = 30) -> BinaryNode:
+        return await self.chat_modify({"removeMessageLabel": {"messageId": message_id, "labelId": label_id}}, jid, timeout=timeout)
+
     async def on_whatsapp(self, *jids: str, timeout: float = 30) -> list[dict[str, Any]]:
         if not jids:
             return []
@@ -1782,6 +2055,51 @@ class WhatsAppClient:
     updateProfileName = update_profile_name
     updateProfilePicture = update_profile_picture
     removeProfilePicture = remove_profile_picture
+    updateBusinessProfile = update_business_profile
+    updateBussinesProfile = update_business_profile
+    getCatalog = get_catalog
+    getCollections = get_collections
+    getOrderDetails = get_order_details
+    productCreate = product_create
+    productUpdate = product_update
+    productDelete = product_delete
+    executeWMexQuery = execute_wmex_query
+    newsletterCreate = newsletter_create
+    newsletterUpdate = newsletter_update
+    newsletterMetadata = newsletter_metadata
+    newsletterFollow = newsletter_follow
+    newsletterUnfollow = newsletter_unfollow
+    newsletterMute = newsletter_mute
+    newsletterUnmute = newsletter_unmute
+    newsletterSubscribers = newsletter_subscribers
+    newsletterAdminCount = newsletter_admin_count
+    newsletterChangeOwner = newsletter_change_owner
+    newsletterDemote = newsletter_demote
+    newsletterDelete = newsletter_delete
+    newsletterReactMessage = newsletter_react_message
+    newsletterFetchMessages = newsletter_fetch_messages
+    subscribeNewsletterUpdates = subscribe_newsletter_updates
+    fetchAccountReachoutTimelock = fetch_account_reachout_timelock
+    fetchMessageCappingInfo = fetch_message_capping_info
+    communityMetadata = community_metadata
+    communityCreate = community_create
+    communityCreateGroup = community_create_group
+    communityLeave = community_leave
+    communityUpdateSubject = community_update_subject
+    communityUpdateDescription = community_update_description
+    communityParticipantsUpdate = community_participants_update
+    communityInviteCode = community_invite_code
+    communityRevokeInvite = community_revoke_invite
+    communitySettingUpdate = community_setting_update
+    communityMemberAddMode = community_member_add_mode
+    communityJoinApprovalMode = community_join_approval_mode
+    rejectCall = reject_call
+    createCallLink = create_call_link
+    addLabel = add_label
+    addChatLabel = add_chat_label
+    removeChatLabel = remove_chat_label
+    addMessageLabel = add_message_label
+    removeMessageLabel = remove_message_label
     onWhatsApp = on_whatsapp
     sendPresenceUpdate = send_presence_update
     chatModify = chat_modify
