@@ -319,6 +319,10 @@ tests are stable.
   key derivation, and `reporting/reporting_token` node generation.
 - Added privacy-token helpers for trusted-contact token storage, expiry
   checks, issuance JID resolution, and `tctoken` node construction.
+- Added public wrappers for low-level session assertion, generic USync queries,
+  bot-list discovery, trusted-contact privacy-token issuance, group member
+  labels, peer-data operation messages, message capping aliasing, and app-state
+  resync aliasing.
 - Added additional Node-compatible socket methods for status fetch,
   disappearing-duration fetch, presence subscription, batch receipts, dirty-bit
   cleanup, default disappearing mode, link-preview privacy, and starred
@@ -332,9 +336,11 @@ tests are stable.
   shapes, newsletter live-event parsing and dispatch, business/catalog/product
   nodes, catalog product image preparation, community nodes/parsers, label
   app-state patches, reporting tokens, privacy tokens, status/disappearing
-  USync parsers, presence subscription, contact and quick-reply app-state
-  patches, batch receipt aggregation, media/USync wrappers, public exports,
-  client aliases, and the public API parity manifest.
+  USync parsers, generic USync wrapper shapes, bot-list parsing, privacy-token
+  issuance, peer-data/member-label protocol messages, presence subscription,
+  contact and quick-reply app-state patches, batch receipt aggregation,
+  media/USync wrappers, public exports, client aliases, and the public API
+  parity manifest.
 - Live read-only Phase 7 proof currently confirms account reachout timelock
   MEX access. Catalog reads are account-gated on the current non-catalog
   account with `item-not-found`, and message-capping MEX currently returns a
@@ -342,8 +348,9 @@ tests are stable.
   is wired but currently times out waiting for a server IQ response on this
   account.
 - Remaining Phase 7 parity gaps are enabled-account newsletter/community/
-  business live mutations, WAM upload live ACK proof, and implementation of
-  the deferred methods listed in the public API parity manifest.
+  business live mutations, WAM upload live ACK proof, media retry/reupload
+  through `updateMediaMessage`, and broader live proof for low-level peer-data,
+  bot, privacy-token, and USync edge surfaces.
 
 ## Live Harness
 

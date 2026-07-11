@@ -6,6 +6,7 @@ import json
 
 import baileys as b
 from baileys.auth_state import AuthState, JsonCredentialStore
+from baileys.generated import WAProto_pb2 as proto
 from baileys.business import (
     catalog_node,
     cover_photo_remove_node,
@@ -412,6 +413,24 @@ def test_phase7_client_methods_call_expected_queries(tmp_path, monkeypatch):
                         )
                     ],
                 )
+            if node.attrs.get("xmlns") == "privacy" and node.attrs.get("type") == "set":
+                return BinaryNode(
+                    "iq",
+                    {"type": "result"},
+                    [BinaryNode("tokens", {}, [BinaryNode("token", {"type": "trusted_contact", "t": "123"}, b"token")])],
+                )
+            if node.attrs.get("xmlns") == "bot":
+                return BinaryNode(
+                    "iq",
+                    {"type": "result"},
+                    [
+                        BinaryNode(
+                            "bot",
+                            {},
+                            [BinaryNode("section", {"type": "all"}, [BinaryNode("bot", {"jid": "bot@s.whatsapp.net", "persona_id": "p1"})])],
+                        )
+                    ],
+                )
             if node.attrs.get("xmlns") == "w:biz:catalog" and node.content[0].tag == "product_catalog_add":
                 return BinaryNode("iq", {}, [node.content[0]])
             if node.tag == "call":
@@ -465,6 +484,12 @@ def test_phase7_client_methods_call_expected_queries(tmp_path, monkeypatch):
         devices = await client.get_usync_devices(["peer@s.whatsapp.net"], ignore_zero_devices=False)
         assert upload.media_url == "https://mmg.whatsapp.net/uploaded"
         assert devices[0].jid == "peer@s.whatsapp.net"
+        client._missing_session_jids = lambda jids, force: []  # type: ignore[method-assign]
+        assert await client.assert_sessions(["peer@s.whatsapp.net"]) is False
+        usync = await client.execute_usync_query(["peer@s.whatsapp.net"], ["devices"])
+        assert usync["list"][0]["id"] == "peer@s.whatsapp.net"
+        assert await client.get_bot_list_v2() == [{"jid": "bot@s.whatsapp.net", "persona_id": "p1"}]
+        await client.issue_privacy_tokens(["peer@s.whatsapp.net"], timestamp=123)
         created = await client.product_create({"name": "Tea", "images": [b"image-bytes"]})
         assert created.image_urls == {"url": "https://mmg.whatsapp.net/product/image/uploaded"}
         assert media_requests[-1] == (b"image-bytes", "product-catalog-image", "mmg.whatsapp.net")
@@ -474,6 +499,30 @@ def test_phase7_client_methods_call_expected_queries(tmp_path, monkeypatch):
         assert await client.create_call_link("audio") == "abc"
         await client.send_wam_buffer(b"WAM\x05")
         await client.reject_call("call-1", "user@s.whatsapp.net")
+
+        sent_messages = []
+
+        async def fake_send_message(jid, content, **kwargs):
+            sent_messages.append((jid, content, kwargs))
+            return b.SendMessageResult(
+                message_id="m1",
+                remote_jid=jid,
+                message_type="protocol",
+                participant_jids=[],
+                signal_types={},
+                node=BinaryNode("message", {"id": "m1"}),
+            )
+
+        client.send_message = fake_send_message  # type: ignore[method-assign]
+        await client.update_member_label("123@g.us", "x" * 40)
+        peer_request = proto.Message.PeerDataOperationRequestMessage()
+        peer_request.peerDataOperationRequestType = 1
+        await client.send_peer_data_operation_message(peer_request)
+        assert sent_messages[0][1].protocolMessage.type == proto.Message.ProtocolMessage.Type.GROUP_MEMBER_LABEL_CHANGE
+        assert sent_messages[0][1].protocolMessage.memberLabel.label == "x" * 30
+        assert sent_messages[0][2]["additional_nodes"][0].attrs["appdata"] == "member_tag"
+        assert sent_messages[1][1].protocolMessage.type == proto.Message.ProtocolMessage.Type.PEER_DATA_OPERATION_REQUEST_MESSAGE
+        assert sent_messages[1][2]["additional_attributes"]["category"] == "peer"
 
         assert queries[0].content[0].tag == "business_profile"
         assert queries[1].content[0].content[0].attrs["jid"] == "biz@s.whatsapp.net"
@@ -508,5 +557,13 @@ def test_phase7_client_methods_call_expected_queries(tmp_path, monkeypatch):
         assert client.getMediaHost.__func__ is client.get_media_host.__func__
         assert client.waUploadToServer.__func__ is client.wa_upload_to_server.__func__
         assert client.getUSyncDevices.__func__ is client.get_usync_devices.__func__
+        assert client.assertSessions.__func__ is client.assert_sessions.__func__
+        assert client.executeUSyncQuery.__func__ is client.execute_usync_query.__func__
+        assert client.getBotListV2.__func__ is client.get_bot_list_v2.__func__
+        assert client.issuePrivacyTokens.__func__ is client.issue_privacy_tokens.__func__
+        assert client.updateMemberLabel.__func__ is client.update_member_label.__func__
+        assert client.sendPeerDataOperationMessage.__func__ is client.send_peer_data_operation_message.__func__
+        assert client.fetchNewChatMessageCap.__func__ is client.fetch_message_capping_info.__func__
+        assert client.resyncAppState.__func__ is client.sync_app_state.__func__
 
     asyncio.run(scenario())

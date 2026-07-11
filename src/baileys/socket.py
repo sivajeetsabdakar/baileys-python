@@ -187,6 +187,7 @@ from .prekeys import (
     prekey_count_node,
     rotate_signed_pre_key_node,
 )
+from .privacy_tokens import store_tc_tokens_from_iq_result
 from .query import QueryManager
 from .receipts import (
     RetryOutcome,
@@ -1556,6 +1557,144 @@ class WhatsAppClient:
     async def fetch_message_capping_info(self, *, timeout: float = 30) -> Any:
         return await self.execute_wmex_query({}, QUERY_IDS["MESSAGE_CAPPING_INFO"], XWA_PATHS["MESSAGE_CAPPING_INFO"], timeout=timeout)
 
+    async def assert_sessions(
+        self,
+        jids: list[str] | tuple[str, ...],
+        *,
+        force: bool = False,
+        timeout: float = 30,
+    ) -> bool:
+        normalized = _dedupe_jids([jid_normalized_user(jid) for jid in jids if jid])
+        missing = self._missing_session_jids(normalized, force=force)
+        if not missing:
+            return False
+
+        working = copy.deepcopy(self.auth_state.credentials)
+        result = await self.query(
+            encrypt_session_query_node(missing, self.queries.next_tag(), force=force),
+            timeout=timeout,
+            drive_receive=True,
+        )
+        inject_sessions_from_encrypt_result(working, result, allow_partial=True)
+        unresolved = self._missing_session_jids_from_credentials(working, missing, force=force)
+        if unresolved:
+            raise ValueError(f"session assertion incomplete for {unresolved}")
+        await self._commit_credentials(working)
+        return True
+
+    async def execute_usync_query(
+        self,
+        users: list[str] | tuple[str, ...] | BinaryNode,
+        protocols: list[str | BinaryNode] | tuple[str | BinaryNode, ...] | None = None,
+        *,
+        context: str = "interactive",
+        mode: str = "query",
+        timeout: float = 30,
+    ) -> dict[str, Any]:
+        if isinstance(users, BinaryNode):
+            result = await self._query_checked(users, timeout=timeout)
+            return {"raw": result, "list": parse_usync_result(result)}
+        if protocols is None:
+            raise ValueError("execute_usync_query requires protocols when users are passed")
+
+        tag_id = self.queries.next_tag()
+        protocol_nodes = [protocol if isinstance(protocol, BinaryNode) else BinaryNode(str(protocol), {}) for protocol in protocols]
+        user_nodes = [BinaryNode("user", {"jid": jid_normalized_user(jid)}, []) for jid in _dedupe_jids(list(users))]
+        node = BinaryNode(
+            "iq",
+            {"id": tag_id, "to": S_WHATSAPP_NET, "type": "get", "xmlns": "usync"},
+            [
+                BinaryNode(
+                    "usync",
+                    {"context": context, "mode": mode, "sid": tag_id, "last": "true", "index": "0"},
+                    [BinaryNode("query", {}, protocol_nodes), BinaryNode("list", {}, user_nodes)],
+                )
+            ],
+        )
+        result = await self._query_checked(node, timeout=timeout)
+        return {"raw": result, "list": parse_usync_result(result)}
+
+    async def get_bot_list_v2(self, *, timeout: float = 30) -> list[dict[str, str]]:
+        tag_id = self.queries.next_tag()
+        result = await self._query_checked(
+            BinaryNode("iq", {"id": tag_id, "xmlns": "bot", "to": S_WHATSAPP_NET, "type": "get"}, [BinaryNode("bot", {"v": "2"})]),
+            timeout=timeout,
+        )
+        return _parse_bot_list_v2(result)
+
+    async def issue_privacy_tokens(
+        self,
+        jids: list[str] | tuple[str, ...],
+        *,
+        timestamp: int | None = None,
+        timeout: float = 30,
+    ) -> BinaryNode:
+        normalized = _dedupe_jids([jid_normalized_user(jid) for jid in jids if jid])
+        if not normalized:
+            raise ValueError("issue_privacy_tokens requires at least one jid")
+        token_timestamp = str(timestamp if timestamp is not None else int(time.time()))
+        node = BinaryNode(
+            "iq",
+            {"id": self.queries.next_tag(), "to": S_WHATSAPP_NET, "type": "set", "xmlns": "privacy"},
+            [
+                BinaryNode(
+                    "tokens",
+                    {},
+                    [BinaryNode("token", {"jid": jid, "t": token_timestamp, "type": "trusted_contact"}) for jid in normalized],
+                )
+            ],
+        )
+        result = await self._query_checked(node, timeout=timeout)
+        if self.auth_state.signal_store is not None:
+            for jid in normalized:
+                store_tc_tokens_from_iq_result(self.auth_state.signal_store, result, jid, get_lid_for_pn=self._lid_for_pn)
+        return result
+
+    async def update_member_label(
+        self,
+        jid: str,
+        member_label: str | None,
+        *,
+        timeout: float = 30,
+        wait_for_ack: float = 0,
+    ) -> SendMessageResult:
+        message = proto.Message()
+        message.protocolMessage.type = proto.Message.ProtocolMessage.Type.GROUP_MEMBER_LABEL_CHANGE
+        message.protocolMessage.memberLabel.label = (member_label or "")[:30]
+        message.protocolMessage.memberLabel.labelTimestamp = int(time.time())
+        return await self.send_message(
+            jid,
+            message,
+            timeout=timeout,
+            wait_for_ack=wait_for_ack,
+            additional_nodes=[BinaryNode("meta", {"tag_reason": "user_update", "appdata": "member_tag"})],
+        )
+
+    async def send_peer_data_operation_message(
+        self,
+        operation: proto.Message.PeerDataOperationRequestMessage | None = None,
+        *,
+        timeout: float = 30,
+        wait_for_ack: float = 0,
+    ) -> SendMessageResult:
+        me = self.auth_state.credentials.get("me", {}).get("id")
+        if not me:
+            raise RuntimeError("cannot send peer data operation before login")
+        message = proto.Message()
+        message.protocolMessage.type = proto.Message.ProtocolMessage.Type.PEER_DATA_OPERATION_REQUEST_MESSAGE
+        if operation is not None:
+            message.protocolMessage.peerDataOperationRequestMessage.CopyFrom(operation)
+        return await self.send_message(
+            jid_normalized_user(me),
+            message,
+            use_usync=False,
+            force_sessions=True,
+            timeout=timeout,
+            wait_for_ack=wait_for_ack,
+            additional_attributes={"category": "peer", "push_priority": "high_force"},
+            additional_nodes=[BinaryNode("meta", {"appdata": "default"})],
+        )
+
     async def community_metadata(self, jid: str, *, timeout: float = 30) -> GroupMetadata:
         result = await self._query_checked(community_metadata_node(jid, self.queries.next_tag()), timeout=timeout)
         metadata = parse_community_metadata(result)
@@ -2555,6 +2694,13 @@ class WhatsAppClient:
     subscribeNewsletterUpdates = subscribe_newsletter_updates
     fetchAccountReachoutTimelock = fetch_account_reachout_timelock
     fetchMessageCappingInfo = fetch_message_capping_info
+    fetchNewChatMessageCap = fetch_message_capping_info
+    assertSessions = assert_sessions
+    executeUSyncQuery = execute_usync_query
+    getBotListV2 = get_bot_list_v2
+    issuePrivacyTokens = issue_privacy_tokens
+    updateMemberLabel = update_member_label
+    sendPeerDataOperationMessage = send_peer_data_operation_message
     fetchStatus = fetch_status
     fetchDisappearingDuration = fetch_disappearing_duration
     communityMetadata = community_metadata
@@ -2602,6 +2748,7 @@ class WhatsAppClient:
     requestAppStateSyncKey = request_app_state_sync_key
     fetchAppStateSnapshots = fetch_app_state_snapshots
     syncAppState = sync_app_state
+    resyncAppState = sync_app_state
     initializeSession = initialize_session
     requestPairingCode = request_pairing_code
     digestKeyBundle = digest_key_bundle
@@ -2670,6 +2817,24 @@ def _missing_app_state_key_id(exc: MissingAppStateKey) -> str | None:
     if marker in text:
         return text.split(marker, 1)[1].split('"', 1)[0]
     return None
+
+
+def _parse_bot_list_v2(node: BinaryNode) -> list[dict[str, str]]:
+    bot = find_child(node, "bot")
+    if bot is None or not isinstance(bot.content, list):
+        return []
+    parsed: list[dict[str, str]] = []
+    for section in bot.content:
+        if section.tag != "section" or section.attrs.get("type") != "all" or not isinstance(section.content, list):
+            continue
+        for child in section.content:
+            if child.tag != "bot":
+                continue
+            jid = child.attrs.get("jid")
+            if not jid:
+                continue
+            parsed.append({"jid": jid, "persona_id": child.attrs.get("persona_id") or child.attrs.get("personaId") or ""})
+    return parsed
 
 
 def _coerce_disconnect_error(exc: Exception) -> DisconnectError:
