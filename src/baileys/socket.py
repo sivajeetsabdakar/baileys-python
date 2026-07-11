@@ -146,7 +146,7 @@ from .newsletter import (
     parse_live_update_duration,
     parse_newsletter_metadata,
 )
-from .jid import is_jid_group, jid_decode_tuple, jid_encode, jid_normalized_user, phone_number_to_jid
+from .jid import is_jid_group, is_lid, is_pn, jid_decode_tuple, jid_encode, jid_normalized_user, phone_number_to_jid
 from .noise import generate_noise_key_pair
 from .pairing_code import (
     PairSuccess,
@@ -1120,7 +1120,82 @@ class WhatsAppClient:
         return parse_blocklist(result)
 
     async def update_block_status(self, jid: str, action: str, *, timeout: float = 30) -> None:
-        await self._query_checked(block_status_node(jid, action, self.queries.next_tag()), timeout=timeout)
+        lid_jid, pn_jid = await self._resolve_blocklist_jids(jid, action, timeout=timeout)
+        await self._query_checked(block_status_node(lid_jid, action, self.queries.next_tag(), pn_jid=pn_jid), timeout=timeout)
+
+    async def _resolve_blocklist_jids(self, jid: str, action: str, *, timeout: float) -> tuple[str, str | None]:
+        if action not in {"block", "unblock"}:
+            raise ValueError(f"unsupported block action: {action}")
+
+        normalized = self._normalize_user_jid(jid)
+        if is_lid(normalized):
+            lid_jid = normalized
+            pn_jid = self._pn_for_lid(lid_jid)
+            if action == "block" and pn_jid is None:
+                raise ValueError(f"unable to resolve PN JID for LID: {jid}")
+            return lid_jid, pn_jid if action == "block" else None
+
+        if not is_pn(normalized):
+            raise ValueError(f"invalid blocklist jid: {jid}")
+
+        lid_jid = self._lid_for_pn(normalized)
+        if lid_jid is None:
+            await self._refresh_lid_mapping(normalized, timeout=timeout)
+            lid_jid = self._lid_for_pn(normalized)
+        if lid_jid is None:
+            raise ValueError(f"unable to resolve LID for PN JID: {jid}")
+        return lid_jid, normalized if action == "block" else None
+
+    @staticmethod
+    def _normalize_user_jid(jid: str) -> str:
+        value = str(jid).strip()
+        if "@" not in value:
+            return phone_number_to_jid(value)
+        return jid_normalized_user(value)
+
+    def _lid_for_pn(self, pn_jid: str) -> str | None:
+        mappings = self.auth_state.credentials.get("pn_lid_mappings") or {}
+        return mappings.get(jid_normalized_user(pn_jid))
+
+    def _pn_for_lid(self, lid_jid: str) -> str | None:
+        mappings = self.auth_state.credentials.get("lid_pn_mappings") or {}
+        return mappings.get(jid_normalized_user(lid_jid))
+
+    async def _refresh_lid_mapping(self, jid: str, *, timeout: float) -> None:
+        result = await self.query(
+            usync_devices_query_node([jid_normalized_user(jid)], self.queries.next_tag()),
+            timeout=timeout,
+            drive_receive=True,
+        )
+        working = copy.deepcopy(self.auth_state.credentials)
+        changed = self._store_lid_pn_mappings(working, parse_usync_result(result))
+        if changed:
+            await self._commit_credentials(working)
+
+    @staticmethod
+    def _store_lid_pn_mappings(credentials: dict[str, Any], entries: list[dict[str, object]]) -> bool:
+        pn_lid = dict(credentials.get("pn_lid_mappings") or {})
+        lid_pn = dict(credentials.get("lid_pn_mappings") or {})
+        changed = False
+        for entry in entries:
+            raw_pn = entry.get("id")
+            raw_lid = entry.get("lid")
+            if not isinstance(raw_pn, str) or not isinstance(raw_lid, str):
+                continue
+            pn = jid_normalized_user(raw_pn)
+            lid = jid_normalized_user(raw_lid)
+            if not is_pn(pn) or not is_lid(lid):
+                continue
+            if pn_lid.get(pn) != lid:
+                pn_lid[pn] = lid
+                changed = True
+            if lid_pn.get(lid) != pn:
+                lid_pn[lid] = pn
+                changed = True
+        if changed:
+            credentials["pn_lid_mappings"] = pn_lid
+            credentials["lid_pn_mappings"] = lid_pn
+        return changed
 
     async def profile_picture_url(self, jid: str, picture_type: str = "preview", *, timeout: float = 30) -> str | None:
         result = await self._query_checked(profile_picture_url_node(jid, self.queries.next_tag(), picture_type), timeout=timeout)

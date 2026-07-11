@@ -1327,6 +1327,54 @@ def test_session_key_normalization_handles_malformed_jids():
     assert _session_key_for_jid("111:2@lid") == "111:2"
 
 
+def test_update_block_status_resolves_pn_to_lid(tmp_path):
+    async def scenario():
+        store = JsonCredentialStore(tmp_path / "creds.json")
+        store.save_credentials(_minimal_creds())
+        client = make_socket(AuthState.from_store(store))
+        sent_nodes = []
+
+        async def fake_query(node: BinaryNode, **kwargs):
+            sent_nodes.append(node)
+            if node.attrs.get("xmlns") == "usync":
+                return BinaryNode(
+                    "iq",
+                    {"type": "result"},
+                    [
+                        BinaryNode(
+                            "usync",
+                            {},
+                            [
+                                BinaryNode(
+                                    "list",
+                                    {},
+                                    [
+                                        BinaryNode(
+                                            "user",
+                                            {"jid": "123@s.whatsapp.net"},
+                                            [BinaryNode("lid", {"val": "999@lid"})],
+                                        )
+                                    ],
+                                )
+                            ],
+                        )
+                    ],
+                )
+            return BinaryNode("iq", {"type": "result"})
+
+        client.query = fake_query  # type: ignore[method-assign]
+
+        await client.update_block_status("123@s.whatsapp.net", "block", timeout=2)
+
+        block = sent_nodes[-1].content[0]
+        assert block.attrs == {"action": "block", "jid": "999@lid", "pn_jid": "123@s.whatsapp.net"}
+        saved = store.load_credentials()
+        assert saved["pn_lid_mappings"]["123@s.whatsapp.net"] == "999@lid"
+        assert saved["lid_pn_mappings"]["999@lid"] == "123@s.whatsapp.net"
+
+    asyncio.run(scenario())
+
+
 def test_forced_session_fetch_still_checks_post_fetch_store(tmp_path):
     store = JsonCredentialStore(tmp_path / "creds.json")
     creds = _minimal_creds()

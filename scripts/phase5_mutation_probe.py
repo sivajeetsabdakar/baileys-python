@@ -86,6 +86,7 @@ async def main() -> int:
     parser.add_argument("--restore-after-remove", action="store_true", help="add the add/remove participant back after remove")
     parser.add_argument("--create-leave-group", action="store_true", help="create a temporary group and leave it")
     parser.add_argument("--create-subject", default="Baileys Python Probe")
+    parser.add_argument("--skip-profile", action="store_true")
     parser.add_argument("--skip-profile-picture", action="store_true")
     args = parser.parse_args()
 
@@ -102,7 +103,8 @@ async def main() -> int:
         selected.append("temporary group create/leave")
     if args.chat_jid:
         selected.append("chat archive/mute/pin/star")
-    selected.append("profile name/status")
+    if not args.skip_profile:
+        selected.append("profile name/status")
     if not args.skip_profile_picture:
         selected.append("profile picture")
 
@@ -243,8 +245,9 @@ async def main() -> int:
             ok &= await run_step("CHAT_STAR_ON", lambda: client.star_message(key, True, timeout=args.timeout))
             ok &= await run_step("CHAT_STAR_OFF", lambda: client.star_message(key, False, timeout=args.timeout))
 
-        ok &= await run_step("PROFILE_NAME", lambda: client.update_profile_name(args.profile_name, timeout=args.timeout))
-        ok &= await run_step("PROFILE_STATUS", lambda: client.update_profile_status(args.profile_status, timeout=args.timeout))
+        if not args.skip_profile:
+            ok &= await run_step("PROFILE_NAME", lambda: client.update_profile_name(args.profile_name, timeout=args.timeout))
+            ok &= await run_step("PROFILE_STATUS", lambda: client.update_profile_status(args.profile_status, timeout=args.timeout))
         if not args.skip_profile_picture:
             picture = generated_profile_picture()
             ok &= await run_step("PROFILE_PICTURE", lambda: client.update_profile_picture(me, picture, timeout=args.timeout))

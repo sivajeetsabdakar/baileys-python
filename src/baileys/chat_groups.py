@@ -195,13 +195,18 @@ def blocklist_fetch_node(tag_id: str) -> BinaryNode:
     return BinaryNode("iq", {"id": tag_id, "xmlns": "blocklist", "to": S_WHATSAPP_NET, "type": "get"})
 
 
-def block_status_node(jid: str, action: str, tag_id: str) -> BinaryNode:
+def block_status_node(jid: str, action: str, tag_id: str, *, pn_jid: str | None = None) -> BinaryNode:
     if action not in {"block", "unblock"}:
         raise ValueError(f"unsupported block action: {action}")
+    attrs = {"action": action, "jid": jid_normalized_user(jid)}
+    if action == "block":
+        if pn_jid is None:
+            raise ValueError("pn_jid is required when blocking a contact")
+        attrs["pn_jid"] = jid_normalized_user(pn_jid)
     return BinaryNode(
         "iq",
         {"id": tag_id, "xmlns": "blocklist", "to": S_WHATSAPP_NET, "type": "set"},
-        [BinaryNode("item", {"action": action, "jid": jid_normalized_user(jid)})],
+        [BinaryNode("item", attrs)],
     )
 
 

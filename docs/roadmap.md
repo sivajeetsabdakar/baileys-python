@@ -210,6 +210,9 @@ tests are stable.
   per-collection sync versions.
 - Group announcement mode change/revert, invite revoke, participant promote,
   and participant demote are live-proven against the dedicated test group.
+- Block/unblock is live-proven against a disposable peer. The product client
+  resolves PN contacts to LID blocklist entries through USync, sends `pn_jid`
+  for block writes, and restores the contact after the cycle.
 - Group subject and description set/revert are live-proven against the
   dedicated test group. Description updates fetch metadata first and send the
   previous description id to avoid server conflicts.
@@ -222,11 +225,12 @@ tests are stable.
   download/decrypt, snapshot metadata decode, app-state key-share ingestion,
   and full app-state replay are live-proven through
   `scripts/app_state_key_probe.py`.
-- Group participant add and temporary group create/leave remain account-gated
-  in the current live account. The server currently rejects participant add
-  with `account_reachout_restricted`, and group create does not return a
-  response before timeout. Product APIs now raise explicit IQ errors for these
-  server-side rejections instead of returning empty success results.
+- Group participant remove is live-proven against the dedicated test group.
+  Participant add remains account-gated in the current live account with
+  `account_reachout_restricted`, and temporary group create does not return a
+  response before timeout or leave a created group in the participating list.
+  Product APIs now raise explicit IQ errors for server-side rejections instead
+  of returning empty success results.
 
 ## Phase 6 Delivered
 

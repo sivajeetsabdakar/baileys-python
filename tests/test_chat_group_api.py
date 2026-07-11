@@ -99,9 +99,13 @@ def test_privacy_profile_and_on_whatsapp_nodes_parse():
     assert picture.attrs["xmlns"] == "w:profile:picture"
     assert picture.content[0].attrs == {"type": "image", "query": "url"}
 
-    block = block_status_node("123@s.whatsapp.net", "unblock", "b1")
+    block = block_status_node("123@lid", "unblock", "b1")
     assert block.attrs["xmlns"] == "blocklist"
     assert block.content[0].attrs["action"] == "unblock"
+    assert block.content[0].attrs["jid"] == "123@lid"
+
+    block = block_status_node("123@lid", "block", "b2", pn_jid="456@s.whatsapp.net")
+    assert block.content[0].attrs == {"action": "block", "jid": "123@lid", "pn_jid": "456@s.whatsapp.net"}
 
     on_wa = parse_on_whatsapp(
         BinaryNode(
