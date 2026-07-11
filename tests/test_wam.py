@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from baileys.wam import WAMBinaryInfo, WAMEncodeError, WAMEvent, WAMEventSpec, encode_wam
+from baileys.wam import WAMBinaryInfo, WAMEncodeError, WAMEvent, WAMEventSpec, encode_wam, load_wam_specs
 
 
 def test_encode_wam_header_globals_and_event_fields():
@@ -46,3 +46,19 @@ def test_encode_wam_rejects_unknown_schema_entries():
 
     with pytest.raises(WAMEncodeError, match="unknown WAM property"):
         encode_wam(WAMBinaryInfo(events=[WAMEvent("Demo", props={"bad": 1})]), {"Demo": WAMEventSpec(id=1)})
+
+
+def test_generated_wam_specs_are_loaded_by_default():
+    events, globals_ = load_wam_specs()
+    assert len(events) > 300
+    assert len(globals_) > 40
+    assert "WamDroppedEvent" in events
+    assert "sequenceNumber" in globals_
+
+    payload = encode_wam(
+        WAMBinaryInfo(
+            sequence=1,
+            events=[WAMEvent("WamDroppedEvent", props={"droppedEventCode": 1, "droppedEventCount": 2}, globals={"sequenceNumber": 1})],
+        )
+    )
+    assert payload.startswith(b"WAM")

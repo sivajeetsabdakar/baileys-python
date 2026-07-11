@@ -6,8 +6,26 @@ import json
 
 import baileys as b
 from baileys.auth_state import AuthState, JsonCredentialStore
-from baileys.business import catalog_node, parse_catalog, parse_product_delete, product_create_node, product_delete_node
-from baileys.communities import community_create_node, community_metadata_node, parse_community_metadata
+from baileys.business import (
+    catalog_node,
+    cover_photo_remove_node,
+    cover_photo_update_node,
+    parse_catalog,
+    parse_product_delete,
+    product_create_node,
+    product_delete_node,
+)
+from baileys.communities import (
+    community_accept_invite_node,
+    community_ephemeral_node,
+    community_link_group_node,
+    community_membership_requests_update_node,
+    community_metadata_node,
+    community_create_node,
+    parse_community_linked_groups,
+    parse_community_metadata,
+    parse_membership_request_update,
+)
 from baileys.app_state import chat_modification_to_app_patch
 from baileys.mex import QUERY_IDS, parse_wmex_result, wmex_query_node
 from baileys.newsletter import newsletter_fetch_messages_node, newsletter_metadata_query, parse_newsletter_metadata
@@ -71,6 +89,11 @@ def test_business_catalog_nodes_and_parsers():
     assert delete.content[0].tag == "product_catalog_delete"
     assert parse_product_delete(BinaryNode("iq", {}, [BinaryNode("product_catalog_delete", {"deleted_count": "2"})])) == 2
 
+    cover = cover_photo_update_node("fb1", "tok", 123, "tag-4")
+    assert cover.content[0].content[0].attrs == {"id": "fb1", "op": "update", "token": "tok", "ts": "123"}
+    remove_cover = cover_photo_remove_node("fb1", "tag-5")
+    assert remove_cover.content[0].content[0].attrs == {"op": "delete", "id": "fb1"}
+
 
 def test_wmex_and_newsletter_shapes_parse():
     node = wmex_query_node({"newsletter_id": "1@newsletter"}, QUERY_IDS["METADATA"], "m1")
@@ -116,6 +139,40 @@ def test_community_nodes_and_parser():
     )
     assert parsed.id == "123@g.us"
     assert parsed.participants[0].phone_number == "a@s.whatsapp.net"
+
+    link = community_link_group_node("456@g.us", "123@g.us", "c3")
+    assert link.content[0].tag == "links"
+    assert link.content[0].content[0].content[0].attrs["jid"] == "456@g.us"
+
+    accept = community_accept_invite_node("invite-code", "c4")
+    assert accept.content[0].attrs["code"] == "invite-code"
+
+    ephemeral = community_ephemeral_node("123@g.us", 60, "c5")
+    assert ephemeral.content[0].tag == "ephemeral"
+    not_ephemeral = community_ephemeral_node("123@g.us", 0, "c6")
+    assert not_ephemeral.content[0].tag == "not_ephemeral"
+
+    update = community_membership_requests_update_node("123@g.us", ["a@s.whatsapp.net"], "approve", "c7")
+    assert update.content[0].content[0].tag == "approve"
+    results = parse_membership_request_update(
+        BinaryNode(
+            "iq",
+            {},
+            [
+                BinaryNode(
+                    "membership_requests_action",
+                    {},
+                    [BinaryNode("approve", {}, [BinaryNode("participant", {"jid": "a@s.whatsapp.net"})])],
+                )
+            ],
+        ),
+        "approve",
+    )
+    assert results[0].status == "200"
+
+    linked = parse_community_linked_groups(BinaryNode("iq", {}, [BinaryNode("sub_groups", {}, [BinaryNode("group", {"id": "456", "subject": "Child", "size": "2"})])]))
+    assert linked[0]["id"] == "456@g.us"
+    assert linked[0]["size"] == 2
 
 
 def test_label_chat_modifications_build_app_state_patches():
@@ -167,12 +224,16 @@ def test_phase7_client_methods_call_expected_queries(tmp_path):
         assert (await client.newsletter_metadata("jid", "n@newsletter")).id == "n@newsletter"
         assert (await client.community_metadata("123@g.us")).id == "123@g.us"
         assert await client.create_call_link("audio") == "abc"
+        await client.send_wam_buffer(b"WAM\x05")
         await client.reject_call("call-1", "user@s.whatsapp.net")
 
         assert queries[0].content[0].tag == "business_profile"
+        assert any(node.attrs.get("xmlns") == "w:stats" for node in queries)
         assert sent[0].tag == "call"
         assert client.newsletterMetadata.__func__ is client.newsletter_metadata.__func__
         assert client.communityMetadata.__func__ is client.community_metadata.__func__
+        assert client.communityAcceptInvite.__func__ is client.community_accept_invite.__func__
+        assert client.newsletterUpdatePicture.__func__ is client.newsletter_update_picture.__func__
         assert client.productDelete.__func__ is client.product_delete.__func__
 
     asyncio.run(scenario())

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import copy
 import time
 from dataclasses import dataclass, field
@@ -36,7 +37,7 @@ from .generated import WAProto_pb2 as proto
 from .history import download_and_process_history_sync_notification, get_history_sync_notification
 from .noise import NoiseHandshake
 from .registration import build_registration_payload
-from .defaults import DEFAULT_ORIGIN, DEFAULT_USER_AGENT, INITIAL_PREKEY_COUNT, MIN_PREKEY_COUNT, WA_WEBSOCKET_URL
+from .defaults import DEFAULT_ORIGIN, DEFAULT_USER_AGENT, INITIAL_PREKEY_COUNT, MIN_PREKEY_COUNT, S_WHATSAPP_NET, WA_WEBSOCKET_URL
 from .events import EventEmitter
 from .chat_groups import (
     GroupMetadata,
@@ -75,6 +76,8 @@ from .business import (
     CatalogResult,
     catalog_node,
     collections_node,
+    cover_photo_remove_node,
+    cover_photo_update_node,
     order_details_node,
     parse_catalog,
     parse_product_mutation,
@@ -85,21 +88,35 @@ from .business import (
     update_business_profile_node,
 )
 from .communities import (
+    community_accept_invite_node,
+    community_accept_invite_v4_node,
     community_create_group_node,
     community_create_node,
+    community_ephemeral_node,
     community_invite_code_node,
+    community_invite_info_node,
     community_join_approval_mode_node,
     community_leave_node,
+    community_link_group_node,
+    community_linked_groups_node,
     community_member_add_mode_node,
+    community_membership_requests_node,
+    community_membership_requests_update_node,
     community_metadata_node,
     community_participants_update_node,
     community_revoke_invite_node,
+    community_revoke_invite_v4_node,
     community_setting_update_node,
+    community_unlink_group_node,
     community_update_description_node,
     community_update_subject_node,
+    parse_community_accept_invite,
     parse_community_invite_code,
+    parse_community_linked_groups,
     parse_community_metadata,
     parse_community_participant_update,
+    parse_membership_request_update,
+    parse_membership_requests,
 )
 from .media import (
     MediaConn,
@@ -178,6 +195,7 @@ from .socket_nodes import (
 )
 from .store import InMemoryStore
 from .usync import conversation_identities, extract_device_jids, parse_usync_result, split_own_and_other_devices, usync_devices_query_node
+from .wam import WAMBinaryInfo, encode_wam
 from .wabinary import BinaryNode
 from .messages import MessageKey, WAMessage, build_message_upsert
 from .notifications import (
@@ -551,6 +569,19 @@ class WhatsAppClient:
         if self._web is None:
             raise RuntimeError("client is not connected")
         await self._web.send_node(node)
+
+    async def send_wam_buffer(self, wam_buffer: bytes, *, timeout: float = 30) -> BinaryNode:
+        return await self._query_checked(
+            BinaryNode(
+                "iq",
+                {"to": S_WHATSAPP_NET, "id": self.queries.next_tag(), "xmlns": "w:stats"},
+                [BinaryNode("add", {"t": str(round(time.time()))}, wam_buffer)],
+            ),
+            timeout=timeout,
+        )
+
+    async def send_wam(self, binary_info: WAMBinaryInfo, *, timeout: float = 30) -> BinaryNode:
+        return await self.send_wam_buffer(encode_wam(binary_info), timeout=timeout)
 
     async def query(self, node: BinaryNode, *, timeout: float = 30, drive_receive: bool = False) -> BinaryNode:
         tag_id = node.attrs.get("id")
@@ -1133,6 +1164,19 @@ class WhatsAppClient:
     async def get_order_details(self, order_id: str, token_base64: str, *, timeout: float = 30) -> BinaryNode:
         return await self._query_checked(order_details_node(order_id, token_base64, self.queries.next_tag()), timeout=timeout)
 
+    async def update_cover_photo(self, source: bytes | bytearray | str | Path, *, timeout: float = 30) -> str:
+        payload = read_media_payload(source, "biz-cover-photo", mimetype="image/jpeg")
+        media_conn = await self._get_media_conn(timeout=timeout)
+        encrypted = encrypt_media(payload.data, payload.media_type)
+        upload = await upload_media(encrypted.encrypted, media_conn, encrypted.file_enc_sha256, payload.media_type, timeout=int(timeout))
+        if not upload.fbid or not upload.meta_hmac:
+            raise ValueError(f"cover photo upload response missing fbid/meta_hmac: {upload.raw!r}")
+        await self._query_checked(cover_photo_update_node(upload.fbid, upload.meta_hmac, upload.timestamp, self.queries.next_tag()), timeout=timeout)
+        return upload.fbid
+
+    async def remove_cover_photo(self, fbid: str, *, timeout: float = 30) -> BinaryNode:
+        return await self._query_checked(cover_photo_remove_node(fbid, self.queries.next_tag()), timeout=timeout)
+
     async def product_create(self, product: dict[str, Any], *, timeout: float = 30) -> Any:
         result = await self._query_checked(product_create_node(product, self.queries.next_tag()), timeout=timeout)
         return parse_product_mutation(result, "product_catalog_add")
@@ -1163,6 +1207,19 @@ class WhatsAppClient:
     async def newsletter_update(self, jid: str, updates: dict[str, Any], *, timeout: float = 30) -> Any:
         node, path = newsletter_update_query(jid, updates, self.queries.next_tag())
         return parse_wmex_result(await self._query_checked(node, timeout=timeout), path)
+
+    async def newsletter_update_name(self, jid: str, name: str, *, timeout: float = 30) -> Any:
+        return await self.newsletter_update(jid, {"name": name}, timeout=timeout)
+
+    async def newsletter_update_description(self, jid: str, description: str, *, timeout: float = 30) -> Any:
+        return await self.newsletter_update(jid, {"description": description}, timeout=timeout)
+
+    async def newsletter_update_picture(self, jid: str, source: bytes | bytearray | str | Path, *, timeout: float = 30) -> Any:
+        payload = read_media_payload(source, "image", mimetype="image/jpeg")
+        return await self.newsletter_update(jid, {"picture": base64.b64encode(payload.data).decode("ascii")}, timeout=timeout)
+
+    async def newsletter_remove_picture(self, jid: str, *, timeout: float = 30) -> Any:
+        return await self.newsletter_update(jid, {"picture": ""}, timeout=timeout)
 
     async def newsletter_metadata(self, kind: str, key: str, *, timeout: float = 30) -> NewsletterMetadata | None:
         node, path = newsletter_metadata_query(kind, key, self.queries.next_tag())
@@ -1263,6 +1320,37 @@ class WhatsAppClient:
         await self._query_checked(community_update_subject_node(jid, subject, self.queries.next_tag()), timeout=timeout)
         await self.ev.emit("groups.update", [{"id": jid, "subject": subject}])
 
+    async def community_link_group(self, group_jid: str, parent_community_jid: str, *, timeout: float = 30) -> None:
+        await self._query_checked(community_link_group_node(group_jid, parent_community_jid, self.queries.next_tag()), timeout=timeout)
+
+    async def community_unlink_group(self, group_jid: str, parent_community_jid: str, *, timeout: float = 30) -> None:
+        await self._query_checked(community_unlink_group_node(group_jid, parent_community_jid, self.queries.next_tag()), timeout=timeout)
+
+    async def community_fetch_linked_groups(self, jid: str, *, timeout: float = 30) -> dict[str, Any]:
+        metadata = await self.group_metadata(jid, timeout=timeout)
+        community_jid = metadata.linked_parent or jid
+        result = await self._query_checked(community_linked_groups_node(community_jid, self.queries.next_tag()), timeout=timeout)
+        return {
+            "community_jid": community_jid,
+            "is_community": metadata.linked_parent is None,
+            "linked_groups": parse_community_linked_groups(result),
+        }
+
+    async def community_request_participants_list(self, jid: str, *, timeout: float = 30) -> list[dict[str, str]]:
+        result = await self._query_checked(community_membership_requests_node(jid, self.queries.next_tag()), timeout=timeout)
+        return parse_membership_requests(result)
+
+    async def community_request_participants_update(
+        self,
+        jid: str,
+        participants: list[str],
+        action: str,
+        *,
+        timeout: float = 30,
+    ) -> list[ParticipantUpdateResult]:
+        result = await self._query_checked(community_membership_requests_update_node(jid, participants, action, self.queries.next_tag()), timeout=timeout)
+        return parse_membership_request_update(result, action)
+
     async def community_update_description(self, jid: str, description: str | None, *, timeout: float = 30) -> None:
         metadata = await self.community_metadata(jid, timeout=timeout)
         await self._query_checked(community_update_description_node(jid, description, self.queries.next_tag(), previous_id=metadata.desc_id), timeout=timeout)
@@ -1288,6 +1376,33 @@ class WhatsAppClient:
     async def community_revoke_invite(self, jid: str, *, timeout: float = 30) -> str | None:
         result = await self._query_checked(community_revoke_invite_node(jid, self.queries.next_tag()), timeout=timeout)
         return parse_community_invite_code(result)
+
+    async def community_accept_invite(self, code: str, *, timeout: float = 30) -> str | None:
+        result = await self._query_checked(community_accept_invite_node(code, self.queries.next_tag()), timeout=timeout)
+        return parse_community_accept_invite(result)
+
+    async def community_invite_info(self, code: str, *, timeout: float = 30) -> GroupMetadata:
+        result = await self._query_checked(community_invite_info_node(code, self.queries.next_tag()), timeout=timeout)
+        return parse_community_metadata(result)
+
+    async def community_revoke_invite_v4(self, jid: str, invited_jid: str, *, timeout: float = 30) -> bool:
+        await self._query_checked(community_revoke_invite_v4_node(jid, invited_jid, self.queries.next_tag()), timeout=timeout)
+        return True
+
+    async def community_accept_invite_v4(
+        self,
+        jid: str,
+        code: str,
+        expiration: int | str,
+        admin_jid: str,
+        *,
+        timeout: float = 30,
+    ) -> str | None:
+        result = await self._query_checked(community_accept_invite_v4_node(jid, code, expiration, admin_jid, self.queries.next_tag()), timeout=timeout)
+        return result.attrs.get("from")
+
+    async def community_toggle_ephemeral(self, jid: str, ephemeral_expiration: int, *, timeout: float = 30) -> None:
+        await self._query_checked(community_ephemeral_node(jid, ephemeral_expiration, self.queries.next_tag()), timeout=timeout)
 
     async def community_setting_update(self, jid: str, setting: str, *, timeout: float = 30) -> None:
         await self._query_checked(community_setting_update_node(jid, setting, self.queries.next_tag()), timeout=timeout)
@@ -2057,6 +2172,8 @@ class WhatsAppClient:
     removeProfilePicture = remove_profile_picture
     updateBusinessProfile = update_business_profile
     updateBussinesProfile = update_business_profile
+    updateCoverPhoto = update_cover_photo
+    removeCoverPhoto = remove_cover_photo
     getCatalog = get_catalog
     getCollections = get_collections
     getOrderDetails = get_order_details
@@ -2066,6 +2183,10 @@ class WhatsAppClient:
     executeWMexQuery = execute_wmex_query
     newsletterCreate = newsletter_create
     newsletterUpdate = newsletter_update
+    newsletterUpdateName = newsletter_update_name
+    newsletterUpdateDescription = newsletter_update_description
+    newsletterUpdatePicture = newsletter_update_picture
+    newsletterRemovePicture = newsletter_remove_picture
     newsletterMetadata = newsletter_metadata
     newsletterFollow = newsletter_follow
     newsletterUnfollow = newsletter_unfollow
@@ -2086,10 +2207,21 @@ class WhatsAppClient:
     communityCreateGroup = community_create_group
     communityLeave = community_leave
     communityUpdateSubject = community_update_subject
+    communityLinkGroup = community_link_group
+    communityUnlinkGroup = community_unlink_group
+    communityFetchLinkedGroups = community_fetch_linked_groups
+    communityRequestParticipantsList = community_request_participants_list
+    communityRequestParticipantsUpdate = community_request_participants_update
     communityUpdateDescription = community_update_description
     communityParticipantsUpdate = community_participants_update
     communityInviteCode = community_invite_code
     communityRevokeInvite = community_revoke_invite
+    communityAcceptInvite = community_accept_invite
+    communityInviteInfo = community_invite_info
+    communityGetInviteInfo = community_invite_info
+    communityRevokeInviteV4 = community_revoke_invite_v4
+    communityAcceptInviteV4 = community_accept_invite_v4
+    communityToggleEphemeral = community_toggle_ephemeral
     communitySettingUpdate = community_setting_update
     communityMemberAddMode = community_member_add_mode
     communityJoinApprovalMode = community_join_approval_mode
@@ -2118,6 +2250,8 @@ class WhatsAppClient:
     connectAndWait = connect_and_wait
     connectForQRPairing = connect_for_qr_pairing
     finalizePairSuccess = finalize_pair_success
+    sendWAMBuffer = send_wam_buffer
+    sendWAM = send_wam
 
 
 def make_socket(

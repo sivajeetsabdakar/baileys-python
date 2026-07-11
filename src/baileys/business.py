@@ -97,6 +97,25 @@ def order_details_node(order_id: str, token_base64: str, tag_id: str) -> BinaryN
     )
 
 
+def cover_photo_update_node(fbid: str, token: str, timestamp: str | int | None, tag_id: str) -> BinaryNode:
+    attrs = {"id": str(fbid), "op": "update", "token": token}
+    if timestamp not in {None, ""}:
+        attrs["ts"] = str(timestamp)
+    return BinaryNode(
+        "iq",
+        {"id": tag_id, "to": S_WHATSAPP_NET, "type": "set", "xmlns": "w:biz"},
+        [BinaryNode("business_profile", {"v": "3", "mutation_type": "delta"}, [BinaryNode("cover_photo", attrs)])],
+    )
+
+
+def cover_photo_remove_node(fbid: str, tag_id: str) -> BinaryNode:
+    return BinaryNode(
+        "iq",
+        {"id": tag_id, "to": S_WHATSAPP_NET, "type": "set", "xmlns": "w:biz"},
+        [BinaryNode("business_profile", {"v": "3", "mutation_type": "delta"}, [BinaryNode("cover_photo", {"op": "delete", "id": str(fbid)})])],
+    )
+
+
 def product_delete_node(product_ids: list[str], tag_id: str) -> BinaryNode:
     products = [BinaryNode("product", {}, [BinaryNode("id", {}, item.encode("utf-8"))]) for item in product_ids]
     return BinaryNode(

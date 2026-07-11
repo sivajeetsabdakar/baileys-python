@@ -270,40 +270,53 @@ tests are stable.
 - Added WAM binary telemetry encoding primitives with Pythonic
   `encode_wam` and Baileys-style `encodeWAM` aliases. The encoder supports the
   Node WAM packet header, globals, event ids, property ids, compact integer
-  values, strings, floats, and validation errors. The full generated event and
-  global constants table remains a data-generation follow-up.
+  values, strings, floats, and validation errors.
+- Added generated WAM constants from the local Node Baileys reference with
+  `scripts/generate_wam_constants.py --check`. The package artifact currently
+  contains 313 event specs and 48 global ids.
+- Added `send_wam_buffer` / `sendWAMBuffer` and `send_wam` / `sendWAM` for the
+  Node-compatible `w:stats` upload stanza.
 - Added MEX query helpers and response parsing for `w:mex` GraphQL stanzas,
   including typed `MexError` failures for server-side GraphQL errors.
 - Added business/profile commerce APIs on `WhatsAppClient`: business profile
   update, catalog reads, collection reads, order details, product create,
-  product update, and product delete, with Baileys-compatible aliases.
+  product update, product delete, cover-photo update, and cover-photo remove,
+  with Baileys-compatible aliases.
 - Added product/catalog node builders and parsers for catalog results, product
   mutations, and product delete responses.
 - Added newsletter/MEX APIs for create, update, metadata, follow, unfollow,
   mute, unmute, subscribers, admin count, ownership/demote/delete operations,
-  reactions, message fetch, and live-update subscription, with
+  picture update/remove, reactions, message fetch, and live-update subscription, with
   Baileys-compatible aliases.
-- Added community APIs for metadata, create, linked group create, leave,
-  subject/description updates, participants update, invite fetch/revoke,
-  settings, member-add mode, and join-approval mode, with parsers and
+- Added community APIs for metadata, create, linked group create/link/unlink,
+  linked group fetch, leave, subject/description updates, participants update,
+  membership-request list/update, invite fetch/revoke/accept/v4/info,
+  ephemeral mode, settings, member-add mode, and join-approval mode, with parsers and
   Baileys-compatible aliases.
 - Added call helpers for call reject and call-link creation.
 - Added label app-state patch helpers for label edit, chat label association,
   and message label association through `chat_modify`, plus common
   Baileys-style aliases.
+- Added reporting-token helpers for protobuf field filtering, message-secret
+  key derivation, and `reporting/reporting_token` node generation.
+- Added privacy-token helpers for trusted-contact token storage, expiry
+  checks, issuance JID resolution, and `tctoken` node construction.
 - Added `scripts/phase7_live_probe.py` for read-only live checks of catalog,
-  MEX reachout/message-capping, newsletter metadata, and community metadata.
+  MEX reachout/message-capping, newsletter metadata, community metadata, and
+  optional WAM stats upload.
 - Offline tests cover WAM encoding, MEX response parsing, newsletter query
   shapes, business/catalog/product nodes, community nodes/parsers, label
-  app-state patches, public exports, and client aliases.
+  app-state patches, reporting tokens, privacy tokens, public exports, and
+  client aliases.
 - Live read-only Phase 7 proof currently confirms account reachout timelock
   MEX access. Catalog reads are account-gated on the current non-catalog
   account with `item-not-found`, and message-capping MEX currently returns a
-  server GraphQL bad request for this account/request shape.
-- Remaining Phase 7 parity gaps are full WAM constants generation, WAM upload
-  submission, product media/cover-photo flows, newsletter live event
-  processing, enabled-account newsletter/community/business live mutations,
-  reporting token helpers, privacy-token helpers, and broader public-method
+  server GraphQL bad request for this account/request shape. WAM stats upload
+  is wired but currently times out waiting for a server IQ response on this
+  account.
+- Remaining Phase 7 parity gaps are product image media for catalog products,
+  newsletter live event processing, enabled-account newsletter/community/
+  business live mutations, WAM upload live ACK proof, and broader public-method
   parity checks.
 
 ## Live Harness
@@ -332,14 +345,14 @@ tests are stable.
   fetch/decrypt diagnostics, app-state sync application, blocked-key
   persistence, history event visibility, and app-state sync-key request probes.
 - `scripts/phase7_live_probe.py` covers read-only Phase 7 catalog, MEX,
-  newsletter metadata, and community metadata checks where the account has the
-  required capabilities.
+  newsletter metadata, community metadata, and optional WAM stats upload checks
+  where the account has the required capabilities.
 
 ## Current Verification
 
 - Offline compile check passes for `src`, `scripts`, and `examples`.
-- Offline test suite passes with 142 tests.
-- WABinary token and WAProto generated artifact checks pass.
+- Offline test suite passes with 145 tests.
+- WABinary token, WAM constants, and WAProto generated artifact checks pass.
 - Product QR pairing and saved reconnect pass against the dedicated test
   account.
 - The latest live run proves QR pairing, saved reconnect, third-party USync
@@ -357,6 +370,8 @@ tests are stable.
   without blocked collections, decrypt errors, or history processing errors.
 - Latest Phase 7 read-only probe confirms account reachout timelock MEX access.
   Catalog and message-capping checks are account/server-gated on the current
-  account and are reported as such by `scripts/phase7_live_probe.py`.
+  account and are reported as such by `scripts/phase7_live_probe.py`. Optional
+  WAM stats upload is wired but timed out waiting for a server response on the
+  current account.
 - Public docs are kept to relative repository paths and avoid local machine
   setup details.

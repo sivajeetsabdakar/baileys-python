@@ -34,6 +34,7 @@ WA_ADV_HOSTED_DEVICE_SIG_PREFIX = bytes([6, 6])
 
 MEDIA_HKDF_KEY_MAPPING = {
     "audio": "Audio",
+    "biz-cover-photo": "Image",
     "document": "Document",
     "gif": "Video",
     "image": "Image",
@@ -47,6 +48,7 @@ MEDIA_HKDF_KEY_MAPPING = {
 
 MEDIA_PATH_MAP = {
     "audio": "/mms/audio",
+    "biz-cover-photo": "/pps/biz-cover-photo",
     "document": "/mms/document",
     "gif": "/mms/video",
     "image": "/mms/image",

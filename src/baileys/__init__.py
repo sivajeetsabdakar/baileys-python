@@ -37,8 +37,8 @@ from .app_state import (
     lt_hash_subtract_then_add,
 )
 from .client import WhatsAppWebClient
-from .business import CatalogResult, Product, catalog_node, parse_catalog
-from .communities import community_create_node, community_metadata_node, parse_community_metadata
+from .business import CatalogResult, Product, catalog_node, cover_photo_remove_node, cover_photo_update_node, parse_catalog
+from .communities import community_create_node, community_link_group_node, community_metadata_node, parse_community_metadata
 from .crypto import (
     aes_decrypt_cbc,
     aes_decrypt_ctr,
@@ -139,6 +139,7 @@ from .pairing_code import (
     pairing_code_request_node,
 )
 from .prekeys import PreKeyMaintenanceResult, PreKeyNodeResult, SignedPreKeyRotation
+from .privacy_tokens import build_tc_token_from_jid, store_tc_tokens_from_iq_result
 from .query import QueryManager, QueryResult, TagGenerator
 from .receipts import (
     ReceiptInfo,
@@ -153,10 +154,11 @@ from .receipts import (
     receipt_node_for_message,
     receipt_status_from_type,
 )
+from .reporting import getMessageReportingToken, get_message_reporting_token, shouldIncludeReportingToken, should_include_reporting_token
 from .socket import MediaSendResult, ReconnectPolicy, SendMessageResult, SocketConfig, WhatsAppClient, make_socket, makeWASocket
 from .store import Chat, Contact, InMemoryStore, makeInMemoryStore, make_in_memory_store
 from .wabinary import BinaryNode, decode_binary_node, encode_binary_node
-from .wam import WAMBinaryInfo, WAMEncodeError, WAMEvent, WAMEventSpec, encodeWAM, encode_wam
+from .wam import WAMBinaryInfo, WAMEncodeError, WAMEvent, WAMEventSpec, encodeWAM, encode_wam, load_wam_specs
 from .whatsapp_keys import AppStateKeys, MediaKeys, derive_media_keys, expand_app_state_keys, media_hkdf_info_key
 
 __all__ = [
@@ -257,11 +259,15 @@ __all__ = [
     "build_message_upsert",
     "build_receipt_node",
     "build_text_message_node",
+    "build_tc_token_from_jid",
     "can_ack_node",
     "catalog_node",
     "chat_modification_to_app_patch",
     "community_create_node",
+    "community_link_group_node",
     "community_metadata_node",
+    "cover_photo_remove_node",
+    "cover_photo_update_node",
     "decompress_if_required",
     "derive_media_keys",
     "derive_pairing_code_key",
@@ -281,6 +287,8 @@ __all__ = [
     "extract_app_state_snapshot_info",
     "generate_pairing_code",
     "get_history_sync_notification",
+    "getMessageReportingToken",
+    "get_message_reporting_token",
     "hkdf",
     "hmac_sign",
     "inject_app_state_sync_key_share",
@@ -305,6 +313,7 @@ __all__ = [
     "is_newsletter",
     "is_pn",
     "lt_hash_subtract_then_add",
+    "load_wam_specs",
     "jidDecode",
     "jidEncode",
     "jidNormalizedUser",
@@ -343,6 +352,9 @@ __all__ = [
     "raise_for_iq_error",
     "sha256",
     "stream_error_to_disconnect",
+    "store_tc_tokens_from_iq_result",
+    "shouldIncludeReportingToken",
+    "should_include_reporting_token",
     "UnsupportedMessageContent",
     "MessageOptions",
     "transferDevice",

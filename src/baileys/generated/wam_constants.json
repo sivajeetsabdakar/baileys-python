@@ -1,0 +1,5111 @@
+{
+  "events": {
+    "AddressingModeMismatch": {
+      "id": 4750,
+      "props": {
+        "iqResponse": 1,
+        "localAddressingMode": 2,
+        "mismatchOrigin": 6,
+        "notificationTag": 3,
+        "serverAddressingMode": 5
+      },
+      "weight": 1
+    },
+    "AdvMetadataCreationFailure": {
+      "id": 3048,
+      "props": {
+        "advMetadataIsMe": 1
+      },
+      "weight": 1
+    },
+    "AdvStoredTimestampExpired": {
+      "id": 3036,
+      "props": {
+        "advExpireTimeInHours": 1
+      },
+      "weight": 1
+    },
+    "AdvertiseTooltipImpression": {
+      "id": 4024,
+      "props": {
+        "lwiEntryPoint": 1,
+        "tooltipAction": 2
+      },
+      "weight": 1
+    },
+    "AndroidMessageSendPerf": {
+      "id": 1994,
+      "props": {
+        "agentEngagementType": 47,
+        "appRestart": 16,
+        "bucketedSenderKeyDistributionCountPercentage": 32,
+        "bucketedSenderKeyDistributionHashTime": 35,
+        "deviceCount": 36,
+        "deviceSizeBucket": 26,
+        "durationAbs": 11,
+        "durationRelative": 12,
+        "durationT": 1,
+        "editType": 42,
+        "fetchPrekeys": 15,
+        "fetchPrekeysPercentage": 21,
+        "groupSizeBucket": 17,
+        "invisibleMessageCategory": 45,
+        "isDirectedMessage": 33,
+        "isE2eBackfill": 27,
+        "isLid": 41,
+        "isMessageFanout": 9,
+        "isMessageForward": 8,
+        "isRevokeMessage": 24,
+        "isViewOnce": 29,
+        "jobsInQueue": 18,
+        "mediaType": 3,
+        "messageIsFirstUserMessage": 30,
+        "messageIsInvisible": 31,
+        "messageType": 4,
+        "networkWasDisconnected": 14,
+        "participantCount": 37,
+        "phoneCores": 34,
+        "prekeysEligibleForPrallelProcessing": 28,
+        "receiverDeviceCount": 39,
+        "runningTasks": 44,
+        "sendCount": 13,
+        "sendRetryCount": 10,
+        "sendStage": 2,
+        "senderDeviceCount": 40,
+        "senderKeyDistributionCountPercentage": 23,
+        "sessionsMissingWhenComposing": 25,
+        "targetDeviceGroupSizeBucket": 20,
+        "threadsInExecution": 19,
+        "typeOfGroup": 38,
+        "userToDeviceSizeBucket": 46
+      },
+      "weight": 2000
+    },
+    "AppLaunch": {
+      "id": 1094,
+      "props": {
+        "appContext": 22,
+        "appContextBitfield": 23,
+        "appLaunchCpuT": 2,
+        "appLaunchDestination": 7,
+        "appLaunchMainPreT": 3,
+        "appLaunchMainRunT": 4,
+        "appLaunchT": 1,
+        "appLaunchTypeT": 5,
+        "dbBgThreadReadsDurationT": 17,
+        "dbBgThreadWritesDurationT": 18,
+        "dbMainThreadCount": 10,
+        "dbMainThreadReadsDurationT": 19,
+        "dbMainThreadWritesDurationT": 20,
+        "dbReadsCount": 8,
+        "dbWritesCount": 9,
+        "lowPowerModeEnabled": 12,
+        "peripheralConnected": 16,
+        "processIdentifier": 15
+      },
+      "weight": 1
+    },
+    "AttachmentTrayActions": {
+      "id": 3980,
+      "props": {
+        "actionDurationMs": 1,
+        "actionThreadType": 9,
+        "attachmentTrayAction": 2,
+        "attachmentTrayActionTarget": 3,
+        "groupSizeBucket": 4,
+        "isAGroup": 5,
+        "isSuccessful": 6,
+        "sendMediaType": 7,
+        "sendTime": 8
+      },
+      "weight": 1
+    },
+    "AutomaticEventsUserJourney": {
+      "id": 6636,
+      "props": {
+        "automaticEventsTargetComponent": 1,
+        "smbUserActionType": 2,
+        "surface": 3
+      },
+      "weight": 1
+    },
+    "BannerEvent": {
+      "id": 1578,
+      "props": {
+        "bannerId": 3,
+        "bannerOperation": 2,
+        "bannerType": 1
+      },
+      "weight": 1
+    },
+    "BizCatalogView": {
+      "id": 3006,
+      "props": {
+        "adId": 26,
+        "bizPlatform": 14,
+        "cartToggle": 13,
+        "catalogCategoryId": 19,
+        "catalogEntryPoint": 2,
+        "catalogEventSampled": 11,
+        "catalogOwnerJid": 10,
+        "catalogReportReasonCode": 8,
+        "catalogSessionId": 3,
+        "catalogViewAction": 1,
+        "collectionId": 15,
+        "collectionIndex": 16,
+        "deepLinkOpenFrom": 12,
+        "entryPointConversationInitiated": 22,
+        "entryPointConversionApp": 20,
+        "entryPointConversionSource": 21,
+        "hasVariants": 23,
+        "isNewProductAddedToCart": 7,
+        "isOrderMsgAttached": 5,
+        "orderId": 4,
+        "productId": 9,
+        "productIndex": 17,
+        "quantity": 6,
+        "sequenceNumber": 18,
+        "variantTypes": 24,
+        "variantsExtraAttributes": 25
+      },
+      "weight": 1
+    },
+    "BlockEventsFs": {
+      "id": 4288,
+      "props": {
+        "blockEntryPoint": 1,
+        "blockEventActionType": 2,
+        "blockEventIsSuspicious": 3,
+        "blockEventIsUnsub": 4,
+        "pastCall": 5,
+        "pastCallResult": 6
+      },
+      "weight": 1
+    },
+    "BotBizJourney": {
+      "id": 4868,
+      "props": {
+        "appSessionId": 1,
+        "botBizActionType": 5,
+        "botBizEntryPoint": 6,
+        "botBizType": 7,
+        "botType": 4
+      },
+      "weight": 1
+    },
+    "BotJourney": {
+      "id": 4630,
+      "props": {
+        "actionType": 1,
+        "additionalCategory": 11,
+        "aiCreationAvatarCropChanges": 38,
+        "aiCreationInputType": 29,
+        "aiCreationPersonalityCategoryInsert": 26,
+        "aiCreationPersonalityCategorySelect": 27,
+        "aiDiscoveryTab": 4,
+        "aiSessionId": 18,
+        "aiVoiceOnSelectionDefault": 24,
+        "aiVoiceSelectionEnum": 25,
+        "appSessionId": 2,
+        "botDiscoveryPath": 8,
+        "botEntryPoint": 7,
+        "botPersonaId": 5,
+        "callRandomId": 13,
+        "conversationStarterCategory": 22,
+        "conversationStarterIndex": 23,
+        "conversationStarterPromptMode": 28,
+        "deviceLanguage": 16,
+        "discoveryOrigin": 19,
+        "inlineTosNoticeId": 20,
+        "inlineTosStatus": 21,
+        "isMetaAiAssistant": 12,
+        "isMetaAiCharacterBotChat": 9,
+        "isUserCreatedAgent": 10,
+        "metricCount": 17,
+        "uiSurface": 6,
+        "xmaReelIndex": 14,
+        "xmaReelMaxIndex": 15
+      },
+      "weight": 1
+    },
+    "BugReportSession": {
+      "id": 3850,
+      "props": {
+        "bugReportErrorMessage": 2,
+        "bugReportFlowAction": 1,
+        "bugReportImageCount": 8,
+        "bugReportMediaCount": 3,
+        "bugReportNumberOfChars": 9,
+        "bugReportNumberOfWords": 10,
+        "bugReportTaskId": 7,
+        "bugReportVideoCount": 11,
+        "bugReportingEntryPoint": 12,
+        "submitBugCategory": 6,
+        "submitBugContainsTitle": 5
+      },
+      "weight": 1
+    },
+    "BusinessInteraction": {
+      "id": 3450,
+      "props": {
+        "businessInteractionAction": 1,
+        "businessInteractionTargetScreen": 2,
+        "businessJid": 3,
+        "entryPointApp": 4,
+        "entryPointSource": 5,
+        "internalEntryPoint": 6,
+        "sequenceNumber": 7
+      },
+      "weight": 1
+    },
+    "BusinessMute": {
+      "id": 1376,
+      "props": {
+        "muteT": 2,
+        "muteeId": 1
+      },
+      "weight": 1
+    },
+    "BusinessToolsClick": {
+      "id": 2218,
+      "props": {
+        "businessToolsEntryPoint": 5,
+        "businessToolsItem": 3,
+        "businessToolsSequenceNumber": 2,
+        "businessToolsSessionId": 1,
+        "linkingTarget": 4
+      },
+      "weight": 1
+    },
+    "BusinessToolsEntry": {
+      "id": 2216,
+      "props": {
+        "businessToolsEntryPoint": 3,
+        "businessToolsSequenceNumber": 2,
+        "businessToolsSessionId": 1
+      },
+      "weight": 1
+    },
+    "BusinessToolsImpression": {
+      "id": 2220,
+      "props": {
+        "businessToolsEntryPoint": 4,
+        "businessToolsSequenceNumber": 2,
+        "businessToolsSessionId": 1
+      },
+      "weight": 1
+    },
+    "BusinessUnmute": {
+      "id": 1378,
+      "props": {
+        "muteeId": 1
+      },
+      "weight": 1
+    },
+    "CadminDemote": {
+      "id": 3426,
+      "props": {
+        "cadminDemoteOrigin": 1,
+        "cadminDemoteResult": 2,
+        "isLastCadminOrCreator": 4
+      },
+      "weight": 1
+    },
+    "CatalogBiz": {
+      "id": 1722,
+      "props": {
+        "adId": 19,
+        "cartToggle": 13,
+        "catalogAppealReason": 4,
+        "catalogBizAction": 1,
+        "catalogEntryPoint": 7,
+        "catalogSessionId": 3,
+        "collectionCount": 18,
+        "collectionId": 14,
+        "collectionIndex": 15,
+        "deepLinkOpenFrom": 8,
+        "entryPointConversionSource": 20,
+        "errorCode": 5,
+        "extraAttributes": 24,
+        "isOrderMsgAttached": 10,
+        "lastMessageDirection": 21,
+        "messageDepth": 22,
+        "orderId": 9,
+        "productCount": 6,
+        "productId": 2,
+        "productIds": 12,
+        "productIndex": 16,
+        "quantity": 11,
+        "threadIdHmac": 23
+      },
+      "weight": 1
+    },
+    "ChannelAdmin": {
+      "id": 4556,
+      "props": {
+        "adminFlowActionSequenceNumber": 1,
+        "adminFlowType": 2,
+        "channelAdminAction": 3,
+        "channelAdminSessionId": 4
+      },
+      "weight": 1
+    },
+    "ChannelCoreEvent": {
+      "id": 4692,
+      "props": {
+        "channelCoreEventSequenceNumber": 8,
+        "channelCoreEventType": 1,
+        "channelDirectorySessionId": 7,
+        "channelEntryPoint": 2,
+        "channelEntryPointApp": 3,
+        "channelEntryPointMetadata": 10,
+        "channelEventUnit": 12,
+        "cid": 4,
+        "directoryChannelIndex": 9,
+        "discoverySurface": 14,
+        "entryPointMetadata": 5,
+        "eventSurface": 6,
+        "similarChannelsSessionId": 13
+      },
+      "weight": 1
+    },
+    "ChannelDirectory": {
+      "id": 4544,
+      "props": {
+        "channelCategoryIndex": 11,
+        "channelCategoryName": 12,
+        "channelDirectoryAction": 1,
+        "channelDirectoryActionSequenceNumber": 5,
+        "channelDirectoryEntryPoint": 2,
+        "channelDirectorySearchSessionId": 14,
+        "channelDirectorySessionId": 3,
+        "channelDirectorySurface": 13,
+        "channelIndex": 6,
+        "cid": 4,
+        "countrySelector": 8,
+        "impReason": 9,
+        "pillSelected": 10,
+        "searchMode": 7
+      },
+      "weight": 1
+    },
+    "ChannelDiscoveryVisibilityTracking": {
+      "id": 5766,
+      "props": {
+        "channelCategoryIndex": 1,
+        "channelCategoryName": 2,
+        "channelDirectorySessionId": 3,
+        "channelEventUnit": 4,
+        "channelIndex": 5,
+        "cid": 6,
+        "countrySelector": 7,
+        "discoverySurface": 8,
+        "isSubImpression": 16,
+        "pillSelected": 11,
+        "similarChannelsSessionId": 13,
+        "unifiedSessionId": 14,
+        "updatesTabSessionId": 17
+      },
+      "weight": 1
+    },
+    "ChannelDyi": {
+      "id": 4726,
+      "props": {
+        "channelDyiEventType": 1
+      },
+      "weight": 1
+    },
+    "ChannelLinkShare": {
+      "id": 4728,
+      "props": {
+        "channelLinkShareDirection": 1,
+        "channelLinkShareEntryPoint": 2,
+        "channelLinkShareScreen": 4,
+        "cid": 3
+      },
+      "weight": 1
+    },
+    "ChannelMembershipActionEvent": {
+      "id": 5762,
+      "props": {
+        "actionResult": 1,
+        "cid": 2
+      },
+      "weight": 1
+    },
+    "ChannelMessageVisibilityTracking": {
+      "id": 5998,
+      "props": {
+        "cid": 1,
+        "isStarredPost": 8,
+        "isVpvImpression": 7,
+        "postId": 4,
+        "unifiedSessionId": 6
+      },
+      "weight": 1
+    },
+    "ChannelOpen": {
+      "id": 4316,
+      "props": {
+        "channelDirectorySessionId": 8,
+        "channelEntryPoint": 1,
+        "channelEntryPointMetadata": 9,
+        "channelSessionId": 3,
+        "channelUserType": 4,
+        "cid": 6,
+        "discoverySurface": 15,
+        "entryPointMetadata": 12,
+        "hasNetworkConnection": 7,
+        "isPremium": 14,
+        "similarChannelsSessionId": 11,
+        "unreadMessages": 5,
+        "unreadPremiumMessages": 13
+      },
+      "weight": 1
+    },
+    "ChannelProducerInsightsNavigation": {
+      "id": 5626,
+      "props": {
+        "channelProducerInsightsActionTarget": 1,
+        "channelProducerInsightsActionType": 2,
+        "channelProducerInsightsEntryPoint": 3,
+        "channelProducerInsightsSequenceNumber": 4,
+        "channelProducerInsightsSurface": 5,
+        "cid": 6,
+        "producerInsightsSessionId": 7
+      },
+      "weight": 1
+    },
+    "ChannelSimilarChannels": {
+      "id": 5202,
+      "props": {
+        "bannerStatus": 1,
+        "bannerStatusReason": 2,
+        "cid": 3,
+        "similarChannelDisplayRank": 4,
+        "similarChannelEventSurface": 5,
+        "similarChannelId": 6,
+        "similarChannelRank": 7,
+        "similarChannelUserType": 9,
+        "similarChannelsSessionId": 10
+      },
+      "weight": 1
+    },
+    "ChannelsVideoPlay": {
+      "id": 6556,
+      "props": {
+        "autoPlayT": 1,
+        "cid": 2,
+        "finishCount": 13,
+        "height": 3,
+        "postId": 4,
+        "videoDuration": 5,
+        "videoInitialBufferingT": 6,
+        "videoPlayOrigin": 7,
+        "videoPlayResult": 8,
+        "videoPlayT": 9,
+        "videoPlayType": 10,
+        "videoSize": 11,
+        "width": 12
+      },
+      "weight": 1
+    },
+    "ChatAction": {
+      "id": 2312,
+      "props": {
+        "chatActionChatType": 3,
+        "chatActionEntryPoint": 2,
+        "chatActionMuteDuration": 4,
+        "chatActionType": 1
+      },
+      "weight": 1
+    },
+    "ChatFilterEvent": {
+      "id": 1616,
+      "props": {
+        "actionType": 1,
+        "activitySessionId": 6,
+        "filterType": 2,
+        "labelName": 11,
+        "listId": 12,
+        "listIndex": 13,
+        "listType": 14,
+        "metadata": 7,
+        "predefinedId": 10,
+        "searchQueryId": 8,
+        "searchRequestId": 9,
+        "searchResultType": 4,
+        "sessionId": 3,
+        "targetScreen": 5,
+        "threadId": 15
+      },
+      "weight": 1
+    },
+    "ChatFolderOpen": {
+      "id": 2808,
+      "props": {
+        "activityIndicatorCount": 2,
+        "folderType": 1,
+        "hasImportantMessages": 3
+      },
+      "weight": 1
+    },
+    "ChatLockAction": {
+      "id": 4212,
+      "props": {
+        "actionEntryPoint": 3,
+        "actionFolderChatsCount": 4,
+        "authType": 5,
+        "chatLockActionType": 1,
+        "chatLockIsGroup": 2
+      },
+      "weight": 1
+    },
+    "ChatLockDaily": {
+      "id": 4214,
+      "props": {
+        "folderChatsCount": 1,
+        "folderOpenCount": 2,
+        "lockFolderHidden": 5,
+        "newAddChatCount": 3,
+        "newRemoveChatCount": 4,
+        "secretCodeActive": 6
+      },
+      "weight": 1
+    },
+    "ChatMessageCounts": {
+      "id": 1644,
+      "props": {
+        "aiChatOrigins": 224,
+        "aiDiscoveryTab": 195,
+        "aptTestId": 212,
+        "audioMessagesReceived": 149,
+        "audioMessagesSent": 150,
+        "autoReplyFromIcebreakerSent": 190,
+        "awayMsgsSent": 56,
+        "bizCatalogType": 60,
+        "bizConversationDepth": 65,
+        "blockReason": 33,
+        "bottomSheetAnimatedSent": 206,
+        "bottomSheetEditedAnimatedSent": 207,
+        "bottomSheetEditedSent": 208,
+        "bottomSheetForwardMessagesSent": 196,
+        "bottomSheetImagesEdited": 209,
+        "bottomSheetImagesGenerated": 197,
+        "bottomSheetMemuImagesGenerated": 220,
+        "bottomSheetMemuInitiated": 221,
+        "bottomSheetMemuMessagesSent": 222,
+        "bottomSheetMessagesDownloaded": 198,
+        "bottomSheetMessagesReceived": 199,
+        "bottomSheetMessagesSent": 200,
+        "bottomSheetPromptsInitiated": 201,
+        "bottomSheetRegeneratedSent": 210,
+        "broadcastMsgsReceived": 30,
+        "broadcastMsgsSent": 29,
+        "callOffersReceived": 27,
+        "callOffersSent": 26,
+        "callsResultBusy": 70,
+        "callsResultCancelled": 71,
+        "callsResultConnected": 72,
+        "callsResultError": 78,
+        "callsResultMissed": 73,
+        "callsResultRejected": 74,
+        "canEditDmSettings": 88,
+        "cartViews": 86,
+        "chatEphemeralityDuration": 15,
+        "chatMuted": 8,
+        "chatOrigins": 179,
+        "chatOverflowClicks": 79,
+        "chatTypeInd": 2,
+        "collectionInquiriesSent": 44,
+        "commandSheetShow": 174,
+        "commentsReceived": 126,
+        "commerceMsgsReceived": 41,
+        "commerceMsgsSent": 40,
+        "deviceLanguage": 219,
+        "disappearingChatInitiator": 59,
+        "documentMessagesReceived": 151,
+        "documentMessagesSent": 152,
+        "editedMsgsSent": 100,
+        "emuFlashPlaybacks": 184,
+        "emuFlashPreviewShow": 182,
+        "emuFlashSent": 183,
+        "entryPointConversionApp": 47,
+        "entryPointConversionSource": 46,
+        "ephemeralMessagesExpired": 248,
+        "ephemeralMessagesReceived": 14,
+        "ephemeralMessagesSent": 13,
+        "ephemeralMessagesUnreadExpired": 69,
+        "ephemeralityInitiator": 109,
+        "ephemeralityTriggerAction": 110,
+        "eventCreationMessagesReceived": 142,
+        "eventCreationMessagesSent": 143,
+        "eventResponseMessagesReceived": 144,
+        "eventResponseMessagesSent": 145,
+        "fbCtaInquiriesSent": 45,
+        "firstResponseTime": 25,
+        "fmxNotMvBottomSheetDismissedCount": 234,
+        "fmxNotMvBottomSheetGetMvButtonClicks": 235,
+        "fmxNotMvBottomSheetGetMvButtonImpressions": 236,
+        "fmxNotMvBottomSheetImpressions": 237,
+        "fmxNotMvBottomSheetLearnMoreButtonClicks": 238,
+        "fmxNotMvClicks": 229,
+        "forwardAudioMessagesReceived": 153,
+        "forwardAudioMessagesSent": 154,
+        "forwardDocumentMessagesReceived": 155,
+        "forwardDocumentMessagesSent": 156,
+        "forwardGifMessagesReceived": 157,
+        "forwardGifMessagesSent": 158,
+        "forwardMessagesReceived": 89,
+        "forwardMessagesSent": 90,
+        "forwardPhotoMessagesReceived": 128,
+        "forwardPhotoMessagesSent": 129,
+        "forwardPtvMessagesReceived": 159,
+        "forwardPtvMessagesSent": 160,
+        "forwardStatusReplyMessagesReceived": 161,
+        "forwardStatusReplyMessagesSent": 162,
+        "forwardStickerMessagesReceived": 163,
+        "forwardStickerMessagesSent": 164,
+        "forwardTextMessagesReceived": 130,
+        "forwardTextMessagesSent": 131,
+        "forwardUrlMessagesReceived": 132,
+        "forwardUrlMessagesSent": 133,
+        "forwardVideoMessagesReceived": 165,
+        "forwardVideoMessagesSent": 166,
+        "gaStatus": 22,
+        "gifMessagesReceived": 167,
+        "gifMessagesSent": 168,
+        "googleSearchClick": 214,
+        "googleSearchShow": 215,
+        "greetingMsgsSent": 57,
+        "groupContainsBiz": 75,
+        "groupInfoSetting": 87,
+        "groupLimitSharingOnCnt": 225,
+        "groupMembershipReplies": 51,
+        "groupPrivateReplies": 52,
+        "groupSize": 19,
+        "hasReplied1On1": 216,
+        "hasUsername": 180,
+        "hasUsernamePin": 228,
+        "imagineCommandClick": 175,
+        "imagineMeMessagesSent": 202,
+        "imagineMePromptsInitiatedCount": 203,
+        "imagineMentionClick": 146,
+        "imagineMentionShow": 176,
+        "isAContact": 6,
+        "isAContactAtThreadCreation": 213,
+        "isAGroup": 5,
+        "isArchived": 10,
+        "isAutoMuted": 108,
+        "isBizMvFrictionEligible": 230,
+        "isBlocked": 32,
+        "isCartAddClicked": 36,
+        "isCommerceViewed": 35,
+        "isCtaOnPdpClicked": 37,
+        "isDeleted": 185,
+        "isInviteCreatedThread": 106,
+        "isLabelled": 54,
+        "isMessageYourself": 91,
+        "isMetaAiAssistant": 211,
+        "isOppositePartyInitiated": 62,
+        "isPinned": 9,
+        "isPnhEnabledChat": 92,
+        "isReported": 186,
+        "isUser1pBizBotChat": 141,
+        "isUser3pBotChat": 140,
+        "isUserAgent": 111,
+        "isUserCreatedAgent": 123,
+        "isWaPayRegistered": 81,
+        "labelledMsgs": 55,
+        "limitSharingOption": 226,
+        "locationsSent": 96,
+        "markedReadCnt": 193,
+        "markedReadMessageCnt": 194,
+        "matchedMessagesMarkedAsReadWithDeltaTime": 246,
+        "matchedMessagesReadWithDeltaTime": 247,
+        "messagesRead": 127,
+        "messagesReceived": 4,
+        "messagesReceivedWithEnabledReadReceipt": 245,
+        "messagesSent": 3,
+        "messagesStarred": 12,
+        "messagesUnread": 11,
+        "metaAiMentionClick": 147,
+        "metaAiMentionShow": 148,
+        "newThread": 68,
+        "notMvImpressions": 231,
+        "odReceived": 82,
+        "oppositePartyHasBadge": 240,
+        "oppositePartyHasBusinessIntent": 204,
+        "oppositePartyHasProfilePhoto": 217,
+        "oppositePartyLimitSharingOption": 227,
+        "oppositeVisibleIdentification": 181,
+        "ordersSent": 38,
+        "p2mOdNnpTransactionsSent": 83,
+        "p2mOdNpTransactionsSent": 84,
+        "paymentsSent": 39,
+        "pdpInquiriesSent": 42,
+        "pdpViews": 61,
+        "photoMessagesReceived": 134,
+        "photoMessagesSent": 135,
+        "pollCreationMessagesReceived": 115,
+        "pollCreationMessagesSent": 116,
+        "pollUpdateMessagesReceived": 117,
+        "pollUpdateMessagesSent": 118,
+        "profileReplies": 64,
+        "profileViews": 63,
+        "pttMessagesReceived": 119,
+        "pttMessagesSent": 120,
+        "ptvMessagesReceived": 121,
+        "ptvMessagesSent": 122,
+        "quickRepliesSent": 58,
+        "reactionsReceived": 97,
+        "reactionsSent": 98,
+        "receiverDefaultDisappearingDuration": 21,
+        "repliesSent": 80,
+        "requestedPhoneNumber": 93,
+        "seenMaskedPhoneNumber": 94,
+        "senderDefaultDisappearingDuration": 20,
+        "sharedPhoneNumber": 99,
+        "sharesCommonGroup": 218,
+        "smbMarketingMessagesReactionsSent": 101,
+        "smbMarketingMessagesRepliesSent": 102,
+        "smbMarketingMessagesSpamReports": 103,
+        "smbMarketingMsgsReceived": 104,
+        "smbMarketingMsgsSent": 105,
+        "spamReports": 31,
+        "startTime": 7,
+        "statusReactionsReceived": 191,
+        "statusReactionsSent": 192,
+        "statusReplies": 50,
+        "statusReplyMessagesReceived": 169,
+        "statusViews": 49,
+        "stickerMessagesReceived": 170,
+        "stickerMessagesSent": 171,
+        "storefrontInquiriesSent": 43,
+        "suggestionPromptsClick": 177,
+        "suggestionPromptsShow": 178,
+        "textMessagesReceived": 136,
+        "textMessagesSent": 137,
+        "textMessagesToUserCreatedAgentCnt": 124,
+        "threadCreationDate": 189,
+        "threadDs": 66,
+        "threadId": 67,
+        "threadIdMonthly": 223,
+        "totalCallDuration": 28,
+        "totalMessageEditsFromAgentCnt": 112,
+        "totalMessageFromAgentCnt": 113,
+        "totalMessageToAgentCnt": 114,
+        "totalMessagesToUserCreatedAgentCnt": 125,
+        "typeOfGroup": 85,
+        "urlMessagesReceived": 138,
+        "urlMessagesSent": 139,
+        "userHasBusinessIntent": 205,
+        "viaContactlessChats": 107,
+        "videoCallsOffered": 76,
+        "videoMessagesReceived": 172,
+        "videoMessagesSent": 173,
+        "viewOnceMessagesOpened": 18,
+        "viewOnceMessagesReceived": 17,
+        "viewOnceMessagesSent": 16,
+        "voiceCallsOffered": 77
+      },
+      "weight": 1
+    },
+    "ChatMute": {
+      "id": 2280,
+      "props": {
+        "actionConducted": 3,
+        "chatMuteNotificationChoice": 5,
+        "muteChatType": 4,
+        "muteDuration": 1,
+        "muteEntryPoint": 6,
+        "muteGroupSize": 2,
+        "waOfficialAccountName": 7
+      },
+      "weight": 1
+    },
+    "ChatPsaAction": {
+      "id": 3572,
+      "props": {
+        "messageMediaType": 1,
+        "psaCampaignId": 4,
+        "psaMessageActionType": 2,
+        "psaMsgId": 5
+      },
+      "weight": 1
+    },
+    "ChatPsaRead": {
+      "id": 3574,
+      "props": {
+        "messageMediaType": 1,
+        "psaCampaignId": 4,
+        "psaMsgId": 5,
+        "readEntryPoint": 3
+      },
+      "weight": 1
+    },
+    "ChatPsaRemove": {
+      "id": 3582,
+      "props": {
+        "lastReceivedMediaType": 2,
+        "lastReceivedMessageTs": 4,
+        "lastReceivedMsgId": 8,
+        "psaBlockReason": 10,
+        "psaCampaignId": 9,
+        "psaMessageRemoveAction": 5,
+        "psaMessageRemoveEntryPoint": 6,
+        "waOfficialAccountName": 7
+      },
+      "weight": 1
+    },
+    "ClockSkewDifferenceT": {
+      "id": 3178,
+      "props": {
+        "clockSkewHourly": 1
+      },
+      "weight": 10000
+    },
+    "CoexPrivacySysMsg": {
+      "id": 5204,
+      "props": {
+        "coexStatusReplyPrivacyDisclaimerUserAction": 8,
+        "coexSysMsgBusinessId": 1,
+        "coexSysMsgInsertionChannel": 9,
+        "coexSysMsgInsertionErrorCode": 2,
+        "coexSysMsgInsertionErrorMsg": 3,
+        "coexSysMsgInsertionSuccess": 4,
+        "coexSysMsgIsSelf": 5,
+        "coexSysMsgMultiDeviceId": 6,
+        "coexSysMsgStateTransitionAttempt": 7
+      },
+      "weight": 1
+    },
+    "CommunityCreation": {
+      "id": 3492,
+      "props": {
+        "communityCreationActionCount": 1,
+        "communityCreationActionTaken": 2,
+        "communityCreationCurrentScreen": 3,
+        "communityCreationEntrypoint": 5,
+        "communityCreationSessionId": 4,
+        "communityId": 6
+      },
+      "weight": 1
+    },
+    "CommunityFeatureUsage": {
+      "id": 3696,
+      "props": {
+        "communityId": 2,
+        "communityUiAction": 4,
+        "communityUiFeature": 3
+      },
+      "weight": 1
+    },
+    "CommunityHomeAction": {
+      "id": 3494,
+      "props": {
+        "communityHomeGroupDiscoveries": 1,
+        "communityHomeGroupJoins": 2,
+        "communityHomeGroupNavigations": 3,
+        "communityHomeId": 4,
+        "communityHomeViews": 5
+      },
+      "weight": 1
+    },
+    "CommunityTabAction": {
+      "id": 3496,
+      "props": {
+        "communityNoActionTabViews": 4,
+        "communityTabGroupNavigations": 1,
+        "communityTabToHomeViews": 2,
+        "communityTabViews": 3,
+        "communityTabViewsViaContextMenu": 5
+      },
+      "weight": 1
+    },
+    "CompanionsContactEvent": {
+      "id": 5718,
+      "props": {
+        "companionAddContactActionType": 1,
+        "companionAddContactEventType": 2,
+        "companionAddContactSessionId": 3,
+        "companionAddContactSource": 4,
+        "companionContactSaveResult": 5,
+        "companionFnameEdited": 6,
+        "companionIsContactSyncToOs": 7,
+        "companionLnameEdited": 8,
+        "companionPhNumberEdited": 9,
+        "companionSyncSettingChanged": 10
+      },
+      "weight": 1
+    },
+    "ContactUsSession": {
+      "id": 470,
+      "props": {
+        "contactUsAutomaticEmail": 3,
+        "contactUsExitState": 1,
+        "contactUsFaq": 2,
+        "contactUsLogs": 4,
+        "contactUsMenuFaqT": 12,
+        "contactUsOutage": 5,
+        "contactUsOutageEmail": 6,
+        "contactUsScreenshotC": 19,
+        "contactUsT": 11,
+        "languageCode": 21
+      },
+      "weight": 1
+    },
+    "CrashLog": {
+      "id": 494,
+      "props": {
+        "activeSubfunnelId": 20,
+        "activeSubfunnelType": 21,
+        "appContext": 32,
+        "appContextBitfield": 33,
+        "chatSessionId": 22,
+        "crashApplicationState": 23,
+        "crashContext": 3,
+        "crashCount": 5,
+        "crashLogProductArea": 28,
+        "crashLogTimeSpentViewName": 27,
+        "crashReason": 2,
+        "crashTimeout": 24,
+        "crashType": 6,
+        "iphoneProcessNonGlobal": 30,
+        "iphoneTimeSpentSurfaceId": 26,
+        "lowPowerModeEnabled": 31,
+        "peripheralConnected": 19,
+        "processIdentifier": 18,
+        "runningTasks": 16,
+        "ufadReportType": 29,
+        "unifiedSessionId": 25
+      },
+      "weight": 1
+    },
+    "CriticalEvent": {
+      "id": 1684,
+      "props": {
+        "context": 2,
+        "crashApplicationState": 8,
+        "crashlogType": 6,
+        "debug": 3,
+        "extraDebug": 7,
+        "mobileBuildId": 5,
+        "name": 1
+      },
+      "weight": 1
+    },
+    "Ctwa3pdConversion": {
+      "id": 5138,
+      "props": {
+        "ctwa3pdConversionMetadata": 1,
+        "ctwa3pdConversionSubtype": 2,
+        "ctwa3pdConversionType": 3,
+        "ctwa3pdSchemaVersion": 4,
+        "ctwa3pdSurfaceType": 5,
+        "ctwaSignals": 7,
+        "ctwaTrackingPayload": 6
+      },
+      "weight": 1
+    },
+    "CtwaActionBannerUnderstand": {
+      "id": 3586,
+      "props": {
+        "bannerIdentifier": 1,
+        "bannerLocale": 2,
+        "clientLocale": 3,
+        "hasLocalLink": 4,
+        "hasUniversalLink": 5,
+        "invalidLink": 6,
+        "lwiFlowIdentifier": 7,
+        "preferredLink": 8,
+        "validLocale": 9,
+        "validNotification": 10
+      },
+      "weight": 1
+    },
+    "CtwaBizUserJourney": {
+      "id": 5992,
+      "props": {
+        "adId": 3,
+        "bizFeatureEnabled": 4,
+        "businessPhoneNumber": 5,
+        "ctwaBizUserJouneryEntryPoint": 6,
+        "ctwaBizUserJourneyMetadata": 1,
+        "ctwaBizUserJourneyOperation": 2
+      },
+      "weight": 1
+    },
+    "CtwaConsumerDisclosure": {
+      "id": 4406,
+      "props": {
+        "ctwaConsumerDisclosureVersion": 3,
+        "disclosureAction": 1,
+        "disclosureContext": 5,
+        "disclosureEntryPoint": 4,
+        "disclosureType": 2
+      },
+      "weight": 1
+    },
+    "CtwaLabelSignal": {
+      "id": 4662,
+      "props": {
+        "ctwaLabelSignalVersion": 1,
+        "ctwaLabelTarget": 2,
+        "ctwaLabelType": 3,
+        "ctwaSignalMetadata": 9,
+        "customerAdsSharingSettingEnabled": 10,
+        "deepLinkConversionData": 4,
+        "deepLinkConversionSource": 5,
+        "eventSharingSettingEnabled": 6,
+        "globalSharingSettingEnabled": 7,
+        "threadIdHmac": 8
+      },
+      "weight": 1
+    },
+    "CtwaOrderSignal": {
+      "id": 4264,
+      "props": {
+        "ctwaOrderSignalVersion": 1,
+        "ctwaSignalMetadata": 10,
+        "customerAdsSharingSettingEnabled": 11,
+        "deepLinkConversionData": 2,
+        "deepLinkConversionSource": 3,
+        "eventSharingSettingEnabled": 4,
+        "globalSharingSettingEnabled": 5,
+        "orderPaid": 8,
+        "orderSignalType": 6,
+        "orderStatus": 7,
+        "threadIdHmac": 9
+      },
+      "weight": 1
+    },
+    "CtwaUserJourney": {
+      "id": 3466,
+      "props": {
+        "adId": 1,
+        "businessJid": 2,
+        "ctwaChatCreationMode": 6,
+        "ctwaUserJourneyMetadata": 12,
+        "ctwaUserJourneyOperation": 3,
+        "elapsedTimeInMs": 13,
+        "featureEnabled": 9,
+        "icebreakersShown": 4,
+        "sequenceNumber": 5,
+        "threadCreationDate": 10,
+        "threadIdHmac": 11,
+        "trustBannerAction": 7,
+        "trustBannerType": 8
+      },
+      "weight": 1
+    },
+    "Daily": {
+      "id": 1158,
+      "props": {
+        "accessibilityVoiceover": 108,
+        "addressbookSize": 11,
+        "addressbookWhatsappSize": 12,
+        "aiMemorySavedCnt": 223,
+        "aiWidgetInstalled": 210,
+        "androidAdvertisingId": 135,
+        "androidKeystoreState": 139,
+        "androidXmppWorkersRuntime": 167,
+        "appCodeHash": 103,
+        "appLastOpenTimestamp": 212,
+        "appStandbyBucket": 121,
+        "autoDlAudioCellular": 90,
+        "autoDlAudioRoaming": 91,
+        "autoDlAudioWifi": 89,
+        "autoDlDocCellular": 96,
+        "autoDlDocRoaming": 97,
+        "autoDlDocWifi": 95,
+        "autoDlImageCellular": 87,
+        "autoDlImageRoaming": 88,
+        "autoDlImageWifi": 86,
+        "autoDlVideoCellular": 93,
+        "autoDlVideoRoaming": 94,
+        "autoDlVideoWifi": 92,
+        "backupNetworkSetting": 10,
+        "backupRestoreEncryptionVersion": 138,
+        "backupSchedule": 9,
+        "channelsMediaFolderSize": 186,
+        "chatDatabaseSize": 19,
+        "chatLockFolderCount": 168,
+        "contactsCreatedOnWhatsappSize": 200,
+        "contactsPermissionAuthorizationStatus": 201,
+        "count1on1Threads": 216,
+        "countEphemeralThreads": 181,
+        "countEphemeralThreadsEnabledByMe": 182,
+        "countGroupThreads": 217,
+        "countLimitSharing1on1Threads": 218,
+        "countLimitSharingGroupThreads": 219,
+        "dbAddressbookTableSize": 206,
+        "defaultDisappearingDuration": 140,
+        "defenseMode": 214,
+        "deprecatedContactsSize": 228,
+        "deviceLanguage": 153,
+        "emailState": 174,
+        "entSecurityNotificationsEnabled": 134,
+        "experimentTmoPreloadGroupDaily": 166,
+        "favoritedAnimatedStickerCount": 113,
+        "favoritedFirstPartyStickerCount": 112,
+        "favoritedTotalStickerCount": 111,
+        "galleryPermission": 164,
+        "hasTextstatusEmojiModified24h": 175,
+        "hasTextstatusModified24h": 176,
+        "hasTextstatusTextModified24h": 177,
+        "hasUsername": 187,
+        "hasUsernamePin": 222,
+        "inNetworkContactsSize": 190,
+        "installedAnimatedStickerPackCount": 116,
+        "installedAnimatedThirdPartyStickerPackCount": 137,
+        "installedFirstPartyStickerPackCount": 115,
+        "installedTotalStickerPackCount": 114,
+        "isContactSyncToOsDefaultOn": 202,
+        "isDefaultDisappearingMessagingUser": 183,
+        "isEphemeralMessagingUser": 184,
+        "isProfilePhotoSet": 195,
+        "keyboardLanguage": 154,
+        "languageCode": 5,
+        "lastBackupTimestamp": 63,
+        "lastCloudBackupSize": 185,
+        "locationCode": 6,
+        "lockFolderHidden": 171,
+        "lowestAppStandbyBucket": 160,
+        "mdPairTime": 124,
+        "mediaFolderFileCount": 21,
+        "mediaFolderSize": 20,
+        "mediaQualitySetting": 188,
+        "metaAiModelActual": 198,
+        "metaAiModelSelected": 199,
+        "metaAiVoiceDefaultOn": 220,
+        "metaAiVoiceSelection": 221,
+        "modifiedInternalProps": 155,
+        "nativeContactsGlobalSettingEnabled": 205,
+        "networkIsRoaming": 7,
+        "networkOperatorName": 159,
+        "numAccounts": 163,
+        "numContactsWithTextstatus24h": 178,
+        "numContactsWithTextstatusEmoji24h": 179,
+        "numContactsWithTextstatusText24h": 180,
+        "osBuildNumber": 4,
+        "osNotificationSetting": 118,
+        "outOfNetworkContactsSize": 191,
+        "packageName": 102,
+        "passkeyExists": 165,
+        "paymentsIsEnabled": 100,
+        "peripheralConnected": 209,
+        "peripheralLinkedProductLine": 229,
+        "permissionAccessCoarseLocation": 57,
+        "permissionAccessFineLocation": 58,
+        "permissionCamera": 56,
+        "permissionContacts": 104,
+        "permissionReadExternalStorage": 53,
+        "permissionRecordAudio": 55,
+        "phoneCores": 156,
+        "phoneyid": 162,
+        "preloadsAppManagerId": 224,
+        "preloadsAttributionJson": 227,
+        "privacySettingsAbout": 141,
+        "privacySettingsAboutExceptNum": 142,
+        "privacySettingsGroups": 143,
+        "privacySettingsGroupsExceptNum": 144,
+        "privacySettingsLastSeen": 145,
+        "privacySettingsLastSeenExceptNum": 146,
+        "privacySettingsProfileLinks": 225,
+        "privacySettingsProfileLinksExceptNum": 226,
+        "privacySettingsProfilePhoto": 147,
+        "privacySettingsProfilePhotoExceptNum": 148,
+        "privacySettingsStatus": 150,
+        "privacySettingsStatusExceptNum": 151,
+        "privacySettingsStatusShareNum": 152,
+        "profileLinksCount": 211,
+        "receiptsEnabled": 8,
+        "secretCodeActive": 172,
+        "showMetaAiButtonSetting": 173,
+        "simMcc": 2,
+        "simMnc": 3,
+        "storageAvailSize": 31,
+        "storageTotalSize": 32,
+        "supportedDecoders": 169,
+        "supportedEncoders": 170,
+        "syncedInNetworkContactsSize": 192,
+        "totalCountInNetworkUniquePhoneNumber": 193,
+        "totalCountSyncedInNetworkUniquePhoneNumber": 194,
+        "trafficAnonymization": 215,
+        "unreadBadgeFrequency": 213,
+        "videoFolderFileCount": 23,
+        "videoFolderSize": 22,
+        "webcContactsTableSize": 207,
+        "webcFilteredContactsSize": 208
+      },
+      "weight": 1
+    },
+    "DeepLinkClick": {
+      "id": 1156,
+      "props": {
+        "deepLinkHasPhoneNumber": 2,
+        "deepLinkHasText": 1,
+        "deepLinkHasUsername": 4,
+        "deepLinkHasUsernamePin": 5,
+        "deepLinkRequirePinEntry": 6,
+        "deepLinkSessionId": 3
+      },
+      "weight": 1
+    },
+    "DeepLinkConversion": {
+      "id": 1432,
+      "props": {
+        "callInitiator": 8,
+        "ctwaChatCreationMode": 4,
+        "ctwaConversionType": 3,
+        "ctwaSignals": 9,
+        "deepLinkConversionData": 2,
+        "deepLinkConversionSource": 1,
+        "isPriority": 7,
+        "trustBannerAction": 5,
+        "trustBannerType": 6
+      },
+      "weight": 1
+    },
+    "DeepLinkMsgSent": {
+      "id": 3198,
+      "props": {
+        "deepLinkAction": 1,
+        "deepLinkSessionId": 2
+      },
+      "weight": 1
+    },
+    "DeepLinkOpen": {
+      "id": 2136,
+      "props": {
+        "campaign": 8,
+        "deepLinkOpenFrom": 2,
+        "deepLinkSessionId": 6,
+        "deepLinkType": 3,
+        "isContact": 4,
+        "linkOwnerType": 5,
+        "sourceSurface": 7
+      },
+      "weight": 1
+    },
+    "DisappearingMessageChatPicker": {
+      "id": 3398,
+      "props": {
+        "chatsSelected": 1,
+        "dmChatPickerEntryPoint": 2,
+        "dmChatPickerEventName": 3,
+        "ephemeralityDuration": 4,
+        "groupChatsSelected": 5,
+        "groupSizeDistributionJson": 9,
+        "newlyEphemeralChats": 7,
+        "totalChatsInChatPicker": 8
+      },
+      "weight": 1
+    },
+    "DisappearingMessageKeepInChat": {
+      "id": 3482,
+      "props": {
+        "canEditDmSettings": 16,
+        "chatEphemeralityDuration": 1,
+        "isAGroup": 2,
+        "isAdmin": 3,
+        "keptCount": 15,
+        "keptDelta": 4,
+        "kicActionName": 5,
+        "kicActor": 6,
+        "kicEntryPoint": 7,
+        "mediaType": 8,
+        "messageExpiredOnUnkeep": 9,
+        "messageExpiryTimer": 10,
+        "messagesInFolder": 11,
+        "messagesSelected": 12,
+        "threadId": 13
+      },
+      "weight": 1
+    },
+    "DisappearingModeSettingChange": {
+      "id": 3056,
+      "props": {
+        "disappearingModeEntryPoint": 4,
+        "lastToggleTimestamp": 3,
+        "newEphemeralityDuration": 2,
+        "previousEphemeralityDuration": 1
+      },
+      "weight": 1
+    },
+    "DisappearingModeSettingEvents": {
+      "id": 3446,
+      "props": {
+        "disappearingModeEntryPoint": 5,
+        "disappearingModeSettingEventName": 1,
+        "lastToggleTimestamp": 2,
+        "newEphemeralityDuration": 3,
+        "previousEphemeralityDuration": 4
+      },
+      "weight": 1
+    },
+    "E2eMessageRecv": {
+      "id": 478,
+      "props": {
+        "agentEngagementType": 15,
+        "botType": 19,
+        "e2eCiphertextType": 5,
+        "e2eCiphertextVersion": 6,
+        "e2eDestination": 4,
+        "e2eFailureReason": 2,
+        "e2eSenderType": 8,
+        "e2eSuccessful": 1,
+        "editType": 13,
+        "groupEncryptionState": 23,
+        "invisibleMessageCategory": 22,
+        "isHostedChat": 20,
+        "isLid": 11,
+        "localAddressingMode": 16,
+        "messageAddressingMode": 17,
+        "messageDistributionType": 21,
+        "messageMediaType": 7,
+        "offline": 9,
+        "retryCount": 3,
+        "revokeType": 10,
+        "serverAddressingMode": 18,
+        "stanzaType": 14,
+        "typeOfGroup": 12
+      },
+      "weight": 20
+    },
+    "E2eMessageSend": {
+      "id": 476,
+      "props": {
+        "agentEngagementType": 15,
+        "botType": 17,
+        "e2eBackfill": 18,
+        "e2eCiphertextType": 5,
+        "e2eCiphertextVersion": 6,
+        "e2eDestination": 4,
+        "e2eFailureReason": 2,
+        "e2eReceiverDeviceType": 19,
+        "e2eReceiverType": 8,
+        "e2eSuccessful": 1,
+        "editType": 14,
+        "encRetryCount": 9,
+        "groupEncryptionState": 22,
+        "invisibleMessageCategory": 21,
+        "isLid": 12,
+        "localAddressingMode": 16,
+        "messageDistributionType": 20,
+        "messageIsInvisible": 10,
+        "messageMediaType": 7,
+        "retryCount": 3,
+        "revokeType": 11,
+        "typeOfGroup": 13
+      },
+      "weight": 20
+    },
+    "E2eRetryReject": {
+      "id": 3578,
+      "props": {
+        "invisibleMessageCategory": 6,
+        "mediaType": 7,
+        "messageType": 1,
+        "msgRetryCount": 2,
+        "retryRejectReason": 3,
+        "retryRevoke": 4,
+        "senderDeviceType": 5
+      },
+      "weight": 1
+    },
+    "EditBusinessProfile": {
+      "id": 1466,
+      "props": {
+        "businessProfileEntryPoint": 10,
+        "editBusinessProfileSessionId": 2,
+        "editProfileAction": 1,
+        "editProfileActionField": 9,
+        "hasAddress": 5,
+        "hasCategory": 4,
+        "hasDescription": 3,
+        "hasEmail": 7,
+        "hasHours": 6,
+        "hasPaymentInfo": 11,
+        "hasWebsite": 8
+      },
+      "weight": 1
+    },
+    "EditMessageSend": {
+      "id": 3990,
+      "props": {
+        "editDuration": 1,
+        "editType": 2,
+        "mediaType": 8,
+        "messageSendResultIsTerminal": 3,
+        "messageType": 4,
+        "resendCount": 5,
+        "retryCount": 6,
+        "typeOfGroup": 9
+      },
+      "weight": 1
+    },
+    "EphemeralOutOfSyncInfo": {
+      "id": 3892,
+      "props": {
+        "groupSizeBucket": 1,
+        "incomingMessageEphemeralityDuration": 2,
+        "isAGroup": 3,
+        "isNewThreadForUser": 5,
+        "otherDefaultModeDuration": 6,
+        "threadEphemeralityDuration": 7,
+        "threadId": 8,
+        "userDefaultModeDuration": 9
+      },
+      "weight": 1
+    },
+    "EphemeralSettingChange": {
+      "id": 2370,
+      "props": {
+        "chatEphemeralityDuration": 1,
+        "ephemeralSettingEntryPoint": 3,
+        "ephemeralSettingGroupSize": 5,
+        "previousEphemeralityDuration": 2,
+        "threadId": 6
+      },
+      "weight": 1
+    },
+    "EphemeralSyncResponseReceive": {
+      "id": 4780,
+      "props": {
+        "clientDisappearingModeInitiator": 1,
+        "clientEphemeralityDuration": 2,
+        "clientEphemeralityInitiator": 3,
+        "clientEphemeralitySettingTimestamp": 4,
+        "clientEphemeralityTriggerAction": 5,
+        "esrDisappearingModeInitiator": 6,
+        "esrEphemeralityDuration": 7,
+        "esrEphemeralityInitiator": 8,
+        "esrEphemeralitySettingTimestamp": 9,
+        "esrEphemeralityTriggerAction": 10,
+        "esrFailureReason": 11,
+        "esrResolveResult": 12,
+        "isAGroup": 13,
+        "threadId": 14
+      },
+      "weight": 1
+    },
+    "EphemeralSyncResponseSend": {
+      "id": 4778,
+      "props": {
+        "clientDisappearingModeInitiator": 1,
+        "clientEphemeralityDuration": 2,
+        "clientEphemeralityInitiator": 3,
+        "clientEphemeralitySettingTimestamp": 4,
+        "clientEphemeralityTriggerAction": 5,
+        "esrDisappearingModeInitiator": 6,
+        "esrEphemeralityDuration": 7,
+        "esrEphemeralityInitiator": 8,
+        "esrEphemeralitySettingTimestamp": 9,
+        "esrEphemeralityTriggerAction": 10,
+        "esrFailureReason": 11,
+        "esrSendAttempt": 12,
+        "esrSendResult": 13,
+        "isAGroup": 14,
+        "messageDisappearingModeInitiator": 15,
+        "messageEphemeralityDuration": 16,
+        "messageEphemeralityInitiator": 17,
+        "messageEphemeralitySettingTimestamp": 18,
+        "messageEphemeralityTriggerAction": 19,
+        "threadId": 20
+      },
+      "weight": 1
+    },
+    "FmxAction": {
+      "id": 4444,
+      "props": {
+        "commonGroupNum": 1,
+        "countryShown": 2,
+        "fmxEntryPoint": 3,
+        "fmxEvent": 4,
+        "highlightGroupType": 6,
+        "isSenderSmb": 7,
+        "notAContactShown": 5,
+        "threadIdHmac": 8,
+        "trustSignals": 9
+      },
+      "weight": 1
+    },
+    "ForwardSend": {
+      "id": 1728,
+      "props": {
+        "disappearingChatInitiator": 21,
+        "e2eCiphertextType": 12,
+        "e2eCiphertextVersion": 11,
+        "ephemeralityDuration": 18,
+        "ephemeralityInitiator": 24,
+        "ephemeralityTriggerAction": 25,
+        "fastForwardEnabled": 5,
+        "forwardPickerOrigin": 27,
+        "isForwardedForward": 22,
+        "isFrequentlyForwarded": 14,
+        "mediaCaptionPresent": 10,
+        "messageBizType": 26,
+        "messageForwardAgeT": 4,
+        "messageIsFanout": 6,
+        "messageIsFastForward": 3,
+        "messageIsInternational": 9,
+        "messageMediaType": 2,
+        "messageSendT": 13,
+        "messageType": 1,
+        "receiverDefaultDisappearingDuration": 20,
+        "resendCount": 8,
+        "retryCount": 7,
+        "senderDefaultDisappearingDuration": 19,
+        "typeOfGroup": 23,
+        "wouldBeFrequentlyForwardedAt3": 16,
+        "wouldBeFrequentlyForwardedAt4": 17
+      },
+      "weight": 1
+    },
+    "GatedChatOpened": {
+      "id": 3150,
+      "props": {
+        "chatGatedReason": 1,
+        "selfInitiated": 2
+      },
+      "weight": 1
+    },
+    "GatedMessageReceived": {
+      "id": 3152,
+      "props": {
+        "chatGatedReason": 1
+      },
+      "weight": 1
+    },
+    "GifFromProviderSent": {
+      "id": 1124,
+      "props": {
+        "gifSearchProvider": 1
+      },
+      "weight": 1
+    },
+    "GifSearchCancelled": {
+      "id": 1126,
+      "props": {
+        "gifSearchProvider": 1
+      },
+      "weight": 1
+    },
+    "GifSearchNoResults": {
+      "id": 1128,
+      "props": {
+        "gifSearchProvider": 1,
+        "inputLanguageCode": 3,
+        "languageCode": 2
+      },
+      "weight": 1
+    },
+    "GifSearchResultTapped": {
+      "id": 1122,
+      "props": {
+        "gifSearchProvider": 1,
+        "rank": 2
+      },
+      "weight": 1
+    },
+    "GifSearchSessionStarted": {
+      "id": 1134,
+      "props": {
+        "gifSearchProvider": 1
+      },
+      "weight": 1
+    },
+    "GraphqlCatalogRequest": {
+      "id": 3206,
+      "props": {
+        "businessJid": 4,
+        "businessType": 5,
+        "graphqlCatalogEndpoint": 1,
+        "graphqlErrorCode": 3,
+        "graphqlRequestResult": 2
+      },
+      "weight": 1
+    },
+    "GroupCatchUp": {
+      "id": 3058,
+      "props": {
+        "mentionsCountPendingPercentage": 4
+      },
+      "weight": 1
+    },
+    "GroupCreateC": {
+      "id": 156,
+      "props": {},
+      "weight": 1
+    },
+    "GroupJoinC": {
+      "id": 158,
+      "props": {},
+      "weight": 1
+    },
+    "GroupJourney": {
+      "id": 4512,
+      "props": {
+        "actionType": 1,
+        "appSessionId": 2,
+        "groupSize": 3,
+        "surface": 4,
+        "threadType": 5,
+        "uiSurface": 7,
+        "userRole": 6
+      },
+      "weight": 1
+    },
+    "GroupProfilePicture": {
+      "id": 3652,
+      "props": {
+        "groupCreationDs": 1,
+        "groupProfileAction": 7,
+        "hasProfilePicture": 3,
+        "isAdmin": 4,
+        "preciseGroupSizeBucket": 5,
+        "profilePictureType": 6
+      },
+      "weight": 1
+    },
+    "HfmTextSearchComplete": {
+      "id": 2186,
+      "props": {},
+      "weight": 1
+    },
+    "IncomingMessageDrop": {
+      "id": 3724,
+      "props": {
+        "agentEngagementType": 12,
+        "botType": 14,
+        "e2eCiphertextType": 1,
+        "e2eDestination": 2,
+        "e2eFailureReason": 9,
+        "e2eSenderType": 3,
+        "invisibleMessageCategory": 13,
+        "isLid": 15,
+        "localAddressingMode": 16,
+        "messageDropReason": 4,
+        "messageMediaType": 5,
+        "offline": 6,
+        "offlineCount": 11,
+        "retryCount": 7,
+        "revokeType": 8,
+        "typeOfGroup": 10
+      },
+      "weight": 1
+    },
+    "InlineVideoPlaybackClosed": {
+      "id": 2032,
+      "props": {
+        "inlineVideoCancelBeforePlayStateT": 7,
+        "inlineVideoComplete": 8,
+        "inlineVideoCompletionRate": 9,
+        "inlineVideoCtaClick": 10,
+        "inlineVideoDurationT": 2,
+        "inlineVideoError": 11,
+        "inlineVideoHasRcat": 13,
+        "inlineVideoPlayStartT": 6,
+        "inlineVideoPlayed": 3,
+        "inlineVideoStallT": 4,
+        "inlineVideoType": 1,
+        "inlineVideoWatchT": 5,
+        "messageType": 12
+      },
+      "weight": 1
+    },
+    "InvalidMacIncomingMutation": {
+      "id": 6072,
+      "props": {
+        "collection": 1,
+        "doesIndexExistLocally": 2,
+        "isSenderPrimary": 3,
+        "mutationActionName": 4,
+        "mutationIndexMac": 5,
+        "mutationOperationType": 6,
+        "patchSenderPlatform": 7,
+        "patchVersionNum": 8,
+        "senderDeviceId": 9
+      },
+      "weight": 1
+    },
+    "KeepInChatErrors": {
+      "id": 3698,
+      "props": {
+        "canEditDmSettings": 7,
+        "isAGroup": 2,
+        "isAdmin": 3,
+        "kicAction": 4,
+        "kicErrorCode": 5,
+        "kicMessageEphemeralityDuration": 6
+      },
+      "weight": 1
+    },
+    "KeepInChatNotif": {
+      "id": 3484,
+      "props": {
+        "kicGroupNotificationTaps": 3,
+        "kicGroupNotifications": 4,
+        "kicNotificationTaps": 5,
+        "kicNotifications": 6
+      },
+      "weight": 1
+    },
+    "KeepInChatNux": {
+      "id": 3486,
+      "props": {
+        "chatEphemeralityDuration": 1,
+        "kicNuxActionName": 2,
+        "threadId": 3,
+        "trigger": 4
+      },
+      "weight": 1
+    },
+    "KeepInChatPerf": {
+      "id": 3488,
+      "props": {
+        "chatEphemeralityDuration": 1,
+        "kicErrorCode": 2,
+        "kicMessageEphemeralityDuration": 3,
+        "kicRequestType": 4,
+        "requestSendTime": 5,
+        "response": 6,
+        "threadId": 7
+      },
+      "weight": 1
+    },
+    "LabelEvent": {
+      "id": 1422,
+      "props": {
+        "customLabelTitle": 9,
+        "entryPointConversionSource": 10,
+        "itemsLabeledCount": 5,
+        "labelCount": 4,
+        "labelOperation": 2,
+        "labelOperationEntryPoint": 6,
+        "labelTarget": 1,
+        "lastMessageDirection": 14,
+        "messageDepth": 15,
+        "predefinedLabelNumber": 3,
+        "threadCreationDate": 11,
+        "threadId": 12,
+        "threadIdHmac": 13
+      },
+      "weight": 1
+    },
+    "Lid11MigrationLifecycle": {
+      "id": 6154,
+      "props": {
+        "chatNotInMappingCount": 1,
+        "companionHasADifferentMappingCount": 2,
+        "currentLocalTimeSeconds": 10,
+        "fakeLidCount": 3,
+        "isStageInOfflineResume": 11,
+        "isSyncdLidSession": 4,
+        "latestMappingCount": 5,
+        "mappingCount": 6,
+        "migratedThreadCount": 7,
+        "migrationStage": 8,
+        "peerMappingBytesLength": 12,
+        "primaryMigrationTimeSeconds": 13,
+        "stageFailureReason": 9
+      },
+      "weight": 1
+    },
+    "LidMigrationDaily": {
+      "id": 5842,
+      "props": {
+        "completedMigrations": 1,
+        "lidMigrationSource": 7,
+        "numberOfPnChatsWithoutMapping": 5,
+        "numberOfPnhCtwaThreadsKnownMapping": 2,
+        "numberOfPnhCtwaThreadsMissingMapping": 3,
+        "numberOfSplitThreads": 4,
+        "numberOfUserChatsWithoutAccountLid": 6
+      },
+      "weight": 1
+    },
+    "LimitSharingSettingUpdate": {
+      "id": 6390,
+      "props": {
+        "threadId": 1,
+        "toggleUpdateAction": 2
+      },
+      "weight": 1
+    },
+    "ListUpdate": {
+      "id": 5830,
+      "props": {
+        "groupsAdded": 9,
+        "groupsAfterUpdate": 10,
+        "listAction": 1,
+        "listId": 2,
+        "listType": 3,
+        "predefinedId": 13,
+        "updateEntryPoint": 8,
+        "usersAdded": 11,
+        "usersAfterUpdate": 12
+      },
+      "weight": 1
+    },
+    "ListUpdateUserJourney": {
+      "id": 5958,
+      "props": {
+        "listAction": 1,
+        "listId": 2,
+        "listType": 3,
+        "listUpdateUserJourneyAction": 4,
+        "predefinedId": 5,
+        "updateEntryPoint": 6
+      },
+      "weight": 1
+    },
+    "LockFolderUnlock": {
+      "id": 4218,
+      "props": {
+        "landingSurface": 1,
+        "totalChatCount": 2,
+        "unlockEntryPoint": 3
+      },
+      "weight": 1
+    },
+    "Login": {
+      "id": 460,
+      "props": {
+        "androidKeystoreState": 10,
+        "appContext": 20,
+        "appContextBitfield": 21,
+        "connectionOrigin": 6,
+        "connectionSequenceStep": 11,
+        "connectionT": 5,
+        "dnsResolutionMethod": 12,
+        "loginDnsResolver": 13,
+        "loginIpSource": 14,
+        "loginPort": 15,
+        "loginResolvedPop": 19,
+        "loginResult": 1,
+        "loginSocketProvider": 22,
+        "loginT": 3,
+        "logoutSessionId": 18,
+        "longConnect": 4,
+        "noiseProtocolVersion": 16,
+        "passive": 8,
+        "pendingAcksCount": 17,
+        "retryCount": 2,
+        "sequenceStep": 7,
+        "serverErrorCode": 9
+      },
+      "weight": 1
+    },
+    "LwiEntryPointImpression": {
+      "id": 2906,
+      "props": {
+        "businessToolsSessionId": 2,
+        "catalogSessionId": 1,
+        "itemsCount": 7,
+        "lwiEntryPoint": 3,
+        "lwiSubEntryPoint": 6,
+        "statusSessionId": 5,
+        "userHasLinkedFbPage": 4
+      },
+      "weight": 1
+    },
+    "LwiEntryTap": {
+      "id": 2770,
+      "props": {
+        "businessToolsSessionId": 4,
+        "catalogSessionId": 2,
+        "itemsCount": 11,
+        "lwiEntryPoint": 3,
+        "lwiFlowId": 1,
+        "lwiSubEntryPoint": 7,
+        "statusSessionId": 6,
+        "statusTypeMedia": 12,
+        "userHasLinkedFbPage": 5,
+        "waCampaignId": 10
+      },
+      "weight": 1
+    },
+    "LwiScreen": {
+      "id": 2772,
+      "props": {
+        "adContentRecommendation": 41,
+        "adMediaTemplateName": 61,
+        "adMediaTypeSelected": 40,
+        "adsContentSelected": 42,
+        "alertCount": 33,
+        "audienceType": 45,
+        "billingStatus": 36,
+        "createAdEnabled": 12,
+        "ctwaAdAccountType": 58,
+        "ctwaLoginType": 59,
+        "defaultAdsContentSelected": 9,
+        "defaultAudienceLocationType": 57,
+        "itemCount": 39,
+        "lwiAdCampaignId": 46,
+        "lwiAdsIdentityType": 22,
+        "lwiAlertReason": 6,
+        "lwiBudgetInLocal": 15,
+        "lwiBudgetOptionsInLocal": 54,
+        "lwiCtwaAdCtaType": 24,
+        "lwiCtwaAdStatusType": 25,
+        "lwiCurrency": 16,
+        "lwiDefaultBudgetInLocal": 17,
+        "lwiDefaultDurationInDays": 18,
+        "lwiDefaultTargetingSpec": 19,
+        "lwiDurationInDays": 20,
+        "lwiEventSequenceNumber": 2,
+        "lwiExtras": 30,
+        "lwiFlowId": 1,
+        "lwiIsFbAppInstalled": 27,
+        "lwiIsIgAppInstalled": 51,
+        "lwiLocationTypesSetOnAudienceSelection": 55,
+        "lwiMaxDurationInDays": 52,
+        "lwiMinDurationInDays": 53,
+        "lwiScreenAction": 5,
+        "lwiScreenReference": 4,
+        "lwiTargetingSpec": 21,
+        "lwiTotalCtwaAds": 26,
+        "lwiViewerHasEditPermission": 28,
+        "lwiViewerHasPromotePermission": 32,
+        "mediaEdited": 49,
+        "onboardingEntryPoint": 38,
+        "paymentMethodSet": 13,
+        "productId": 3,
+        "selectedProductsIdsList": 8,
+        "totalMediaCount": 50,
+        "usedSavedAudience": 31,
+        "userHasAdvancedAudience": 35,
+        "userHasBpCredentials": 43,
+        "userHasCatalogItemsToPromote": 10,
+        "userHasChangedDefaultCityLevelAudience": 56,
+        "userHasLinkedFbPage": 7,
+        "userHasMultisourceMedia": 60,
+        "userHasSeenRecommendedBudget": 34,
+        "userHasStatusToPromote": 11,
+        "userProvidedFbConsent": 14,
+        "userWentThroughFbWebLogin": 23,
+        "validationStatus": 37,
+        "waAdAccountId": 44
+      },
+      "weight": 1
+    },
+    "ManageAdsEntryPointImpression": {
+      "id": 4124,
+      "props": {
+        "manageAdsEntryPoint": 1
+      },
+      "weight": 1
+    },
+    "ManageAdsEntryPointTap": {
+      "id": 4126,
+      "props": {
+        "manageAdsEntryPoint": 1
+      },
+      "weight": 1
+    },
+    "MarketingMessageUserControlsJourney": {
+      "id": 6070,
+      "props": {
+        "businessPhoneNumber": 9,
+        "isSuccess": 1,
+        "mmUserControlsAction": 2,
+        "mmUserControlsEntryPoint": 3,
+        "mmUserControlsErrorType": 4,
+        "mmUserControlsRolloutVariant": 5,
+        "sequenceNumber": 6,
+        "templateId": 7,
+        "unifiedSessionId": 8
+      },
+      "weight": 1
+    },
+    "MdAppStateDirtyBits": {
+      "id": 2520,
+      "props": {
+        "dirtyBitsFalsePositive": 2
+      },
+      "weight": 1000
+    },
+    "MdAppStateKeyRotation": {
+      "id": 2518,
+      "props": {
+        "appSessionId": 2,
+        "companionSessionIds": 3,
+        "mdAppStateKeyRotationReason": 1,
+        "oldSyncdKeyhash": 6,
+        "oldSyncdKeyid": 7,
+        "seqNumber": 8,
+        "syncdKeyhashAfterRotation": 9,
+        "syncdKeyidAfterRotation": 10
+      },
+      "weight": 1000
+    },
+    "MdAppStateMessageRange": {
+      "id": 2522,
+      "props": {
+        "additionalMessagesCount": 1
+      },
+      "weight": 1000
+    },
+    "MdAppStateOfflineNotifications": {
+      "id": 2602,
+      "props": {
+        "redundantCount": 1
+      },
+      "weight": 1000
+    },
+    "MdAppStateSyncDaily": {
+      "id": 2300,
+      "props": {
+        "crossIndexConflictCount": 11,
+        "invalidActionCount": 4,
+        "keyRotationRemoveCount": 12,
+        "missingKeyCount": 9,
+        "mutationCount": 1,
+        "storedMutationCount": 7,
+        "unsetActionCount": 8,
+        "unsupportedActionCount": 5,
+        "uploadConflictCount": 10
+      },
+      "weight": 1
+    },
+    "MdAppStateSyncMutationStats": {
+      "id": 3180,
+      "props": {
+        "applied": 1,
+        "failed": 2,
+        "invalid": 3,
+        "orphan": 4,
+        "syncdAction": 5,
+        "unsupported": 6
+      },
+      "weight": 100
+    },
+    "MdBadDeviceSentMessage": {
+      "id": 2176,
+      "props": {
+        "dsmError": 2,
+        "editType": 3,
+        "isLid": 4,
+        "mediaType": 5,
+        "messageType": 6,
+        "peerType": 1,
+        "revokeType": 7
+      },
+      "weight": 1
+    },
+    "MdBootstrapAppStateCriticalDataProcessing": {
+      "id": 3164,
+      "props": {
+        "bootstrapAppStateDataStage": 1,
+        "mdBootstrapPayloadType": 2,
+        "mdRegAttemptId": 3,
+        "mdSessionId": 4,
+        "mdTimestamp": 5
+      },
+      "weight": 1
+    },
+    "MdBootstrapAppStateDataDownloaded": {
+      "id": 2294,
+      "props": {
+        "appContext": 14,
+        "appContextBitfield": 15,
+        "applicationState": 13,
+        "mdBootstrapContactsCount": 5,
+        "mdBootstrapHistoryPayloadType": 11,
+        "mdBootstrapPayloadSize": 4,
+        "mdBootstrapPayloadType": 2,
+        "mdBootstrapStepDuration": 6,
+        "mdBootstrapStepResult": 7,
+        "mdRegAttemptId": 10,
+        "mdSessionId": 1,
+        "mdStorageQuotaBytes": 8,
+        "mdStorageQuotaUsedBytes": 9,
+        "mdTimestamp": 3
+      },
+      "weight": 1
+    },
+    "MdBootstrapDataApplied": {
+      "id": 2298,
+      "props": {
+        "appContext": 22,
+        "appContextBitfield": 23,
+        "applicationState": 21,
+        "chunkChatsApplied": 15,
+        "chunkMsgsApplied": 16,
+        "collection": 5,
+        "historySyncChunkOrder": 14,
+        "historySyncStageProgress": 11,
+        "mdBootstrapChatsCount": 17,
+        "mdBootstrapContactsCount": 8,
+        "mdBootstrapHistoryPayloadType": 10,
+        "mdBootstrapMessagesCount": 18,
+        "mdBootstrapPayloadType": 3,
+        "mdBootstrapSource": 2,
+        "mdBootstrapStepDuration": 6,
+        "mdBootstrapStepResult": 12,
+        "mdDroppedMsgType": 19,
+        "mdRegAttemptId": 9,
+        "mdSessionId": 1,
+        "mdSyncFailureReason": 20,
+        "mdTimestamp": 4,
+        "sentViaMms": 13,
+        "usedSnapshot": 7
+      },
+      "weight": 1
+    },
+    "MdBootstrapHistoryDataDownloaded": {
+      "id": 2296,
+      "props": {
+        "appContext": 18,
+        "appContextBitfield": 19,
+        "applicationState": 17,
+        "historySyncChunkOrder": 15,
+        "historySyncStageProgress": 14,
+        "mdBootstrapChatsCount": 6,
+        "mdBootstrapHistoryPayloadType": 13,
+        "mdBootstrapMessagesCount": 5,
+        "mdBootstrapPayloadSize": 4,
+        "mdBootstrapPayloadType": 2,
+        "mdBootstrapStepDuration": 7,
+        "mdBootstrapStepResult": 8,
+        "mdHsOldestMessageTimestamp": 11,
+        "mdRegAttemptId": 12,
+        "mdSessionId": 1,
+        "mdStorageQuotaBytes": 9,
+        "mdStorageQuotaUsedBytes": 10,
+        "mdSyncFailureReason": 16,
+        "mdTimestamp": 3
+      },
+      "weight": 1
+    },
+    "MdBootstrapHistoryDataReceived": {
+      "id": 2998,
+      "props": {
+        "historySyncChunkOrder": 6,
+        "historySyncStageProgress": 5,
+        "mdBootstrapHistoryPayloadType": 3,
+        "mdBootstrapPayloadType": 2,
+        "mdSessionId": 1,
+        "mdTimestamp": 4
+      },
+      "weight": 1
+    },
+    "MdBootstrapHistoryDataStartDownloading": {
+      "id": 4650,
+      "props": {
+        "historySyncChunkOrder": 1,
+        "historySyncStageProgress": 2,
+        "mdBootstrapHistoryPayloadType": 3,
+        "mdBootstrapPayloadSize": 4,
+        "mdBootstrapPayloadType": 5,
+        "mdBootstrapStepDuration": 6,
+        "mdSessionId": 7,
+        "mdTimestamp": 8
+      },
+      "weight": 1
+    },
+    "MdBootstrapHistorySyncStatusAfterPairing": {
+      "id": 4652,
+      "props": {
+        "activeTimeAfterPairing": 1,
+        "isLoopRunning": 12,
+        "lastProcessedNotificationChunkOrder": 2,
+        "lastProcessedNotificationChunkProgress": 3,
+        "mdBootstrapHistoryPayloadType": 4,
+        "mdHistorySyncStatusResult": 5,
+        "mdSessionId": 6,
+        "mdTimestamp": 7,
+        "missingNotificationCount": 8,
+        "nextNotificationChunkOrder": 9,
+        "totalProcessedMessageCount": 10,
+        "unprocessedNotificationCount": 11
+      },
+      "weight": 1
+    },
+    "MdChatAssignment": {
+      "id": 3752,
+      "props": {
+        "assignerAgentId": 1,
+        "assignerBrowserId": 2,
+        "assignerMdId": 3,
+        "chatAssignmentAction": 4,
+        "chatAssignmentAgentId": 5,
+        "chatAssignmentBrowserId": 6,
+        "chatAssignmentChatType": 7,
+        "chatAssignmentEntryPoint": 8,
+        "chatAssignmentMdId": 9,
+        "chatsCnt": 10
+      },
+      "weight": 1
+    },
+    "MdChatAssignmentSecondaryAction": {
+      "id": 3716,
+      "props": {
+        "mdChatAssignmentSecondaryActionAgentId": 1,
+        "mdChatAssignmentSecondaryActionAssignmentType": 8,
+        "mdChatAssignmentSecondaryActionBrowserId": 2,
+        "mdChatAssignmentSecondaryActionChatType": 3,
+        "mdChatAssignmentSecondaryActionError": 4,
+        "mdChatAssignmentSecondaryActionMdId": 5,
+        "mdChatAssignmentSecondaryActionSource": 6,
+        "mdChatAssignmentSecondaryActionType": 7
+      },
+      "weight": 1
+    },
+    "MdCriticalEvent": {
+      "id": 2746,
+      "props": {
+        "collection": 2,
+        "mdCriticalEventCode": 1
+      },
+      "weight": 1
+    },
+    "MdDeviceSyncAck": {
+      "id": 2180,
+      "props": {
+        "chatType": 1,
+        "invisibleMessageCategory": 7,
+        "isLid": 3,
+        "localAddressingMode": 5,
+        "revoke": 2,
+        "serverAddressingMode": 6,
+        "typeOfGroup": 4
+      },
+      "weight": 1
+    },
+    "MdExpansionAgentBrowserMdId": {
+      "id": 3390,
+      "props": {
+        "agentId": 1,
+        "browserId": 2,
+        "companionMdId": 5,
+        "isCustomAgentName": 6,
+        "isNewAgent": 9,
+        "loginTimestamp": 3,
+        "logoutTimestamp": 4,
+        "mdLinkedCount": 8,
+        "multideviceAction": 7
+      },
+      "weight": 1
+    },
+    "MdFatalError": {
+      "id": 2304,
+      "props": {
+        "appContext": 46,
+        "appContextBitfield": 47,
+        "appSessionId": 41,
+        "collection": 2,
+        "companionSessionIds": 42,
+        "currentPrimaryAppVersion": 14,
+        "daysSinceLastPeriodicSync": 11,
+        "didBootstrapFromSnapshot": 38,
+        "hoursSinceFirstFiniteFailure": 12,
+        "isBootstrap": 3,
+        "isFatal": 16,
+        "isPatchSenderPrimary": 23,
+        "isPreviousPatchAnIncomingPatch": 24,
+        "isPreviousPatchSenderPrimary": 25,
+        "isSenderIndexSameAsPreviousSenderIndex": 39,
+        "isThereAnotherSyncdCompanion": 40,
+        "isWebLthashConsistent": 17,
+        "macFatalCollectionNameMismatch": 18,
+        "macFatalCurrentLthashMismatch": 19,
+        "macFatalDidPreviousPatchFailPostSaveValidation": 26,
+        "macFatalDidUseMacFetchFallback": 36,
+        "macFatalFirstTwoBytesFromAHashOfSnapshotMacKeyMismatch": 20,
+        "macFatalHasMissingRemove": 37,
+        "macFatalNewLthashMismatch": 21,
+        "macFatalNewLthashSubtractMismatch": 27,
+        "macFatalNumberAddMismatch": 28,
+        "macFatalNumberHasOverrideMutation": 29,
+        "macFatalNumberNumAddMutation": 30,
+        "macFatalNumberNumRemoveMutation": 31,
+        "macFatalNumberOverrideMismatch": 32,
+        "macFatalNumberRemoveMismatch": 33,
+        "macFatalPatchVersionMismatch": 22,
+        "macFatalPreviousPatchNewLthashToCurrentPatchCurrentLthash": 34,
+        "macFatalSenderCurrentLthashToLocalCalculatedCurrentLthashMismatch": 35,
+        "mailboxAgeDays": 13,
+        "mdCompanionDeviceAccountType": 43,
+        "mdFatalErrorCode": 1,
+        "mdRegAttemptId": 44,
+        "patchSnapshotMutationCount": 9,
+        "patchVersion": 5,
+        "seqNumber": 45,
+        "sessionStartPrimaryAppVersion": 15,
+        "sourceType": 10,
+        "timeSincePairingMs": 6,
+        "timeSinceRefreshMs": 7,
+        "timeSinceTabTakeoverMs": 8
+      },
+      "weight": 1
+    },
+    "MdGroupParticipantMissAck": {
+      "id": 4146,
+      "props": {
+        "groupSizeBucket": 1,
+        "isLid": 2,
+        "messageIsRevoke": 3,
+        "participantAddCount": 4,
+        "participantRemoveCount": 5,
+        "typeOfGroup": 6
+      },
+      "weight": 1
+    },
+    "MdLinkDeviceCompanion": {
+      "id": 2576,
+      "props": {
+        "appContext": 13,
+        "appContextBitfield": 14,
+        "applicationState": 12,
+        "mdCompanionRefHash": 10,
+        "mdDurationS": 8,
+        "mdLinkDeviceCompanionErrorCode": 6,
+        "mdLinkDeviceCompanionStage": 4,
+        "mdLinkDeviceExperienceId": 11,
+        "mdRegAttemptId": 9,
+        "mdSessionId": 1,
+        "mdTimestampS": 7,
+        "mdWasUpgraded": 5
+      },
+      "weight": 1
+    },
+    "MdRetryFromUnknownDevice": {
+      "id": 2178,
+      "props": {
+        "offline": 2,
+        "senderType": 1
+      },
+      "weight": 1
+    },
+    "MdSyncdDogfoodingFeatureUsage": {
+      "id": 3016,
+      "props": {
+        "mdSyncdDogfoodingFeature": 1
+      },
+      "weight": 1
+    },
+    "MdSyncdMutation": {
+      "id": 5970,
+      "props": {
+        "appSessionId": 1,
+        "companionSessionIds": 2,
+        "contentLength": 3,
+        "isInBootstrap": 4,
+        "isUsingLid": 5,
+        "mutationBundle": 6,
+        "mutationDirection": 7,
+        "mutationMac": 8,
+        "mutationName": 9,
+        "mutationOperation": 10,
+        "patchMac": 15,
+        "seqNumber": 11,
+        "syncdCollection": 12,
+        "syncdKeyhash": 13,
+        "syncdKeyid": 14
+      },
+      "weight": 1
+    },
+    "MediaDownload2": {
+      "id": 1590,
+      "props": {
+        "activeThreadCount": 55,
+        "aiFetchMediaType": 62,
+        "appContext": 64,
+        "appContextBitfield": 65,
+        "clientMessageId": 50,
+        "connectionType": 31,
+        "daysSinceReceive": 46,
+        "debugMediaException": 24,
+        "debugMediaIp": 22,
+        "debugUrl": 23,
+        "deviceCount": 49,
+        "downloadBytesTransferred": 20,
+        "downloadConnectT": 15,
+        "downloadHttpCode": 18,
+        "downloadIsReuse": 17,
+        "downloadIsStreaming": 19,
+        "downloadNetworkT": 16,
+        "downloadQuality": 37,
+        "downloadResumePoint": 14,
+        "downloadTimeToFirstByteT": 21,
+        "estimatedBandwidth": 36,
+        "estimatedBandwidthV2": 59,
+        "expressPathBytesSaved": 42,
+        "expressPathDownloadState": 56,
+        "expressPathTimeSavedMs": 43,
+        "fileHeight": 47,
+        "fileWidth": 48,
+        "hasLeveragedExpressPath": 44,
+        "httpProtocolVersionType": 45,
+        "isProcessedVideo": 58,
+        "isSenderPlatformCapi": 52,
+        "isViewOnce": 41,
+        "maxThreadCount": 57,
+        "mediaId": 38,
+        "networkStack": 30,
+        "overallAttemptCount": 4,
+        "overallBackendStore": 39,
+        "overallConnBlockFetchT": 10,
+        "overallConnectionClass": 29,
+        "overallCumT": 27,
+        "overallCumUserVisibleT": 60,
+        "overallCumV2T": 53,
+        "overallDecryptT": 12,
+        "overallDomain": 5,
+        "overallDownloadMode": 11,
+        "overallDownloadOrigin": 35,
+        "overallDownloadResult": 25,
+        "overallFileValidationT": 13,
+        "overallIsEncrypted": 28,
+        "overallIsFinal": 26,
+        "overallMediaSize": 7,
+        "overallMediaType": 1,
+        "overallMmsVersion": 6,
+        "overallQueueT": 9,
+        "overallRetryCount": 3,
+        "overallT": 8,
+        "overallUserVisibleT": 61,
+        "pairedMediaType": 63,
+        "sleepModeAffected": 51,
+        "timeDelayed": 54,
+        "usedFallbackHint": 40
+      },
+      "weight": 50
+    },
+    "MediaPicker": {
+      "id": 1038,
+      "props": {
+        "audienceSelectorClicked": 24,
+        "audienceSelectorUpdated": 25,
+        "autoScaleCount": 51,
+        "captionPositions": 37,
+        "chatRecipients": 16,
+        "hasCollectionCaption": 38,
+        "hdToggleChange": 34,
+        "hdToggleEligible": 35,
+        "hdToggleState": 36,
+        "isSentInLandscape": 41,
+        "isViewOnce": 22,
+        "itemCaptionCount": 39,
+        "mediaPickerArBackground": 42,
+        "mediaPickerArFilter": 43,
+        "mediaPickerArFunEffect": 44,
+        "mediaPickerAvatarStickers": 33,
+        "mediaPickerChanged": 4,
+        "mediaPickerCroppedRotated": 10,
+        "mediaPickerDeleted": 3,
+        "mediaPickerDrawing": 11,
+        "mediaPickerFilter": 18,
+        "mediaPickerHasLocationSticker": 26,
+        "mediaPickerIgluLowlight": 47,
+        "mediaPickerIgluTouchup": 48,
+        "mediaPickerLikeDoc": 19,
+        "mediaPickerNotLikeDoc": 20,
+        "mediaPickerOrigin": 14,
+        "mediaPickerOriginThirdParty": 21,
+        "mediaPickerSent": 2,
+        "mediaPickerSentUnchanged": 5,
+        "mediaPickerSessionId": 29,
+        "mediaPickerStickers": 12,
+        "mediaPickerT": 15,
+        "mediaPickerText": 13,
+        "mediaType": 1,
+        "motionPhotoImpressionCount": 31,
+        "motionPhotoSentCount": 32,
+        "numberOfArPostCapture": 45,
+        "numberOfArPreCapture": 46,
+        "numberOfIgluPostCapture": 49,
+        "numberOfIgluPreCapture": 50,
+        "photoGalleryDurationT": 23,
+        "photoQualitySetting": 27,
+        "pickerSessionId": 30,
+        "statusRecipients": 17,
+        "transformCount": 52,
+        "videoQualitySetting": 28
+      },
+      "weight": 1
+    },
+    "MediaStreamPlayback": {
+      "id": 1584,
+      "props": {
+        "bytesDownloadedStart": 4,
+        "bytesTransferred": 5,
+        "didPlay": 15,
+        "forcedPlayCount": 12,
+        "initialBufferingT": 7,
+        "mediaSize": 2,
+        "mediaType": 3,
+        "overallPlayT": 10,
+        "overallT": 1,
+        "playbackCount": 14,
+        "playbackError": 17,
+        "playbackOrigin": 16,
+        "playbackState": 11,
+        "seekCount": 13,
+        "totalRebufferingCount": 9,
+        "totalRebufferingT": 8,
+        "videoDuration": 6
+      },
+      "weight": 1
+    },
+    "MediaUpload2": {
+      "id": 1588,
+      "props": {
+        "appContext": 63,
+        "appContextBitfield": 64,
+        "batchSize": 57,
+        "connectionType": 43,
+        "debugMediaException": 34,
+        "debugMediaIp": 32,
+        "debugUrl": 33,
+        "estimatedBandwidth": 45,
+        "estimatedBandwidthV2": 61,
+        "fileHeight": 55,
+        "fileWidth": 56,
+        "finalizeConnectT": 28,
+        "finalizeHttpCode": 31,
+        "finalizeIsReuse": 30,
+        "finalizeNetworkT": 29,
+        "httpProtocolVersionType": 51,
+        "isViewOnce": 49,
+        "mediaCollectionId": 60,
+        "mediaId": 46,
+        "messageKeyHash": 58,
+        "networkStack": 42,
+        "originalSize": 53,
+        "overallAttemptCount": 4,
+        "overallConnBlockFetchT": 10,
+        "overallConnectionClass": 41,
+        "overallCumT": 37,
+        "overallCumUserVisibleT": 38,
+        "overallDomain": 5,
+        "overallEncryptT": 50,
+        "overallIsFinal": 36,
+        "overallIsForward": 16,
+        "overallIsManual": 13,
+        "overallLastUploadRetryPhase": 11,
+        "overallMediaKeyReuse": 40,
+        "overallMediaSize": 7,
+        "overallMediaType": 1,
+        "overallMmsVersion": 6,
+        "overallOptimisticFlag": 12,
+        "overallQueueT": 9,
+        "overallRetryCount": 3,
+        "overallT": 8,
+        "overallTranscodeT": 15,
+        "overallUploadMode": 39,
+        "overallUploadOrigin": 44,
+        "overallUploadResult": 35,
+        "overallUserVisibleT": 14,
+        "pairedMediaType": 62,
+        "photoQualitySetting": 52,
+        "resumeConnectT": 17,
+        "resumeHttpCode": 20,
+        "resumeIsReuse": 19,
+        "resumeNetworkT": 18,
+        "uploadBytesTransferred": 27,
+        "uploadConnectT": 22,
+        "uploadHttpCode": 25,
+        "uploadIsReuse": 24,
+        "uploadIsStreaming": 26,
+        "uploadNetworkT": 23,
+        "uploadResumePoint": 21,
+        "uploadSource": 48,
+        "usedFallbackHint": 47,
+        "videoQualitySetting": 54
+      },
+      "weight": 1
+    },
+    "MerchantCommerceEvent": {
+      "id": 4688,
+      "props": {
+        "acceptedPaymentMethods": 1,
+        "adId": 2,
+        "appSessionId": 3,
+        "bizPlatform": 4,
+        "commerceExperience": 6,
+        "commerceFlowId": 20,
+        "commerceInteractionAction": 7,
+        "commerceInteractionActionType": 21,
+        "commerceOrderStatus": 22,
+        "commercePaymentStatus": 8,
+        "commerceSessionId": 9,
+        "commerceSurface": 10,
+        "extraAttributes": 11,
+        "isCtwaOriginated": 12,
+        "isEligibleForAdSignal": 13,
+        "merchantHasCatalog": 14,
+        "merchantIsDiscoverable": 15,
+        "p2mFlow": 17,
+        "referral": 18,
+        "sequenceId": 19
+      },
+      "weight": 1
+    },
+    "MessageContextMenuActions": {
+      "id": 3694,
+      "props": {
+        "isAGroup": 1,
+        "isMultiAction": 2,
+        "isOriginalSender": 3,
+        "messageContextMenuAction": 4,
+        "messageContextMenuOption": 5
+      },
+      "weight": 1
+    },
+    "MessageDeleteActions": {
+      "id": 3626,
+      "props": {
+        "deleteActionType": 1,
+        "isAGroup": 2,
+        "mediaType": 6,
+        "messagesDeleted": 3,
+        "threadId": 4
+      },
+      "weight": 1
+    },
+    "MessageHighRetryCount": {
+      "id": 3132,
+      "props": {
+        "deviceSizeBucket": 5,
+        "e2eSenderType": 3,
+        "invisibleMessageCategory": 6,
+        "isReceiverLidBased": 7,
+        "isSenderLidBased": 8,
+        "mediaType": 1,
+        "messageType": 4,
+        "retryCount": 2
+      },
+      "weight": 20
+    },
+    "MessageReceive": {
+      "id": 450,
+      "props": {
+        "agentEngagementType": 28,
+        "appContext": 43,
+        "appContextBitfield": 44,
+        "botType": 37,
+        "chatOrigins": 38,
+        "deviceCount": 16,
+        "deviceSizeBucket": 10,
+        "disappearingChatInitiator": 14,
+        "editType": 25,
+        "ephemeralityDuration": 13,
+        "ephemeralityInitiator": 26,
+        "ephemeralityTriggerAction": 27,
+        "hasUsername": 39,
+        "hasUsernamePin": 45,
+        "invisibleMessageCategory": 41,
+        "isAComment": 36,
+        "isAReply": 19,
+        "isForwardedForward": 18,
+        "isLid": 24,
+        "isViewOnce": 9,
+        "localAddressingMode": 33,
+        "messageAddressingMode": 34,
+        "messageIsInternational": 4,
+        "messageIsInvisible": 23,
+        "messageIsOffline": 5,
+        "messageMediaType": 2,
+        "messageQueueTime": 15,
+        "messageReceiveT0": 6,
+        "messageReceiveT1": 7,
+        "messageType": 1,
+        "mutedGroupMessage": 8,
+        "numOfWebUrlsInTextMessage": 3,
+        "offlineCount": 30,
+        "oppositeVisibleIdentification": 40,
+        "paddingBytesSize": 22,
+        "pairedMediaType": 42,
+        "participantCount": 17,
+        "receiverDefaultDisappearingDuration": 12,
+        "revokeType": 20,
+        "senderDefaultDisappearingDuration": 11,
+        "serverAddressingMode": 35,
+        "stickerIsAi": 29,
+        "stickerIsFromStickerMaker": 31,
+        "stickerMakerSourceType": 32,
+        "typeOfGroup": 21
+      },
+      "weight": 5
+    },
+    "MessageSecretErrors": {
+      "id": 3686,
+      "props": {
+        "messageMediaType": 3,
+        "messageSecretAllowedList": 1,
+        "messageSecretError": 2
+      },
+      "weight": 1
+    },
+    "MessageSend": {
+      "id": 854,
+      "props": {
+        "agentEngagementType": 49,
+        "appContext": 72,
+        "appContextBitfield": 73,
+        "botType": 55,
+        "chatOrigins": 58,
+        "chatSessionId": 67,
+        "deviceCount": 31,
+        "deviceSizeBucket": 25,
+        "disappearingChatInitiator": 30,
+        "e2eBackfill": 23,
+        "e2eCiphertextType": 10,
+        "e2eCiphertextVersion": 9,
+        "e2eFailureReason": 46,
+        "editDuration": 43,
+        "editType": 44,
+        "ephemeralityDuration": 21,
+        "ephemeralityInitiator": 47,
+        "ephemeralityTriggerAction": 48,
+        "excessPayloadKbSize": 40,
+        "fastForwardEnabled": 15,
+        "hasUsername": 59,
+        "hasUsernamePin": 74,
+        "invisibleMessageCategory": 64,
+        "isAComment": 54,
+        "isAReply": 35,
+        "isFromWamsys": 19,
+        "isLid": 39,
+        "isPremium": 69,
+        "isViewOnce": 22,
+        "isWhatsapiBuild": 75,
+        "localAddressingMode": 53,
+        "logoutReason": 70,
+        "mediaCaptionPresent": 8,
+        "mediaUploadError": 61,
+        "mediaUploadRetryCount": 62,
+        "messageDistributionType": 41,
+        "messageForwardAgeT": 14,
+        "messageIsFanout": 5,
+        "messageIsFastForward": 13,
+        "messageIsFirstUserMessage": 26,
+        "messageIsForward": 4,
+        "messageIsInternational": 7,
+        "messageIsInvisible": 29,
+        "messageIsRevoke": 24,
+        "messageKeyHash": 57,
+        "messageMediaType": 3,
+        "messageSendOptUploadEnabled": 12,
+        "messageSendResult": 1,
+        "messageSendResultIsTerminal": 17,
+        "messageSendSource": 66,
+        "messageSendT": 11,
+        "messageType": 2,
+        "networkWasDisconnected": 37,
+        "oppositeVisibleIdentification": 60,
+        "overallMediaSize": 42,
+        "pairedMediaType": 71,
+        "participantCount": 32,
+        "receiverDefaultDisappearingDuration": 28,
+        "resendCount": 16,
+        "retryCount": 6,
+        "revokeDuration": 33,
+        "revokeType": 34,
+        "runningTasks": 63,
+        "sendButtonPressT": 45,
+        "senderDefaultDisappearingDuration": 27,
+        "serverErrorCode": 56,
+        "stickerIsAi": 50,
+        "stickerIsAvatar": 38,
+        "stickerIsFirstParty": 18,
+        "stickerIsFromStickerMaker": 51,
+        "stickerMakerSourceType": 52,
+        "thumbSize": 20,
+        "typeOfGroup": 36,
+        "unifiedSessionId": 68,
+        "userToDeviceSizeBucket": 65
+      },
+      "weight": 1
+    },
+    "MessagingFavoritesUpdate": {
+      "id": 5460,
+      "props": {
+        "contactFavCountAfterUpdate": 1,
+        "contactFavCountBeforeUpdate": 2,
+        "favoritesUpdateEntryPoint": 3,
+        "groupFavCountAfterUpdate": 4,
+        "groupFavCountBeforeUpdate": 5
+      },
+      "weight": 1
+    },
+    "MessagingUserJourney": {
+      "id": 5134,
+      "props": {
+        "appSessionId": 1,
+        "isSelfPin": 8,
+        "mediaType": 9,
+        "messagingActionType": 2,
+        "pinInChatExpirySecs": 3,
+        "threadType": 4,
+        "uiSurface": 5,
+        "unifiedSessionId": 10,
+        "userJourneyFunnelId": 6,
+        "userRole": 7
+      },
+      "weight": 1
+    },
+    "MetaAiUpsellCta": {
+      "id": 6532,
+      "props": {
+        "metaAiUpsellCtaOperation": 1,
+        "metaAiUpsellCtaSource": 2
+      },
+      "weight": 1
+    },
+    "MetaVerifiedInteraction": {
+      "id": 4870,
+      "props": {
+        "businessOwnerJid": 1,
+        "businessOwnerPlatform": 2,
+        "metaVerifiedInteractionAction": 3,
+        "metaVerifiedInteractionAssetType": 4,
+        "metaVerifiedInteractionReferral": 5,
+        "metaVerifiedInteractionSurface": 6
+      },
+      "weight": 1
+    },
+    "MetaVerifiedUserAction": {
+      "id": 4986,
+      "props": {
+        "metaVerifiedQuickPromotionId": 12,
+        "metaVerifiedUserActionAction": 1,
+        "metaVerifiedUserActionAssetType": 2,
+        "metaVerifiedUserActionErrorDetails": 8,
+        "metaVerifiedUserActionExtra": 13,
+        "metaVerifiedUserActionGreenDotVisible": 7,
+        "metaVerifiedUserActionInteractionError": 6,
+        "metaVerifiedUserActionIsSubscribed": 9,
+        "metaVerifiedUserActionReferral": 3,
+        "metaVerifiedUserActionResult": 5,
+        "metaVerifiedUserActionSurface": 4,
+        "userActionErrorCode": 10,
+        "userActionSessionId": 11
+      },
+      "weight": 1
+    },
+    "MexEvent": {
+      "id": 3782,
+      "props": {
+        "isMex": 1,
+        "mexEventData": 2,
+        "mexEventDurationT": 12,
+        "mexEventEndTime": 3,
+        "mexEventEnvelopeResponseStatus": 13,
+        "mexEventOperation": 7,
+        "mexEventPayloadResponseStatus": 14,
+        "mexEventRequestSize": 8,
+        "mexEventResponseSize": 9,
+        "mexEventRetries": 10,
+        "mexEventStartTime": 11
+      },
+      "weight": 1
+    },
+    "MexEventV2": {
+      "id": 4336,
+      "props": {
+        "mexEventV2DurationMs": 1,
+        "mexEventV2EndTime": 2,
+        "mexEventV2ErrorCodes": 3,
+        "mexEventV2Errors": 4,
+        "mexEventV2HasData": 5,
+        "mexEventV2IsArgoPayload": 10,
+        "mexEventV2IsMex": 6,
+        "mexEventV2OperationName": 7,
+        "mexEventV2QueryId": 8,
+        "mexEventV2StartTime": 9,
+        "mexFbUserType": 11
+      },
+      "weight": 1
+    },
+    "NativeContactsNuxEvent": {
+      "id": 5788,
+      "props": {
+        "nativeContactsNuxEntryPoint": 3,
+        "nativeContactsNuxEventType": 1
+      },
+      "weight": 1
+    },
+    "NonMessagePeerDataMediaUpload": {
+      "id": 3902,
+      "props": {
+        "peerDataErrorCount": 1,
+        "peerDataExistingDataNoUploadCount": 2,
+        "peerDataNotFoundCount": 3,
+        "peerDataRequestCount": 4,
+        "peerDataRequestSessionId": 5,
+        "peerDataRequestType": 6,
+        "peerDataResponseResult": 8,
+        "peerDataSuccessInlineNoUploadCount": 9,
+        "peerDataSuccessUploadCount": 7
+      },
+      "weight": 1
+    },
+    "NonMessagePeerDataOperationResponse": {
+      "id": 3904,
+      "props": {
+        "peerDataErrorCount": 1,
+        "peerDataNotFoundCount": 2,
+        "peerDataRequestSessionId": 3,
+        "peerDataRequestType": 4,
+        "peerDataResponseApplyResult": 8,
+        "peerDataResponseCount": 5,
+        "peerDataSuccessProcessCount": 6,
+        "peerDataSuccessResponseCount": 7
+      },
+      "weight": 1
+    },
+    "NonMessagePeerDataRequest": {
+      "id": 3906,
+      "props": {
+        "peerDataRequestCount": 1,
+        "peerDataRequestSessionId": 2,
+        "peerDataRequestType": 3
+      },
+      "weight": 1
+    },
+    "NotificationDelivery": {
+      "id": 3748,
+      "props": {
+        "clientMessageId": 1,
+        "notificationAction": 2,
+        "notificationDeliveryT": 3,
+        "notificationDestination": 4,
+        "notificationId": 5,
+        "notificationSource": 6,
+        "threadId": 7,
+        "uiNotificationType": 8
+      },
+      "weight": 1
+    },
+    "NotificationEngagement": {
+      "id": 3796,
+      "props": {
+        "avgNotifEngagementT": 1,
+        "groupSizeBucket": 2,
+        "groupTypeClient": 3,
+        "isAGroup": 4,
+        "isWebBackgroundSyncNotif": 18,
+        "threadId": 5,
+        "totalLinkReshareMessageNotifShown": 19,
+        "totalLinkReshareMessageNotifShownFb": 21,
+        "totalLinkReshareMessageNotifShownIg": 22,
+        "totalLinkReshareMessageNotifTapToOpen": 20,
+        "totalLinkReshareMessageNotifTapToOpenFb": 23,
+        "totalLinkReshareMessageNotifTapToOpenIg": 24,
+        "totalMessageReminderNotifShown": 16,
+        "totalMessageReminderNotifTapToOpen": 17,
+        "totalNotifMarkAsRead": 6,
+        "totalNotifMissedCallVoipCallback": 7,
+        "totalNotifMissedCallVoipMessage": 8,
+        "totalNotifOthers": 9,
+        "totalNotifReply": 10,
+        "totalNotifRtcVoipAccept": 11,
+        "totalNotifRtcVoipDecline": 12,
+        "totalNotifShowPreview": 13,
+        "totalNotifShown": 14,
+        "totalNotifTapToOpen": 15
+      },
+      "weight": 1
+    },
+    "NotificationSetting": {
+      "id": 3684,
+      "props": {
+        "groupReactionNotification": 1,
+        "groupShowNotification": 2,
+        "groupSoundTone": 3,
+        "inAppNotificationAlertStyle": 4,
+        "inAppNotificationSound": 5,
+        "inAppNotificationVibrate": 6,
+        "messageReactionNotification": 7,
+        "messageShowNotification": 8,
+        "messageSoundTone": 9,
+        "offlineNotification": 11,
+        "showPreview": 10,
+        "statusNotificationPriority": 14,
+        "statusNotificationVibration": 15,
+        "statusReactionNotification": 16,
+        "statusReminderNotification": 12,
+        "statusShowNotification": 18,
+        "statusSoundTone": 17,
+        "unreadBadgeSetting": 13
+      },
+      "weight": 1
+    },
+    "OfflineCountTooHigh": {
+      "id": 2638,
+      "props": {
+        "callStanzaType": 7,
+        "invisibleMessageCategory": 8,
+        "mediaType": 3,
+        "messageType": 4,
+        "notificationStanzaType": 6,
+        "offlineCount": 2,
+        "receiptStanzaType": 5,
+        "stanzaType": 1
+      },
+      "weight": 1
+    },
+    "OfflineResume": {
+      "id": 3112,
+      "props": {
+        "affectedBySleepMode": 35,
+        "appContext": 49,
+        "appContextBitfield": 50,
+        "attemptNumber": 36,
+        "chatThreadCount": 1,
+        "dbDurationT": 39,
+        "dbMainThreadDurationT": 40,
+        "dbMainThreadReadsCount": 41,
+        "dbMainThreadWritesCount": 42,
+        "dbReadsCount": 43,
+        "dbWritesCount": 44,
+        "disconnected": 45,
+        "expectedOfflineCallCount": 23,
+        "expectedOfflineMessageCount": 17,
+        "expectedOfflineNotificationCount": 18,
+        "expectedOfflineReceiptCount": 19,
+        "isOfflineCompleteMissed": 2,
+        "isResumeInForeground": 13,
+        "isResumeStartedInForeground": 37,
+        "isRunningFromServiceExtension": 22,
+        "lastStanzaT": 3,
+        "logoutSessionId": 38,
+        "mailboxAge": 14,
+        "mainScreenLoadT": 4,
+        "nseMergeT": 54,
+        "offlineCallCount": 24,
+        "offlineDecryptErrorCount": 5,
+        "offlineMessageCount": 6,
+        "offlineNotificationCount": 7,
+        "offlinePreviewT": 8,
+        "offlineProcessingT": 20,
+        "offlineReceiptCount": 9,
+        "offlineResumeResult": 21,
+        "offlineSessionT": 46,
+        "offlineSizeBytes": 10,
+        "onTrickleMode": 15,
+        "pageLoadT": 11,
+        "passiveModeT": 25,
+        "preackCallCount": 26,
+        "preackMessageCount": 27,
+        "preackNotificationCount": 28,
+        "preackReceiptCount": 29,
+        "preacksCount": 47,
+        "processedCallCount": 30,
+        "processedMessageCount": 31,
+        "processedNotificationCount": 32,
+        "processedReceiptCount": 33,
+        "queuedMessageCount": 51,
+        "queuedNotificationCount": 52,
+        "queuedReceiptCount": 53,
+        "runningTasks": 48,
+        "socketConnectT": 12,
+        "transientOfflineSessionId": 34
+      },
+      "weight": 1
+    },
+    "OfflineResumeStage": {
+      "id": 3536,
+      "props": {
+        "attemptId": 13,
+        "chatThreadCount": 4,
+        "currentOfflineStage": 1,
+        "isResumeInForeground": 5,
+        "isResumeStartedInForeground": 14,
+        "lastPushTimestampMs": 12,
+        "mailboxAge": 6,
+        "offlineCallCount": 15,
+        "offlineDecryptErrorCount": 7,
+        "offlineMessageCount": 8,
+        "offlineNotificationCount": 9,
+        "offlineReceiptCount": 10,
+        "offlineResumeMode": 11,
+        "offlineSessionId": 2,
+        "offlineSizeBytes": 16,
+        "offlineStageTimestampMs": 3,
+        "passiveModeT": 17
+      },
+      "weight": 1
+    },
+    "OrderDetailsActionsSmb": {
+      "id": 3456,
+      "props": {
+        "acceptedPayMethods": 1,
+        "actionCategory": 2,
+        "entryPointConversionSource": 13,
+        "extraAttributes": 3,
+        "hasAddedPrice": 4,
+        "hasCatalog": 5,
+        "hasNote": 6,
+        "lastMessageDirection": 14,
+        "messageDepth": 15,
+        "orderDetailEntryPoint": 7,
+        "orderDetailsCreationAction": 8,
+        "orderEligibleToSend": 11,
+        "paymentStatus": 9,
+        "paymentType": 10,
+        "sharingOrderStatusEvents": 12,
+        "threadIdHmac": 16
+      },
+      "weight": 1
+    },
+    "OtpRetriever": {
+      "id": 3468,
+      "props": {
+        "businessLid": 26,
+        "businessLidOrJid": 28,
+        "businessPhoneNumber": 1,
+        "chatId": 19,
+        "chatsFolderType": 12,
+        "ctaFallbackReason": 2,
+        "ctaType": 3,
+        "isKeepChatsArchivedEnabled": 13,
+        "isMessageNotificationEnabled": 14,
+        "isNotificationEnabled": 15,
+        "messageReceivedElapsedTimeSeconds": 11,
+        "otpCorrelationId": 20,
+        "otpEventSource": 5,
+        "otpEventType": 6,
+        "otpFailureReason": 16,
+        "otpHandshakeElapsedTimeMs": 21,
+        "otpHandshakeId": 23,
+        "otpMaskLinkedDevices": 24,
+        "otpProductType": 7,
+        "otpSdkVersion": 22,
+        "otpSenderAttributes": 27,
+        "otpSessionId": 8,
+        "receiverCountryCode": 18,
+        "templateId": 17,
+        "thirdPartyPackageNameFromIntent": 9,
+        "thirdPartyPackageSignatureHash": 10,
+        "waDeviceId": 25
+      },
+      "weight": 1
+    },
+    "PaidMessagingUserInteractionsLogger": {
+      "id": 4740,
+      "props": {
+        "pmxActionTarget": 1,
+        "pmxActionType": 2,
+        "pmxComponentType": 3,
+        "pmxHashedMessageId": 13,
+        "pmxHashedMessageKey": 11,
+        "pmxHeaderMediaType": 4,
+        "pmxHostStorage": 8,
+        "pmxMarketingFormat": 5,
+        "pmxMessageDeliveredTs": 10,
+        "pmxMessageStanzaAcceptedTs": 12,
+        "pmxQueryParams": 6,
+        "pmxSenderCountryCode": 9,
+        "templateId": 7
+      },
+      "weight": 1
+    },
+    "PaymentsUserAction": {
+      "id": 2162,
+      "props": {
+        "actionTarget": 4,
+        "merchantType": 43,
+        "p2mType": 44,
+        "paymentAccountRowSelected": 24,
+        "paymentActionType": 3,
+        "paymentMode": 7,
+        "paymentNumberOfAccountsAvailable": 23,
+        "paymentNumberOfPeopleInvited": 32,
+        "paymentPinSetUp": 33,
+        "paymentSent": 34,
+        "paymentSmsProviderNumber": 15,
+        "paymentTransactionStatus": 45,
+        "paymentsAccountsExist": 13,
+        "paymentsBankId": 11,
+        "paymentsBanksRowSelected": 22,
+        "paymentsBanksScrolled": 21,
+        "paymentsBanksSearchActivated": 18,
+        "paymentsBanksSearchSelected": 20,
+        "paymentsBanksSearchString": 19,
+        "paymentsBanksSelectedName": 25,
+        "paymentsContactsBucket": 31,
+        "paymentsCountryCode": 2,
+        "paymentsErrorCode": 9,
+        "paymentsErrorText": 10,
+        "paymentsErrorTitle": 47,
+        "paymentsEventId": 1,
+        "paymentsHasMultipleSims": 29,
+        "paymentsIqCallStatus": 42,
+        "paymentsIsMandate": 40,
+        "paymentsIsOrder": 36,
+        "paymentsMandate": 41,
+        "paymentsOrderType": 38,
+        "paymentsP2mPaymentConfigId": 39,
+        "paymentsRequestName": 17,
+        "paymentsRequestRetryCount": 26,
+        "paymentsRequestRetryTimeDelaySeconds": 27,
+        "paymentsResponseResult": 12,
+        "paymentsSmsProviderRetryCount": 14,
+        "paymentsSmsRequestRetryCount": 16,
+        "paymentsUpiCheckPinErrorReason": 28,
+        "paymentsVerifyCardResult": 30,
+        "previousScreenName": 46,
+        "queryParams": 35,
+        "referral": 6,
+        "referralContext": 37,
+        "screen": 5,
+        "upiPaymentsPspId": 8
+      },
+      "weight": 1
+    },
+    "PinInChatInteraction": {
+      "id": 4436,
+      "props": {
+        "groupRole": 1,
+        "groupSize": 2,
+        "groupTypeClient": 3,
+        "isAGroup": 4,
+        "isSelfPin": 8,
+        "mediaType": 5,
+        "pinCount": 6,
+        "pinInChatInteractionType": 7,
+        "pinIndex": 9
+      },
+      "weight": 1
+    },
+    "PinInChatMessageSend": {
+      "id": 4438,
+      "props": {
+        "groupRole": 1,
+        "groupTypeClient": 2,
+        "isAGroup": 3,
+        "isSelfParentMessage": 7,
+        "isSelfPin": 8,
+        "mediaType": 4,
+        "pinInChatExpirySecs": 5,
+        "pinInChatType": 6,
+        "timeRemainingToExpirySecs": 9
+      },
+      "weight": 1
+    },
+    "PlaceholderActivity": {
+      "id": 1980,
+      "props": {
+        "deviceCount": 9,
+        "deviceSizeBucket": 8,
+        "e2eSenderType": 16,
+        "isHostedChat": 19,
+        "isLid": 12,
+        "localAddressingMode": 20,
+        "messageBeforeReg": 15,
+        "messageIsRevoke": 7,
+        "messageKeyHash": 14,
+        "messageMediaType": 6,
+        "messageType": 5,
+        "participantCount": 10,
+        "placeholderActionInd": 2,
+        "placeholderAddReason": 11,
+        "placeholderChatTypeInd": 3,
+        "placeholderPopulationType": 17,
+        "placeholderTimePeriod": 4,
+        "placeholderTypeInd": 1,
+        "typeOfGroup": 13
+      },
+      "weight": 1
+    },
+    "PnhDaily": {
+      "id": 3806,
+      "props": {
+        "communityId": 1,
+        "mappingMissing": 7,
+        "pnhIndicatorClicksChat": 2,
+        "pnhIndicatorClicksInfoScreen": 3,
+        "reactionDeleteCount": 4,
+        "reactionOpenTrayCount": 5,
+        "totalContacts": 8,
+        "typeOfGroup": 6
+      },
+      "weight": 1
+    },
+    "PnhRequestRevealAction": {
+      "id": 3808,
+      "props": {
+        "pnhAction": 1,
+        "pnhChatParty": 2,
+        "pnhChatType": 3,
+        "pnhEntryPoint": 4,
+        "threadId": 5
+      },
+      "weight": 1
+    },
+    "PollsActions": {
+      "id": 3676,
+      "props": {
+        "chatType": 8,
+        "groupSizeBucket": 1,
+        "isAGroup": 6,
+        "isAdmin": 2,
+        "pollAction": 3,
+        "pollCreationDs": 4,
+        "pollOptionsCount": 5,
+        "typeOfGroup": 7
+      },
+      "weight": 1
+    },
+    "PrekeysDepletion": {
+      "id": 3014,
+      "props": {
+        "deviceSizeBucket": 3,
+        "messageType": 2,
+        "prekeysFetchReason": 1
+      },
+      "weight": 20
+    },
+    "PrivacyHighlightDaily": {
+      "id": 3522,
+      "props": {
+        "dialogAppearCount": 1,
+        "dialogSelectCount": 2,
+        "narrativeAppearCount": 3,
+        "privacyHighlightCategory": 4,
+        "privacyHighlightSurface": 5
+      },
+      "weight": 1
+    },
+    "PrivacySettingsClick": {
+      "id": 3726,
+      "props": {
+        "privacyControlEntryPoint": 1,
+        "privacyControlItem": 2
+      },
+      "weight": 1
+    },
+    "PrivacyTipAction": {
+      "id": 4794,
+      "props": {
+        "privacyTipActionType": 1
+      },
+      "weight": 1
+    },
+    "PsBufferUpload": {
+      "id": 2244,
+      "props": {
+        "applicationState": 6,
+        "isFromWamsys": 12,
+        "isRealtime": 15,
+        "isUserSampled": 14,
+        "psBufferSequenceNumber": 13,
+        "psBufferUploadHttpResponseCode": 3,
+        "psBufferUploadResult": 1,
+        "psBufferUploadT": 2,
+        "psDitheredT": 11,
+        "psForceUpload": 10,
+        "psTokenNotReadyReason": 4,
+        "psUploadReason": 9,
+        "waConnectedToChatd": 5
+      },
+      "weight": 100
+    },
+    "PsChannelPostForward": {
+      "id": 4746,
+      "props": {
+        "channelForwardContentType": 6,
+        "channelForwardGroupType": 1,
+        "cid": 2,
+        "destinationChannelId": 7,
+        "destinationPostId": 8,
+        "mediaType": 3,
+        "postId": 4
+      },
+      "weight": 1
+    },
+    "PsChannelsSnaplEvent": {
+      "id": 6254,
+      "props": {
+        "appId": 2,
+        "videoEventJson": 1
+      },
+      "weight": 1
+    },
+    "PsGroupExitExperienceExitDeleteConfirmationDialogUiInteraction": {
+      "id": 6316,
+      "props": {
+        "psGroupExitExperienceDeleteConfirmationDialogAction": 1,
+        "psGroupExitExperienceGroupJid": 2,
+        "psGroupExitExperienceTouchPoint": 4
+      },
+      "weight": 1
+    },
+    "PsGroupExitExperienceExitDialogInteraction": {
+      "id": 6318,
+      "props": {
+        "psExitExperienceReportingEnabled": 1,
+        "psGroupExitExperienceEnabled": 2,
+        "psGroupExitExperienceExitDialogAction": 3,
+        "psGroupExitExperienceGroupJid": 4,
+        "psGroupExitExperienceTouchPoint": 6
+      },
+      "weight": 1
+    },
+    "PsGroupExitExperienceGroupAction": {
+      "id": 6332,
+      "props": {
+        "psGroupExitExperienceAction": 1,
+        "psGroupExitExperienceEnabled": 2,
+        "psGroupExitExperienceGroupJid": 3,
+        "psGroupExitExperienceTouchPoint": 4
+      },
+      "weight": 1
+    },
+    "PsGroupOpened": {
+      "id": 6236,
+      "props": {
+        "integrityGroupUserHashedId": 4,
+        "isGroupSafetyCheckAbpropEnabled": 2,
+        "isPartOfGroupSafetyCheckExperiment": 3,
+        "openedGroupJid": 1
+      },
+      "weight": 1
+    },
+    "PsGroupSafetyCheckEnabled": {
+      "id": 6238,
+      "props": {
+        "didJoinByGil": 3,
+        "integrityGroupUserHashedId": 4,
+        "psSafetyCheckGroupJid": 1,
+        "psWasSafetyCheckGroupInitiallyMuted": 2,
+        "wasAddedByContact": 5,
+        "willSafetyCheckBeSeen": 6
+      },
+      "weight": 1
+    },
+    "PsGroupSafetyCheckExitDialog": {
+      "id": 6252,
+      "props": {
+        "integrityGroupUserHashedId": 3,
+        "psGroupSafetyCheckExitDialogAction": 1,
+        "psSafetyCheckGroupJid": 2
+      },
+      "weight": 1
+    },
+    "PsGroupSafetyCheckSheetSeen": {
+      "id": 6240,
+      "props": {
+        "integrityGroupUserHashedId": 2,
+        "psSafetyCheckGroupJid": 1
+      },
+      "weight": 1
+    },
+    "PsGroupSafetyCheckUiInteractions": {
+      "id": 6242,
+      "props": {
+        "integrityGroupUserHashedId": 3,
+        "psSafetyCheckGroupJid": 1,
+        "psSafetyCheckInteraction": 2
+      },
+      "weight": 1
+    },
+    "PsIdUpdate": {
+      "id": 2862,
+      "props": {
+        "isFromWamsys": 4,
+        "psIdAction": 2,
+        "psIdKey": 1,
+        "psIdRotationFrequence": 3
+      },
+      "weight": 1
+    },
+    "PsPhoneNumberHyperlink": {
+      "id": 3266,
+      "props": {
+        "isPhoneNumHyperlinkOwner": 1,
+        "phoneNumHyperlinkAction": 2,
+        "phoneNumberStatusOnWa": 3,
+        "sequenceNumber": 4
+      },
+      "weight": 1
+    },
+    "PsStructuredMessageInteraction": {
+      "id": 3052,
+      "props": {
+        "bizPlatform": 1,
+        "businessOwnerJid": 7,
+        "messageClass": 3,
+        "messageClassAttributes": 5,
+        "messageInteraction": 4,
+        "messageMediaType": 2,
+        "templateId": 8,
+        "threadIdHmac": 9
+      },
+      "weight": 1
+    },
+    "Ptt": {
+      "id": 458,
+      "props": {
+        "isMetaAiThread": 15,
+        "pttAvgNoiseLoudness": 11,
+        "pttAvgNoiseLoudnessReduction": 12,
+        "pttAvgSpeechLoudness": 13,
+        "pttAvgSpeechLoudnessReduction": 14,
+        "pttDraftPlayCnt": 7,
+        "pttDraftSeekCnt": 8,
+        "pttDuration": 5,
+        "pttLock": 4,
+        "pttPauseCnt": 9,
+        "pttResult": 1,
+        "pttSize": 3,
+        "pttSource": 2,
+        "pttStop": 6,
+        "pttStopTapCnt": 10
+      },
+      "weight": 1
+    },
+    "PttDaily": {
+      "id": 2938,
+      "props": {
+        "pttCancelBroadcast": 9,
+        "pttCancelGroup": 8,
+        "pttCancelIndividual": 7,
+        "pttCancelInterop": 42,
+        "pttCancelNewsletter": 32,
+        "pttDraftReviewBroadcast": 15,
+        "pttDraftReviewGroup": 14,
+        "pttDraftReviewIndividual": 13,
+        "pttDraftReviewInterop": 43,
+        "pttDraftReviewNewsletter": 33,
+        "pttFastplaybackBroadcast": 21,
+        "pttFastplaybackGroup": 20,
+        "pttFastplaybackIndividual": 19,
+        "pttFastplaybackInterop": 44,
+        "pttFastplaybackNewsletter": 34,
+        "pttLockBroadcast": 12,
+        "pttLockGroup": 11,
+        "pttLockIndividual": 10,
+        "pttLockInterop": 45,
+        "pttLockNewsletter": 35,
+        "pttOutOfChatBroadcast": 29,
+        "pttOutOfChatGroup": 30,
+        "pttOutOfChatIndividual": 31,
+        "pttOutOfChatInterop": 46,
+        "pttOutOfChatNewsletter": 36,
+        "pttPausedRecordBroadcast": 22,
+        "pttPausedRecordGroup": 23,
+        "pttPausedRecordIndividual": 24,
+        "pttPausedRecordInterop": 47,
+        "pttPausedRecordNewsletter": 37,
+        "pttPlaybackBroadcast": 18,
+        "pttPlaybackGroup": 17,
+        "pttPlaybackIndividual": 16,
+        "pttPlaybackInterop": 48,
+        "pttPlaybackNewsletter": 38,
+        "pttRecordBroadcast": 3,
+        "pttRecordGroup": 2,
+        "pttRecordIndividual": 1,
+        "pttRecordInterop": 49,
+        "pttRecordNewsletter": 39,
+        "pttSendBroadcast": 6,
+        "pttSendGroup": 5,
+        "pttSendIndividual": 4,
+        "pttSendInterop": 50,
+        "pttSendNewsletter": 40,
+        "pttStopTapBroadcast": 25,
+        "pttStopTapGroup": 26,
+        "pttStopTapIndividual": 27,
+        "pttStopTapInterop": 51,
+        "pttStopTapNewsletter": 41
+      },
+      "weight": 1
+    },
+    "PttPlayback": {
+      "id": 2044,
+      "props": {
+        "pttDuration": 12,
+        "pttMainThreadBlock": 7,
+        "pttMiniPlayerClick": 15,
+        "pttMiniPlayerClose": 16,
+        "pttMiniPlayerPauseCnt": 17,
+        "pttPlayRequestT": 1,
+        "pttPlaybackFailed": 8,
+        "pttPlaybackOverallT": 4,
+        "pttPlaybackSpeed": 10,
+        "pttPlaybackSpeedCnt": 11,
+        "pttPlayedOutOfChat": 18,
+        "pttPlayedPct": 14,
+        "pttPlayer": 9,
+        "pttPlayerInitT": 2,
+        "pttPlayerPlayT": 3,
+        "pttSeekCnt": 13,
+        "pttTrigger": 5,
+        "pttType": 6
+      },
+      "weight": 1
+    },
+    "QuickReply": {
+      "id": 1468,
+      "props": {
+        "attachmentGifCount": 7,
+        "attachmentImageCount": 5,
+        "attachmentVideoCount": 6,
+        "isSmartDefault": 10,
+        "labelThreadId": 12,
+        "lastMessageDirection": 16,
+        "messageDepth": 17,
+        "quickReplyAction": 1,
+        "quickReplyCount": 2,
+        "quickReplyEntryPoint": 11,
+        "quickReplyKeywordCount": 3,
+        "quickReplyKeywordMatched": 4,
+        "quickReplyOrigin": 9,
+        "quickReplyTranscodeResult": 8,
+        "quickReplyType": 19,
+        "threadCreationDate": 14,
+        "threadEntryPoint": 13,
+        "threadIdHmac": 15
+      },
+      "weight": 1
+    },
+    "ReactionActions": {
+      "id": 3184,
+      "props": {
+        "mediaType": 3,
+        "messageType": 1,
+        "reactionAction": 2
+      },
+      "weight": 20
+    },
+    "ReceiptStanzaReceive": {
+      "id": 2496,
+      "props": {
+        "dbReadsCount": 12,
+        "dbWritesCount": 13,
+        "mediaType": 2,
+        "messageType": 10,
+        "processingDeferred": 14,
+        "receiptAggregation": 11,
+        "receiptStanzaDuration": 1,
+        "receiptStanzaHasOrphaned": 6,
+        "receiptStanzaOfflineCount": 3,
+        "receiptStanzaProcessedCount": 8,
+        "receiptStanzaRetryVer": 5,
+        "receiptStanzaStage": 9,
+        "receiptStanzaTotalCount": 7,
+        "receiptStanzaType": 4,
+        "stanzaBatchSize": 15,
+        "stanzaProcessCount": 16
+      },
+      "weight": 2000
+    },
+    "ReportToAdminEvents": {
+      "id": 4420,
+      "props": {
+        "reportToAdminInteraction": 1,
+        "rtaGroupId": 2
+      },
+      "weight": 1
+    },
+    "ReportingTokenValidationFailure": {
+      "id": 5466,
+      "props": {
+        "editType": 1,
+        "isLid": 5,
+        "isMessageMediaRetry": 10,
+        "isMessageRetry": 6,
+        "isSecretEncryptedMsg": 8,
+        "messageIsForward": 11,
+        "messageMediaType": 2,
+        "messageType": 3,
+        "offline": 7,
+        "reportingTokenValidationFailureReason": 4,
+        "reportingTokenVersion": 9
+      },
+      "weight": 1
+    },
+    "ReportingTokenValidationFailureSender": {
+      "id": 6094,
+      "props": {
+        "clientMessageId": 1,
+        "e2eReceiverType": 2,
+        "e2eSenderType": 3,
+        "editType": 4,
+        "isLid": 5,
+        "isMessageMediaRetry": 14,
+        "isMessageRetry": 6,
+        "isSecretEncryptedMsg": 12,
+        "messageIsForward": 15,
+        "messageMediaType": 7,
+        "messageType": 8,
+        "offline": 9,
+        "reportingTokenValidationFailureReason": 10,
+        "reportingTokenVersion": 13,
+        "senderJid": 11
+      },
+      "weight": 1
+    },
+    "RevokeMessageSend": {
+      "id": 3656,
+      "props": {
+        "messageSendResultIsTerminal": 1,
+        "messageType": 2,
+        "resendCount": 3,
+        "retryCount": 4,
+        "revokeDuration": 5,
+        "revokeType": 6
+      },
+      "weight": 1
+    },
+    "ScreenLockSettingsData": {
+      "id": 4802,
+      "props": {
+        "screenAutoLockDuration": 1
+      },
+      "weight": 1
+    },
+    "SearchTheWebFunnel": {
+      "id": 5702,
+      "props": {
+        "imageSearchFailedErrorType": 5,
+        "messageType": 1,
+        "stwEntryPoint": 2,
+        "stwFormat": 3,
+        "stwInteraction": 4
+      },
+      "weight": 1
+    },
+    "SendDocument": {
+      "id": 2172,
+      "props": {
+        "documentExt": 3,
+        "documentSize": 1,
+        "documentType": 2
+      },
+      "weight": 1
+    },
+    "SendRevokeMessage": {
+      "id": 1348,
+      "props": {
+        "messageMediaType": 2,
+        "messageType": 1,
+        "revokeSendDelay": 3
+      },
+      "weight": 1
+    },
+    "SenderKeyExpired": {
+      "id": 3130,
+      "props": {
+        "chatType": 1,
+        "deviceSizeBucket": 2,
+        "expiryReason": 3
+      },
+      "weight": 1
+    },
+    "SettingsChange": {
+      "id": 6396,
+      "props": {
+        "currentSettingValue": 4,
+        "previousSettingValue": 2,
+        "settingType": 3
+      },
+      "weight": 1
+    },
+    "SettingsClick": {
+      "id": 2214,
+      "props": {
+        "isBookmarkAppInstalled": 4,
+        "settingsClickEntryPoint": 2,
+        "settingsItem": 1,
+        "settingsPageType": 3
+      },
+      "weight": 1
+    },
+    "SettingsSearchInitiate": {
+      "id": 4014,
+      "props": {
+        "settingsPageType": 1
+      },
+      "weight": 1
+    },
+    "SettingsSearchTap": {
+      "id": 4016,
+      "props": {
+        "tapItemName": 1,
+        "topLevelParentSetting": 2
+      },
+      "weight": 1
+    },
+    "SignCredential": {
+      "id": 2242,
+      "props": {
+        "applicationState": 6,
+        "isFromWameta": 8,
+        "overallT": 4,
+        "projectCode": 7,
+        "retryCount": 2,
+        "signCredentialResult": 1,
+        "signCredentialT": 3,
+        "waConnectedToChatd": 5
+      },
+      "weight": 1
+    },
+    "SmbDataSharingConsentScreen": {
+      "id": 3972,
+      "props": {
+        "smbDataSharingConsentScreenEntryPoint": 3,
+        "smbDataSharingConsentScreenType": 1,
+        "smbDataSharingConsentScreenVersion": 2
+      },
+      "weight": 1
+    },
+    "SmbDataSharingConsentSetting": {
+      "id": 3974,
+      "props": {
+        "smbDataSharingConsentSettingEntryPoint": 1,
+        "smbDataSharingConsentSettingType": 2,
+        "smbDataSharingConsentSettingVersion": 3
+      },
+      "weight": 1
+    },
+    "SmbPaidMessagesButtonLogger": {
+      "id": 4508,
+      "props": {
+        "businessPhoneNumber": 1,
+        "pmButtonCount": 2,
+        "pmButtonEventType": 3,
+        "pmButtonIndex": 4,
+        "pmButtonType": 5,
+        "pmIsTrackableLink": 7,
+        "pmServerCampaignId": 6
+      },
+      "weight": 1
+    },
+    "SmbUserJourney": {
+      "id": 5462,
+      "props": {
+        "actionType": 1,
+        "contactIsSaved": 2,
+        "entryPoint": 3,
+        "extraAttributes": 4,
+        "oppositePlatform": 5,
+        "prevSurface": 14,
+        "recipientSize": 12,
+        "seqId": 7,
+        "smbFeatureName": 8,
+        "smbUserActionType": 13,
+        "smbUserSessionId": 9,
+        "surface": 10,
+        "userActionTarget": 11
+      },
+      "weight": 1
+    },
+    "SnackbarDeleteUndo": {
+      "id": 3628,
+      "props": {
+        "isAGroup": 1,
+        "mediaType": 6,
+        "messagesUndeleted": 2,
+        "snackbarActionType": 3,
+        "threadId": 4
+      },
+      "weight": 1
+    },
+    "StatusItemView": {
+      "id": 1658,
+      "props": {
+        "externalSourceDomainType": 34,
+        "isAlreadyDownloaded": 35,
+        "isForwardable": 44,
+        "isForwarded": 45,
+        "isPosterBiz": 23,
+        "isPosterInAddressBook": 25,
+        "isResharable": 37,
+        "isReshare": 40,
+        "isViewedInLandscape": 29,
+        "mediaType": 4,
+        "musicBlocked": 32,
+        "pairedMediaType": 38,
+        "psaCampaignId": 17,
+        "psaCampaignItemIndex": 18,
+        "psaLinkAvailable": 19,
+        "psaLinkClick": 22,
+        "psaLinkLoadTime": 21,
+        "psaLinkOpenResult": 20,
+        "reshareSource": 41,
+        "statusContainsMusic": 30,
+        "statusItem3sViewCount": 31,
+        "statusItemImpressionCount": 14,
+        "statusItemIndex": 16,
+        "statusItemLength": 7,
+        "statusItemLoadTime": 5,
+        "statusItemReplied": 8,
+        "statusItemUnread": 9,
+        "statusItemViewCount": 10,
+        "statusItemViewResult": 3,
+        "statusItemViewTime": 6,
+        "statusMediaHeight": 42,
+        "statusMediaWidth": 43,
+        "statusPairedMediaQuality": 39,
+        "statusRowIndex": 2,
+        "statusRowSection": 11,
+        "statusType": 36,
+        "statusViewerSessionId": 1,
+        "urlStatusClicked": 26,
+        "urlStatusType": 27
+      },
+      "weight": 1
+    },
+    "StatusReply": {
+      "id": 1180,
+      "props": {
+        "isMentioned": 7,
+        "isPosterBiz": 4,
+        "isPosterInAddressBook": 6,
+        "isRecentQuickReplyUsed": 16,
+        "isReplyBarBelowCanvas": 9,
+        "isReplyBarOverMedia": 10,
+        "mediaHeight": 11,
+        "mediaWidth": 12,
+        "postContainedPrompt": 15,
+        "replyEntryMethod": 13,
+        "replyExitMethod": 14,
+        "statusContentType": 8,
+        "statusReplyMessageType": 3,
+        "statusReplyResult": 2,
+        "statusSessionId": 1
+      },
+      "weight": 1
+    },
+    "StatusReportingEvents": {
+      "id": 3920,
+      "props": {
+        "statusReportInteraction": 1
+      },
+      "weight": 1
+    },
+    "StatusRowView": {
+      "id": 1656,
+      "props": {
+        "psaCampaigns": 8,
+        "statusRowEntryMethod": 5,
+        "statusRowIndex": 4,
+        "statusRowSection": 3,
+        "statusRowUnreadItemCount": 7,
+        "statusRowViewCount": 6,
+        "statusSessionId": 1,
+        "statusViewerSessionId": 2
+      },
+      "weight": 1
+    },
+    "StickerCommonQueryToStaticServer": {
+      "id": 2740,
+      "props": {
+        "httpResponseCode": 2,
+        "params": 3,
+        "queryLatencyMs": 4,
+        "queryType": 1
+      },
+      "weight": 1
+    },
+    "StickerError": {
+      "id": 5024,
+      "props": {
+        "stickerErrorType": 1
+      },
+      "weight": 1
+    },
+    "StickerLatency": {
+      "id": 5026,
+      "props": {
+        "size": 1,
+        "stickerLatencyAction": 2,
+        "stickerLatencyTtAction": 3
+      },
+      "weight": 1
+    },
+    "StickerSend": {
+      "id": 1840,
+      "props": {
+        "stickerIsAi": 7,
+        "stickerIsAnimated": 3,
+        "stickerIsAvatar": 6,
+        "stickerIsFirstParty": 2,
+        "stickerIsFromStickerMaker": 5,
+        "stickerIsFromUserCreatedPack": 12,
+        "stickerIsGiphy": 10,
+        "stickerIsLottie": 9,
+        "stickerIsTenor": 11,
+        "stickerMakerSourceType": 8,
+        "stickerSendMessageType": 4,
+        "stickerSendOrigin": 1
+      },
+      "weight": 1
+    },
+    "StructuredMessageReceive": {
+      "id": 3222,
+      "props": {
+        "bizPlatform": 1,
+        "businessOwnerJid": 2,
+        "entryPointConversationInitiated": 7,
+        "entryPointConversionApp": 8,
+        "entryPointConversionSource": 9,
+        "lastMessageDirection": 10,
+        "messageClass": 3,
+        "messageClassAttributes": 4,
+        "messageDepth": 11,
+        "messageMediaType": 5,
+        "templateId": 6,
+        "threadIdHmac": 12
+      },
+      "weight": 1
+    },
+    "SupportAiSession": {
+      "id": 4970,
+      "props": {
+        "citationCmsId": 5,
+        "supportAiErrorCode": 3,
+        "supportAiErrorMessage": 4,
+        "supportAiEventType": 1
+      },
+      "weight": 1
+    },
+    "SuspendedGroupDelete": {
+      "id": 4342,
+      "props": {
+        "deleteBtnSource": 1
+      },
+      "weight": 1
+    },
+    "SyncdKeyCount": {
+      "id": 3978,
+      "props": {
+        "keysUsedInSnapshotCount": 1,
+        "p80MuationsPerKey": 2,
+        "p95MuationsPerKey": 3,
+        "syncdSessionLengthDays": 4,
+        "totalKeyCount": 5
+      },
+      "weight": 1
+    },
+    "SystemMessageClick": {
+      "id": 5082,
+      "props": {
+        "isAGroup": 1,
+        "isANewThread": 2,
+        "systemMessageCategory": 3,
+        "systemMessageType": 4
+      },
+      "weight": 1
+    },
+    "TestAnonymousDaily": {
+      "id": 2328,
+      "props": {},
+      "weight": 1
+    },
+    "TestAnonymousDailyId": {
+      "id": 2958,
+      "props": {
+        "psTestEnumField": 1,
+        "psTestFloatField": 2
+      },
+      "weight": 1
+    },
+    "TestAnonymousIdLess": {
+      "id": 3004,
+      "props": {
+        "psTimeSinceLastEventInMin": 1
+      },
+      "weight": 1
+    },
+    "TestAnonymousMonthlyId": {
+      "id": 2960,
+      "props": {},
+      "weight": 1000
+    },
+    "TestAnonymousWeeklyId": {
+      "id": 2956,
+      "props": {
+        "psTestBooleanField": 2,
+        "psTestStringField": 3,
+        "psTimeSinceLastEventInMin": 1
+      },
+      "weight": 1
+    },
+    "TsBitArray": {
+      "id": 4332,
+      "props": {
+        "bitarrayHigh": 1,
+        "bitarrayLength": 2,
+        "bitarrayLow": 3,
+        "cumulativeBits": 4,
+        "relativeTimestampMs": 5,
+        "sessionSeq": 6,
+        "tsSessionId": 7,
+        "tsTimestampMs": 8,
+        "unifiedSessionId": 9
+      },
+      "weight": 1
+    },
+    "TsExternal": {
+      "id": 4574,
+      "props": {
+        "relativeTimestampMs": 1,
+        "tsDuration": 2,
+        "tsExternalEventSource": 3,
+        "tsSessionId": 4,
+        "tsTimestampMs": 5,
+        "unifiedSessionId": 6
+      },
+      "weight": 1
+    },
+    "TsNavigation": {
+      "id": 4334,
+      "props": {
+        "cid": 19,
+        "entryPointConversationInitiated": 23,
+        "entryPointConversionApp": 24,
+        "entryPointConversionSource": 25,
+        "groupSize": 1,
+        "isCatalogVisible": 29,
+        "isCloudapi": 26,
+        "isMetaAiThread": 30,
+        "isOnpremises": 27,
+        "isSmb": 28,
+        "navigationDestination": 2,
+        "navigationDestinationProductArea": 34,
+        "navigationDestinationViewName": 35,
+        "navigationSource": 3,
+        "referrerAction": 31,
+        "relativeTimestampMs": 4,
+        "smbCatalogBusinessVertical": 20,
+        "smbCatalogIsCatalogVisible": 21,
+        "smbCatalogIsToggleCart": 22,
+        "threadType": 7,
+        "tsSessionId": 5,
+        "tsTimestampMs": 32,
+        "typeOfGroup": 6,
+        "unifiedSessionId": 33
+      },
+      "weight": 1
+    },
+    "UiAction": {
+      "id": 472,
+      "props": {
+        "agentEngagementType": 9,
+        "appContext": 21,
+        "appContextBitfield": 22,
+        "botType": 11,
+        "dbBgThreadReadsDurationT": 17,
+        "dbBgThreadWritesDurationT": 18,
+        "dbMainThreadCount": 13,
+        "dbMainThreadReadsDurationT": 19,
+        "dbMainThreadWritesDurationT": 20,
+        "dbReadsCount": 14,
+        "dbWritesCount": 15,
+        "deviceCount": 5,
+        "isLid": 8,
+        "isLowPowerMode": 23,
+        "localAddressingMode": 10,
+        "participantCount": 6,
+        "peripheralConnected": 16,
+        "sizeBucket": 4,
+        "uiActionChatType": 7,
+        "uiActionPreloaded": 2,
+        "uiActionT": 3,
+        "uiActionTtrcSurfaceName": 12,
+        "uiActionType": 1
+      },
+      "weight": 5000
+    },
+    "UiMessageYourselfAction": {
+      "id": 3780,
+      "props": {
+        "uiMessageYourselfActionSessionId": 1,
+        "uiMessageYourselfActionType": 2,
+        "uiMessageYourselfFunnelName": 3
+      },
+      "weight": 1
+    },
+    "UiRevokeAction": {
+      "id": 3298,
+      "props": {
+        "messageAction": 1,
+        "uiRevokeActionDuration": 2,
+        "uiRevokeActionSessionId": 3
+      },
+      "weight": 1
+    },
+    "UnknownStanza": {
+      "id": 3448,
+      "props": {
+        "unknownStanzaTag": 1,
+        "unknownStanzaType": 2
+      },
+      "weight": 1
+    },
+    "UpdatesTabSearch": {
+      "id": 4838,
+      "props": {
+        "channelsAdminCount": 5,
+        "channelsFollowedCount": 1,
+        "premiumChannelsFollowedCount": 8,
+        "recentStatusItemCount": 2,
+        "recentStatusRowCount": 3,
+        "updateTabSearchEventType": 4,
+        "updatesTabSearchModeType": 11,
+        "updatesTabSearchResultType": 9,
+        "updatesTabSearchSessionId": 10,
+        "viewedStatusItemCount": 6,
+        "viewedStatusRowCount": 7
+      },
+      "weight": 1
+    },
+    "UserActivity": {
+      "id": 1384,
+      "props": {
+        "userActivityBitmapHigh": 4,
+        "userActivityBitmapLen": 5,
+        "userActivityBitmapLow": 3,
+        "userActivitySessionCum": 7,
+        "userActivitySessionId": 1,
+        "userActivitySessionSeq": 6,
+        "userActivityStartTime": 2
+      },
+      "weight": 1
+    },
+    "UserNotice": {
+      "id": 2472,
+      "props": {
+        "noticeTriggeredBy": 5,
+        "noticeType": 4,
+        "tsMs": 6,
+        "userNoticeContentVersion": 2,
+        "userNoticeEvent": 3,
+        "userNoticeId": 1
+      },
+      "weight": 1
+    },
+    "UserNoticeError": {
+      "id": 2474,
+      "props": {
+        "noticeType": 4,
+        "userNoticeContentVersion": 2,
+        "userNoticeErrorEvent": 3,
+        "userNoticeId": 1
+      },
+      "weight": 1
+    },
+    "VideoTranscoder": {
+      "id": 1802,
+      "props": {
+        "sourceAudioBitRate": 12,
+        "sourceDuration": 8,
+        "sourceFileSize": 7,
+        "sourceFormat": 14,
+        "sourceFrameRate": 13,
+        "sourceHeight": 10,
+        "sourceVideoBitRate": 11,
+        "sourceWidth": 9,
+        "targetAudioBitRate": 20,
+        "targetDuration": 16,
+        "targetFileSize": 15,
+        "targetFormat": 22,
+        "targetFrameRate": 21,
+        "targetHeight": 18,
+        "targetVideoBitRate": 19,
+        "targetWidth": 17,
+        "transcoderAlgorithm": 1,
+        "transcoderContainsVideocomposition": 5,
+        "transcoderHasEdits": 6,
+        "transcoderIsPassthrough": 4,
+        "transcoderResult": 2,
+        "transcoderT": 3
+      },
+      "weight": 1
+    },
+    "ViewBusinessProfile": {
+      "id": 1522,
+      "props": {
+        "bizFbSize": 9,
+        "bizIgSize": 10,
+        "businessProfileJid": 3,
+        "catalogSessionId": 6,
+        "hasCoverPhoto": 12,
+        "isProfileLinked": 11,
+        "isSelfView": 7,
+        "linkedAccount": 5,
+        "profileEntryPoint": 8,
+        "scrollDepth": 4,
+        "viewBusinessProfileAction": 1,
+        "websiteSource": 2
+      },
+      "weight": 1
+    },
+    "ViewOnceScreenshotActions": {
+      "id": 3606,
+      "props": {
+        "isAGroup": 1,
+        "threadId": 2,
+        "voMessageType": 3,
+        "voSsAction": 4
+      },
+      "weight": 1
+    },
+    "WaFsGroupJoinRequestAction": {
+      "id": 3944,
+      "props": {
+        "groupJid": 1,
+        "groupJoinRequestAction": 2,
+        "groupJoinRequestGroupsInCommon": 5,
+        "isSuccessful": 3,
+        "serverResponseTime": 4
+      },
+      "weight": 1
+    },
+    "WaFsSingleEmojiMessageDaily": {
+      "id": 5602,
+      "props": {
+        "animatedEmojiEnabled": 1,
+        "animatedEmojiReceiveCnt": 2,
+        "animatedEmojiSendCnt": 3,
+        "emojiClickCnt": 4,
+        "emojiReplyCount": 5,
+        "pauseAnimationCnt": 6,
+        "replayAnimationCnt": 7,
+        "singleEmojiReceiveCnt": 8,
+        "singleEmojiSendCnt": 9
+      },
+      "weight": 1
+    },
+    "WaOldCode": {
+      "id": 3940,
+      "props": {
+        "deviceId": 1
+      },
+      "weight": 1
+    },
+    "WaShopsManagement": {
+      "id": 2908,
+      "props": {
+        "isShopsProductPreviewVisible": 2,
+        "shopsManagementAction": 1,
+        "shopsSellerJid": 3
+      },
+      "weight": 1
+    },
+    "WamClientErrors": {
+      "id": 1144,
+      "props": {
+        "isFromWamsys": 27,
+        "wamClientBufferDropErrorCount": 28,
+        "wamClientBufferFetchErrorCount": 29,
+        "wamClientBufferRotateErrorCount": 43,
+        "wamClientBufferStoreErrorCount": 30,
+        "wamClientCorruptedBuffersCount": 42,
+        "wamClientDroppedEventCount": 2,
+        "wamClientDroppedEventCountNoEnoughStorage": 41,
+        "wamClientDroppedEventSize": 3,
+        "wamClientErrorFlags": 1,
+        "wamClientMetadataReadErrorCount": 37,
+        "wamClientMetadataWriteErrorCount": 38,
+        "wamClientPrivateDroppedEventCount": 24,
+        "wamClientPrivateDroppedEventSize": 25,
+        "wamClientPrivateRealtimeDroppedEventCount": 34,
+        "wamClientPrivateRealtimeDroppedEventSize": 35,
+        "wamClientPrivateRealtimeRejectedEventCount": 36,
+        "wamClientPrivateRejectedEventCount": 31,
+        "wamClientRealtimeDroppedEventCount": 22,
+        "wamClientRealtimeDroppedEventSize": 23,
+        "wamClientRealtimeRejectedEventCount": 32,
+        "wamClientRejectedEventCount": 33,
+        "wamErrorBadCurrentEventBufferChecksum": 18,
+        "wamErrorBadEventBuffer": 16,
+        "wamErrorBadFileHeader": 15,
+        "wamErrorBadFileSize": 8,
+        "wamErrorBadHeaderChecksum": 17,
+        "wamErrorBadRotatedEventBufferChecksum": 19,
+        "wamErrorCloseFile": 11,
+        "wamErrorCreateWamFile": 14,
+        "wamErrorFseekFile": 9,
+        "wamErrorOpenFile": 10,
+        "wamErrorOpenPsUploadQueueFile": 26,
+        "wamErrorOpenWamFile": 13,
+        "wamErrorPersistence": 20,
+        "wamErrorReadFile": 7,
+        "wamErrorRemoveFile": 12,
+        "wamErrorWriteEventBuffer": 6,
+        "wamErrorWriteFile": 4,
+        "wamErrorWriteHeader": 5,
+        "wamFirstErrorReadMetadata": 39,
+        "wamFirstErrorWriteMetadata": 40
+      },
+      "weight": 1
+    },
+    "WamDroppedEvent": {
+      "id": 4358,
+      "props": {
+        "droppedEventCode": 1,
+        "droppedEventCount": 2,
+        "isFromWamsys": 3
+      },
+      "weight": 1
+    },
+    "WebContactListStartNewChat": {
+      "id": 4560,
+      "props": {
+        "webContactListStartNewChatSearch": 1,
+        "webContactListStartNewChatType": 2
+      },
+      "weight": 1
+    },
+    "WebDbLoadFromVersionFailureNonAnonymous": {
+      "id": 4814,
+      "props": {
+        "webDbLoader": 1,
+        "webDbName": 2
+      },
+      "weight": 1
+    },
+    "WebDbTableUsage": {
+      "id": 5074,
+      "props": {
+        "offlineSessionId": 1,
+        "webScenario": 2,
+        "webTable": 3,
+        "webTableLogReason": 4,
+        "webTableReadCount": 5,
+        "webTableWriteCount": 6
+      },
+      "weight": 100
+    },
+    "WebDbVersionNonAnonymous": {
+      "id": 4816,
+      "props": {
+        "webDbName": 1,
+        "webDbVersionNumber": 2
+      },
+      "weight": 20
+    },
+    "WebDbVersionsSource": {
+      "id": 4784,
+      "props": {
+        "webDbVersionSource": 1,
+        "webSchemaInitiator": 2
+      },
+      "weight": 1
+    },
+    "WebDynamicSamplingTestEventWithSampling": {
+      "id": 5320,
+      "props": {},
+      "weight": 10000
+    },
+    "WebDynamicSamplingTestEventWithoutSampling": {
+      "id": 5322,
+      "props": {},
+      "weight": 1
+    },
+    "WebHdMediaAwarenessInteraction": {
+      "id": 5426,
+      "props": {
+        "hdMediaSelected": 1
+      },
+      "weight": 1
+    },
+    "WebWamForceFlush": {
+      "id": 3264,
+      "props": {},
+      "weight": 1
+    },
+    "WebcAssetLoad": {
+      "id": 1358,
+      "props": {
+        "webcAssetCacheType": 4,
+        "webcAssetFromCache": 2,
+        "webcAssetLoadT": 3,
+        "webcAssetName": 1,
+        "webcAssetSize": 5
+      },
+      "weight": 1
+    },
+    "WebcBackgroundSyncAdoption": {
+      "id": 5302,
+      "props": {
+        "offboardSource": 1,
+        "onboardSource": 2,
+        "pushNotificationInteraction": 3,
+        "webOsNotificationSetting": 4
+      },
+      "weight": 1
+    },
+    "WebcButterbarEvent": {
+      "id": 3932,
+      "props": {
+        "webcButterbarAction": 1,
+        "webcButterbarType": 2
+      },
+      "weight": 1
+    },
+    "WebcChatCreate": {
+      "id": 6132,
+      "props": {
+        "creationMethod": 1,
+        "noCreated": 2
+      },
+      "weight": 1
+    },
+    "WebcChatOpen": {
+      "id": 864,
+      "props": {
+        "webcChatOpenBeforePaintT": 7,
+        "webcChatOpenPaintedT": 6,
+        "webcChatOpenT": 2,
+        "webcFinalRenderedMessageCount": 5,
+        "webcRenderedMessageCount": 4,
+        "webcUnreadCount": 1,
+        "webcWindowHeightFloat": 8
+      },
+      "weight": 5
+    },
+    "WebcDbOpen": {
+      "id": 1940,
+      "props": {
+        "webcDbName": 1,
+        "webcDbOpenNumAttempts": 3,
+        "webcDbOpenWasSuccess": 2
+      },
+      "weight": 2000
+    },
+    "WebcEmojiOpen": {
+      "id": 1166,
+      "props": {
+        "webcEmojiOpenTab": 1
+      },
+      "weight": 1
+    },
+    "WebcFingerprint": {
+      "id": 1704,
+      "props": {
+        "browserEngine": 26,
+        "connectionRtt": 37,
+        "cpuMake": 38,
+        "deviceMemory": 39,
+        "extentionIds": 27,
+        "externalSources": 36,
+        "gpuMake": 40,
+        "hasChrome": 28,
+        "hasTaskbar": 29,
+        "hasWebShare": 30,
+        "historyLength": 41,
+        "mimeTypeCount": 31,
+        "notificationPermission": 32,
+        "pdfViewerEnabled": 33,
+        "peripherals": 42,
+        "platformEstimate": 34,
+        "pluginCount": 35,
+        "screenResolution": 43,
+        "sessionStorageLength": 44,
+        "timezone": 45,
+        "touchPresence": 46,
+        "viewportSize": 47,
+        "webcCanvasFingerprint": 25,
+        "webcWebglFingerprint": 24,
+        "webcWebglRenderer": 23,
+        "webcWebglVendor": 22,
+        "webcWindowNavigatorWebdriver": 21
+      },
+      "weight": 1
+    },
+    "WebcFtsStorage": {
+      "id": 3642,
+      "props": {
+        "ftsTotalSize": 1
+      },
+      "weight": 1
+    },
+    "WebcImgError": {
+      "id": 1700,
+      "props": {
+        "webcImgErrorCode": 1
+      },
+      "weight": 1
+    },
+    "WebcJobInfo": {
+      "id": 3054,
+      "props": {
+        "jobName": 1,
+        "jobPriority": 2,
+        "jobResultType": 5,
+        "pendingJobsCount": 4,
+        "scenario": 3,
+        "webcJobAddedT": 6,
+        "webcJobCompletedT": 8,
+        "webcJobStartedT": 7
+      },
+      "weight": 1
+    },
+    "WebcLinkPreviewDisplay": {
+      "id": 3864,
+      "props": {
+        "didFallbackNonHq": 2,
+        "didRequestHq": 3,
+        "didRespondHqPreview": 4,
+        "webcDisplayStatus": 1
+      },
+      "weight": 1
+    },
+    "WebcLinkPreviewResponseHandle": {
+      "id": 3860,
+      "props": {
+        "didRespondHqPreview": 5,
+        "isPreviewSuccess": 2,
+        "previewDurationMs": 4,
+        "previewSessionId": 3
+      },
+      "weight": 1
+    },
+    "WebcLogin": {
+      "id": 1664,
+      "props": {
+        "webcBrowserNetworkType": 14,
+        "webcBrowserStorageQuotaBytes": 15,
+        "webcBrowserStorageQuotaUsedBytes": 16,
+        "webcLoginT": 3,
+        "webcPersistentLoginEnabled": 17,
+        "webcQrCodes": 1,
+        "webcQrLoadT": 2,
+        "webcSyncChatCount": 8,
+        "webcSyncChatSize": 10,
+        "webcSyncChatT": 9,
+        "webcSyncContactCount": 11,
+        "webcSyncContactSize": 13,
+        "webcSyncContactT": 12,
+        "webcSyncMessageCount": 5,
+        "webcSyncMessageSize": 7,
+        "webcSyncMessageT": 6,
+        "webcSyncT": 4
+      },
+      "weight": 1
+    },
+    "WebcMediaAnalyzed": {
+      "id": 912,
+      "props": {
+        "webcMediaAnalyzeT": 3,
+        "webcMediaExtensions": 2,
+        "webcMediaSupported": 1
+      },
+      "weight": 1
+    },
+    "WebcMediaEditorSend": {
+      "id": 2890,
+      "props": {
+        "blurImageCount": 7,
+        "editedImageCount": 2,
+        "emojiLayerCount": 5,
+        "imageCount": 1,
+        "paintedImageCount": 3,
+        "stickerLayerCount": 6,
+        "textLayerCount": 4
+      },
+      "weight": 1
+    },
+    "WebcMediaErrorUnknownDetails": {
+      "id": 2352,
+      "props": {
+        "mediaId": 1,
+        "webcMediaErrorMessage": 4,
+        "webcMediaErrorName": 3,
+        "webcMediaOperation": 2
+      },
+      "weight": 1
+    },
+    "WebcMediaLoad": {
+      "id": 1202,
+      "props": {
+        "webcMediaLoadResult": 2,
+        "webcMediaLoadT": 1
+      },
+      "weight": 1
+    },
+    "WebcMediaRmr": {
+      "id": 1906,
+      "props": {
+        "messageMediaType": 10,
+        "webcBrowserNetworkType": 2,
+        "webcBrowserStorageQuotaBytes": 11,
+        "webcBrowserStorageQuotaUsedBytes": 12,
+        "webcChatPosition": 1,
+        "webcChatType": 9,
+        "webcMediaRmrError": 8,
+        "webcMediaRmrT": 6,
+        "webcMediaSize": 7,
+        "webcMessageIndex": 3,
+        "webcMessageT": 5,
+        "webcRmrReason": 14,
+        "webcRmrStatusCode": 13
+      },
+      "weight": 1
+    },
+    "WebcMemoryStat": {
+      "id": 1188,
+      "props": {
+        "appContext": 26,
+        "appContextBitfield": 27,
+        "chatCollectionSize": 17,
+        "chatDbSize": 18,
+        "contactCollectionSize": 19,
+        "contactDbSize": 20,
+        "isForeground": 13,
+        "jsHeapSizeLimit": 9,
+        "messageCollectionSize": 24,
+        "messageDbSize": 25,
+        "peakUsedJsHeapSize": 14,
+        "scenario": 15,
+        "totalJsHeapSize": 10,
+        "uptime": 6,
+        "usedJsHeapSize": 11,
+        "usedJsHeapSizeDelta": 16,
+        "webcRuntimeEnv": 23
+      },
+      "weight": 10
+    },
+    "WebcMenu": {
+      "id": 2504,
+      "props": {
+        "webcMenuAction": 2,
+        "webcMenuItemLabel": 3
+      },
+      "weight": 1
+    },
+    "WebcMessageProcessingPerf": {
+      "id": 5790,
+      "props": {
+        "dbStoringT": 7,
+        "decryptionT": 1,
+        "isOffline": 2,
+        "lidProcessingT": 8,
+        "parsingT": 3,
+        "postProcessingT": 4,
+        "preProcessingT": 5,
+        "processingT": 6,
+        "reportTokenValidationT": 9
+      },
+      "weight": 100
+    },
+    "WebcMessageQuery": {
+      "id": 1876,
+      "props": {
+        "webcAudioMessageCount": 14,
+        "webcBrowserNetworkType": 1,
+        "webcBrowserStorageQuotaBytes": 20,
+        "webcBrowserStorageQuotaUsedBytes": 21,
+        "webcChatPosition": 2,
+        "webcChatType": 13,
+        "webcDocumentMessageCount": 16,
+        "webcEarliestMessageIndex": 11,
+        "webcEarliestMessageT": 12,
+        "webcMessageCount": 4,
+        "webcMessageQueryTrigger": 19,
+        "webcMessageQueryType": 3,
+        "webcOtherMessageCount": 18,
+        "webcPhotoMessageCount": 7,
+        "webcPttMessageCount": 15,
+        "webcQueryT": 9,
+        "webcResponseBytes": 10,
+        "webcStickerMessageCount": 17,
+        "webcTextMessageCount": 5,
+        "webcVideoMessageCount": 6
+      },
+      "weight": 5
+    },
+    "WebcMessageSend": {
+      "id": 2072,
+      "props": {
+        "messageIsForward": 3,
+        "messageMediaType": 2,
+        "messageSendT": 4,
+        "messageType": 1
+      },
+      "weight": 1
+    },
+    "WebcMinorEventLog": {
+      "id": 5440,
+      "props": {
+        "additionalDebugContext": 1,
+        "logContext": 2,
+        "logCount": 3,
+        "logReason": 4,
+        "logType": 5
+      },
+      "weight": 100
+    },
+    "WebcNativeUpsellCta": {
+      "id": 3934,
+      "props": {
+        "webcNativeUpsellCtaEventType": 2,
+        "webcNativeUpsellCtaIsBetaUser": 5,
+        "webcNativeUpsellCtaQrScreenExperimentGroup": 3,
+        "webcNativeUpsellCtaReleaseChannel": 4,
+        "webcNativeUpsellCtaSource": 1
+      },
+      "weight": 1
+    },
+    "WebcNavbar": {
+      "id": 5258,
+      "props": {
+        "webcNavbarItemLabel": 1
+      },
+      "weight": 1
+    },
+    "WebcOfflineNotificationProcess": {
+      "id": 4222,
+      "props": {
+        "currentOfflineProcessStage": 4,
+        "offlineProcessDecryptErrorCount": 5,
+        "offlineProcessMailboxAge": 6,
+        "offlineProcessMessageCount": 7,
+        "offlineProcessNotificationCount": 8,
+        "offlineProcessSessionId": 9,
+        "offlineProcessStageTimestampMs": 10,
+        "runReason": 12,
+        "swVersion": 11
+      },
+      "weight": 1
+    },
+    "WebcPageLoad": {
+      "id": 642,
+      "props": {
+        "webcAppcacheStatus": 29,
+        "webcCached": 30,
+        "webcConnectEnd": 10,
+        "webcConnectStart": 9,
+        "webcDomComplete": 19,
+        "webcDomContentLoadedEventEnd": 18,
+        "webcDomContentLoadedEventStart": 17,
+        "webcDomInteractive": 16,
+        "webcDomLoading": 15,
+        "webcDomainLookupEnd": 8,
+        "webcDomainLookupStart": 7,
+        "webcExeDone": 23,
+        "webcExeStart": 22,
+        "webcFetchStart": 6,
+        "webcInitialMountT": 38,
+        "webcInitialNavMountT": 39,
+        "webcInitialPanel": 42,
+        "webcInitialPanelMountStartT": 43,
+        "webcInitialPanelMountT": 40,
+        "webcInitialPanelRenderT": 46,
+        "webcJsLoadT": 37,
+        "webcLoadEventEnd": 21,
+        "webcLoadEventStart": 20,
+        "webcLoadInForeground": 53,
+        "webcMainScriptEnd": 45,
+        "webcMainScriptStart": 44,
+        "webcNativeLoadT": 36,
+        "webcNavigation": 32,
+        "webcPageLoadId": 54,
+        "webcPageLoadT": 34,
+        "webcParallellyFetched": 41,
+        "webcQrCode": 31,
+        "webcRedirectCount": 33,
+        "webcRedirectEnd": 5,
+        "webcRedirectStart": 4,
+        "webcRequestStart": 12,
+        "webcResponseEnd": 14,
+        "webcResponseStart": 13,
+        "webcSecureConnectionStart": 11,
+        "webcUnloadEventEnd": 3,
+        "webcUnloadEventStart": 2,
+        "webcWsAttempts": 28,
+        "webcWsNormal": 27,
+        "webcWsOpening": 24,
+        "webcWsPairing": 25,
+        "webcWsSyncing": 26
+      },
+      "weight": 1
+    },
+    "WebcPageLoad2": {
+      "id": 5392,
+      "props": {
+        "webcPageLoadId": 1
+      },
+      "weight": 1
+    },
+    "WebcPageResume": {
+      "id": 884,
+      "props": {
+        "webcResumeCount": 1
+      },
+      "weight": 1
+    },
+    "WebcProgressiveImage": {
+      "id": 2226,
+      "props": {
+        "webcFirstRenderScans": 1,
+        "webcFirstRenderT": 2,
+        "webcFullQualityT": 4,
+        "webcMidQualityT": 3
+      },
+      "weight": 10
+    },
+    "WebcPwaEvent": {
+      "id": 4116,
+      "props": {
+        "webcPwaAction": 2
+      },
+      "weight": 1
+    },
+    "WebcQplHealth": {
+      "id": 3134,
+      "props": {
+        "webcQplHealthEventData": 1,
+        "webcQplHealthEventType": 2
+      },
+      "weight": 1
+    },
+    "WebcRawPlatforms": {
+      "id": 2416,
+      "props": {
+        "webcRawPlatform": 1
+      },
+      "weight": 1
+    },
+    "WebcResourceLoad": {
+      "id": 688,
+      "props": {
+        "webcResourceCached": 3,
+        "webcResourceDuration": 2,
+        "webcResourceName": 1
+      },
+      "weight": 2000
+    },
+    "WebcSocketConnect": {
+      "id": 5450,
+      "props": {
+        "webcAuthHandshakeDuration": 1,
+        "webcSocketConnectDuration": 2,
+        "webcSocketConnectReason": 3,
+        "webcSocketHostname": 4
+      },
+      "weight": 1
+    },
+    "WebcStatusSession": {
+      "id": 1880,
+      "props": {
+        "webcStatusMutedItemCount": 4,
+        "webcStatusMutedRowCount": 7,
+        "webcStatusRecentItemCount": 2,
+        "webcStatusRecentRowCount": 5,
+        "webcStatusSessionId": 1,
+        "webcStatusViewedItemCount": 3,
+        "webcStatusViewedRowCount": 6
+      },
+      "weight": 1
+    },
+    "WebcStatusSync": {
+      "id": 1878,
+      "props": {
+        "webcStatusMutedItemCount": 4,
+        "webcStatusMutedRowCount": 7,
+        "webcStatusRecentItemCount": 2,
+        "webcStatusRecentRowCount": 5,
+        "webcStatusSyncT": 1,
+        "webcStatusViewedItemCount": 3,
+        "webcStatusViewedRowCount": 6
+      },
+      "weight": 1
+    },
+    "WebcStickerMakerEvents": {
+      "id": 3104,
+      "props": {
+        "stickerMakerEventName": 1
+      },
+      "weight": 1
+    },
+    "WebcStorageStat": {
+      "id": 1504,
+      "props": {
+        "webcAgeOfStorage": 3,
+        "webcPackingEnabled": 4,
+        "webcStorageQuota": 2,
+        "webcStorageUsage": 1
+      },
+      "weight": 1
+    },
+    "WebcStreamModeChange": {
+      "id": 770,
+      "props": {
+        "webcStreamMode": 1
+      },
+      "weight": 1
+    },
+    "WefrClientExposure": {
+      "id": 5504,
+      "props": {
+        "exposureKey": 1,
+        "sentWithDaily": 3
+      },
+      "weight": 1
+    },
+    "WhatsappQuickPromotionClientEligibilityWaterfall": {
+      "id": 4360,
+      "props": {
+        "clientExtraData": 6,
+        "eligibilityStatus": 1,
+        "instanceLogData": 5,
+        "promotionId": 2,
+        "qpFailureReason": 3,
+        "step": 4
+      },
+      "weight": 1
+    }
+  },
+  "globals": {
+    "abKey2": 4473,
+    "appBuild": 1657,
+    "appIsBetaRelease": 21,
+    "appVersion": 17,
+    "beaconSessionId": 18529,
+    "browser": 779,
+    "browserVersion": 295,
+    "commitTime": 47,
+    "datacenter": 2795,
+    "deviceClassification": 14507,
+    "deviceName": 13,
+    "deviceVersion": 4505,
+    "expoKey": 5029,
+    "isInCohort": 19129,
+    "mcc": 5,
+    "memClass": 655,
+    "mnc": 3,
+    "networkIsWifi": 23,
+    "numCpu": 10317,
+    "ocVersion": 6251,
+    "osVersion": 15,
+    "platform": 11,
+    "psCountryCode": 6833,
+    "psId": 6005,
+    "sequenceNumber": 3433,
+    "serviceImprovementOptOut": 13293,
+    "streamId": 3543,
+    "wametaLoggerTestFilter": 15881,
+    "webcBucket": 875,
+    "webcEnv": 633,
+    "webcNativeAutolaunch": 1009,
+    "webcNativeBetaUpdates": 1007,
+    "webcPhoneAppVersion": 1005,
+    "webcPhoneCharging": 783,
+    "webcPhoneDeviceManufacturer": 829,
+    "webcPhoneDeviceModel": 831,
+    "webcPhoneOsBuildNumber": 833,
+    "webcPhoneOsVersion": 835,
+    "webcPhonePlatform": 707,
+    "webcRevision": 18491,
+    "webcTabId": 3727,
+    "webcWebArch": 6605,
+    "webcWebDeviceManufacturer": 6599,
+    "webcWebDeviceModel": 6601,
+    "webcWebOsReleaseNumber": 6603,
+    "webcWebPlatform": 899,
+    "yearClass": 689,
+    "yearClass2016": 2617
+  }
+}

@@ -42,9 +42,13 @@ class EncryptedMedia:
 
 @dataclass(frozen=True)
 class MediaUploadResult:
-    media_url: str
-    direct_path: str
     host: str
+    media_url: str = ""
+    direct_path: str = ""
+    fbid: str | None = None
+    meta_hmac: str | None = None
+    timestamp: str | None = None
+    raw: dict[str, Any] | None = None
 
 
 @dataclass(frozen=True)
@@ -144,11 +148,19 @@ async def upload_media(
                     if response.status >= 400:
                         raise ValueError(f"upload failed status={response.status} body={text[:200]}")
                     payload = await response.json(content_type=None)
-            media_url = payload.get("url")
-            direct_path = payload.get("direct_path")
+            media_url = payload.get("url") or ""
+            direct_path = payload.get("direct_path") or ""
             if media_url and direct_path:
-                return MediaUploadResult(media_url=media_url, direct_path=direct_path, host=host.hostname)
-            raise ValueError(f"upload response missing url/direct_path: {payload!r}")
+                return MediaUploadResult(media_url=media_url, direct_path=direct_path, host=host.hostname, raw=payload)
+            if payload.get("fbid") and (payload.get("meta_hmac") or payload.get("hmac")):
+                return MediaUploadResult(
+                    host=host.hostname,
+                    fbid=str(payload["fbid"]),
+                    meta_hmac=str(payload.get("meta_hmac") or payload.get("hmac")),
+                    timestamp=str(payload.get("ts") or payload.get("timestamp") or ""),
+                    raw=payload,
+                )
+            raise ValueError(f"upload response missing media identifiers: {payload!r}")
         except Exception as exc:
             last_error = exc
     raise ValueError(f"media upload failed on all hosts: {last_error}") from last_error
@@ -282,6 +294,7 @@ def _default_mimetype(media_type: str) -> str:
         "image": "image/jpeg",
         "video": "video/mp4",
         "audio": "audio/ogg",
+        "biz-cover-photo": "image/jpeg",
         "document": "application/octet-stream",
         "sticker": "image/webp",
     }[media_type]

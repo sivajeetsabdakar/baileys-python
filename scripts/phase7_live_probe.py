@@ -12,7 +12,7 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from baileys import IQError, MexError, make_socket  # noqa: E402
+from baileys import IQError, MexError, WAMBinaryInfo, WAMEvent, make_socket  # noqa: E402
 
 
 Probe = Callable[[], Awaitable[object]]
@@ -41,6 +41,7 @@ async def main() -> int:
     parser.add_argument("--community-jid", help="Community JID to fetch metadata for.")
     parser.add_argument("--skip-catalog", action="store_true")
     parser.add_argument("--skip-mex", action="store_true")
+    parser.add_argument("--send-wam", action="store_true", help="Send a minimal WAM stats buffer through w:stats.")
     parser.add_argument("--allow-limits", action="store_true", help="Exit successfully when account/server limits are reported.")
     args = parser.parse_args()
 
@@ -80,6 +81,24 @@ async def main() -> int:
                 return {"id": metadata.id, "subject": metadata.subject, "participants": len(metadata.participants)}
 
             ok = await run_step("COMMUNITY_METADATA", community_step) and ok
+
+        if args.send_wam:
+            ok = await run_step(
+                "WAM_STATS",
+                lambda: client.send_wam(
+                    WAMBinaryInfo(
+                        sequence=1,
+                        events=[
+                            WAMEvent(
+                                "WamDroppedEvent",
+                                props={"droppedEventCode": 1, "droppedEventCount": 0, "isFromWamsys": False},
+                                globals={"sequenceNumber": 1},
+                            )
+                        ],
+                    ),
+                    timeout=args.timeout,
+                ),
+            ) and ok
 
         print(f"CONNECTION_UPDATES {updates}", flush=True)
         print(f"PHASE7_LIVE_PROBE_DONE ok={ok}", flush=True)

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import json
+from importlib import resources
 from struct import pack
 from typing import Any
 
@@ -41,11 +43,15 @@ class WAMEncodeError(ValueError):
 
 def encode_wam(
     binary_info: WAMBinaryInfo,
-    event_specs: dict[str, WAMEventSpec],
+    event_specs: dict[str, WAMEventSpec] | None = None,
     global_specs: dict[str, int] | None = None,
 ) -> bytes:
     parts = [_encode_wam_header(binary_info)]
-    globals_by_name = global_specs or {}
+    if event_specs is None or global_specs is None:
+        loaded_events, loaded_globals = load_wam_specs()
+        event_specs = event_specs or loaded_events
+        global_specs = global_specs or loaded_globals
+    globals_by_name = global_specs
 
     for event in binary_info.events:
         for key, value in event.globals.items():
@@ -71,6 +77,17 @@ def encode_wam(
 
 
 encodeWAM = encode_wam
+
+
+def load_wam_specs() -> tuple[dict[str, WAMEventSpec], dict[str, int]]:
+    with resources.files("baileys.generated").joinpath("wam_constants.json").open("r", encoding="utf-8") as handle:
+        data = json.load(handle)
+    events = {
+        name: WAMEventSpec(id=int(spec["id"]), weight=int(spec.get("weight") or 1), props={key: int(value) for key, value in spec.get("props", {}).items()})
+        for name, spec in data["events"].items()
+    }
+    globals_ = {name: int(value) for name, value in data["globals"].items()}
+    return events, globals_
 
 
 def _encode_wam_header(binary_info: WAMBinaryInfo) -> bytes:

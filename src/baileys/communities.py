@@ -58,6 +58,61 @@ def community_update_subject_node(jid: str, subject: str, tag_id: str) -> Binary
     return community_query_node(jid, "set", [BinaryNode("subject", {}, subject.encode("utf-8"))], tag_id)
 
 
+def community_link_group_node(group_jid: str, parent_community_jid: str, tag_id: str) -> BinaryNode:
+    return community_query_node(
+        parent_community_jid,
+        "set",
+        [
+            BinaryNode(
+                "links",
+                {},
+                [
+                    BinaryNode(
+                        "link",
+                        {"link_type": "sub_group"},
+                        [BinaryNode("group", {"jid": group_jid})],
+                    )
+                ],
+            )
+        ],
+        tag_id,
+    )
+
+
+def community_unlink_group_node(group_jid: str, parent_community_jid: str, tag_id: str) -> BinaryNode:
+    return community_query_node(
+        parent_community_jid,
+        "set",
+        [BinaryNode("unlink", {"unlink_type": "sub_group"}, [BinaryNode("group", {"jid": group_jid})])],
+        tag_id,
+    )
+
+
+def community_linked_groups_node(jid: str, tag_id: str) -> BinaryNode:
+    return community_query_node(jid, "get", [BinaryNode("sub_groups", {})], tag_id)
+
+
+def community_membership_requests_node(jid: str, tag_id: str) -> BinaryNode:
+    return community_query_node(jid, "get", [BinaryNode("membership_approval_requests", {})], tag_id)
+
+
+def community_membership_requests_update_node(jid: str, participants: list[str], action: str, tag_id: str) -> BinaryNode:
+    if action not in {"approve", "reject"}:
+        raise ValueError(f"unsupported membership request action: {action}")
+    return community_query_node(
+        jid,
+        "set",
+        [
+            BinaryNode(
+                "membership_requests_action",
+                {},
+                [BinaryNode(action, {}, [BinaryNode("participant", {"jid": item}) for item in participants])],
+            )
+        ],
+        tag_id,
+    )
+
+
 def community_update_description_node(jid: str, description: str | None, tag_id: str, *, previous_id: str | None = None) -> BinaryNode:
     attrs = {"id": generate_message_id()} if description else {"delete": "true"}
     if previous_id:
@@ -77,6 +132,27 @@ def community_invite_code_node(jid: str, tag_id: str) -> BinaryNode:
 
 def community_revoke_invite_node(jid: str, tag_id: str) -> BinaryNode:
     return community_query_node(jid, "set", [BinaryNode("invite", {})], tag_id)
+
+
+def community_accept_invite_node(code: str, tag_id: str) -> BinaryNode:
+    return community_query_node("@g.us", "set", [BinaryNode("invite", {"code": code})], tag_id)
+
+
+def community_invite_info_node(code: str, tag_id: str) -> BinaryNode:
+    return community_query_node("@g.us", "get", [BinaryNode("invite", {"code": code})], tag_id)
+
+
+def community_revoke_invite_v4_node(jid: str, invited_jid: str, tag_id: str) -> BinaryNode:
+    return community_query_node(jid, "set", [BinaryNode("revoke", {}, [BinaryNode("participant", {"jid": invited_jid})])], tag_id)
+
+
+def community_accept_invite_v4_node(jid: str, code: str, expiration: int | str, admin_jid: str, tag_id: str) -> BinaryNode:
+    return community_query_node(jid, "set", [BinaryNode("accept", {"code": code, "expiration": str(expiration), "admin": admin_jid})], tag_id)
+
+
+def community_ephemeral_node(jid: str, expiration: int, tag_id: str) -> BinaryNode:
+    child = BinaryNode("ephemeral", {"expiration": str(expiration)}) if expiration else BinaryNode("not_ephemeral", {})
+    return community_query_node(jid, "set", [child], tag_id)
 
 
 def community_setting_update_node(jid: str, setting: str, tag_id: str) -> BinaryNode:
@@ -122,6 +198,61 @@ def parse_community_invite_code(node: BinaryNode) -> str | None:
     return invite.attrs.get("code") if invite is not None else None
 
 
+def parse_community_accept_invite(node: BinaryNode) -> str | None:
+    community = find_child(node, "community")
+    if community is None:
+        return node.attrs.get("from")
+    return community.attrs.get("jid") or community.attrs.get("id")
+
+
+def parse_community_linked_groups(node: BinaryNode) -> list[dict[str, object]]:
+    sub_groups = find_child(node, "sub_groups")
+    if sub_groups is None or not isinstance(sub_groups.content, list):
+        return []
+    groups: list[dict[str, object]] = []
+    for child in sub_groups.content:
+        if child.tag != "group":
+            continue
+        raw_id = child.attrs.get("id")
+        groups.append(
+            {
+                "id": f"{raw_id}@g.us" if raw_id and "@" not in raw_id else raw_id,
+                "subject": child.attrs.get("subject") or "",
+                "creation": _optional_int(child.attrs.get("creation")),
+                "owner": child.attrs.get("creator"),
+                "size": _optional_int(child.attrs.get("size")),
+                "raw": child,
+            }
+        )
+    return groups
+
+
+def parse_membership_requests(node: BinaryNode) -> list[dict[str, str]]:
+    requests = find_child(node, "membership_approval_requests")
+    if requests is None or not isinstance(requests.content, list):
+        return []
+    return [child.attrs for child in requests.content if child.tag == "membership_approval_request"]
+
+
+def parse_membership_request_update(node: BinaryNode, action: str) -> list[ParticipantUpdateResult]:
+    wrapper = find_child(node, "membership_requests_action")
+    action_node = find_child(wrapper, action) if wrapper is not None else None
+    if action_node is None or not isinstance(action_node.content, list):
+        return []
+    return [
+        ParticipantUpdateResult(jid=child.attrs["jid"], status=child.attrs.get("error") or "200", content=child)
+        for child in action_node.content
+        if child.tag == "participant" and child.attrs.get("jid")
+    ]
+
+
 def binary_text(node: BinaryNode | None) -> str | None:
     content = node_content_bytes(node)
     return content.decode("utf-8", errors="replace") if content is not None else None
+
+
+def _optional_int(value: str | None) -> int | None:
+    try:
+        return int(value) if value is not None else None
+    except ValueError:
+        return None
