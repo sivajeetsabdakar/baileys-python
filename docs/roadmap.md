@@ -345,7 +345,9 @@ tests are stable.
 - Added public wrappers for media connection refresh, current media host,
   media upload, and USync device discovery.
 - Expanded generic USync result parsing for contact, status, disappearing
-  mode, username, and unknown protocol child values.
+  mode, username, bot profile, side-list, and unknown protocol child values.
+- Added typed WAUSync parser helpers for contact, status, disappearing mode,
+  username, and bot profile results, plus a shared generic query builder.
 - Added `scripts/phase7_live_probe.py` for read-only live checks of catalog,
   MEX reachout/message-capping, newsletter metadata, community metadata, and
   optional WAM stats upload.
@@ -353,7 +355,7 @@ tests are stable.
   shapes, newsletter live-event parsing and dispatch, business/catalog/product
   nodes, catalog product image preparation, community nodes/parsers, label
   app-state patches, reporting tokens, privacy tokens, status/disappearing
-  USync parsers, generic USync wrapper shapes, bot-list parsing, privacy-token
+  USync parsers, typed WAUSync protocol parsers, generic USync wrapper shapes, bot-list parsing, privacy-token
   issuance, peer-data/member-label protocol messages, presence subscription,
   contact and quick-reply app-state patches, batch receipt aggregation,
   media/USync wrappers, media retry request/response crypto,
@@ -403,7 +405,7 @@ tests are stable.
 ## Current Verification
 
 - Offline compile check passes for `src`, `scripts`, and `examples`.
-- Offline test suite passes with 156 tests.
+- Offline test suite passes with 158 tests.
 - WABinary token, WAM constants, and WAProto generated artifact checks pass.
 - Product QR pairing and saved reconnect pass against the dedicated test
   account.

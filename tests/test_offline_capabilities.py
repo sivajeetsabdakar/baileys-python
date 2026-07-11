@@ -53,9 +53,16 @@ from baileys.signal_session_probe import run_signal_session_round_trip
 from baileys.usync import (
     conversation_identities,
     extract_device_jids,
+    parse_usync_bot_profiles,
+    parse_usync_contacts,
+    parse_usync_disappearing_modes,
     parse_usync_result,
+    parse_usync_side_list,
+    parse_usync_statuses,
+    parse_usync_usernames,
     split_own_and_other_devices,
     usync_devices_query_node,
+    usync_query_node,
 )
 from baileys.wabinary import BinaryNode, decode_binary_node, encode_binary_node
 from baileys.whatsapp_keys import derive_media_keys, expand_app_state_keys
@@ -477,6 +484,130 @@ def test_usync_generic_parser_preserves_common_protocol_values():
     assert parsed[0]["business"]["content"] == b"payload"
     assert parsed[1]["contact"] is False
     assert parsed[1]["status"]["status"] == ""
+
+
+def test_usync_typed_protocol_parsers_cover_common_node_protocols():
+    result = BinaryNode(
+        "iq",
+        {"id": "tag-typed", "type": "result"},
+        [
+            BinaryNode(
+                "usync",
+                {},
+                [
+                    BinaryNode(
+                        "list",
+                        {},
+                        [
+                            BinaryNode(
+                                "user",
+                                {"jid": "123@s.whatsapp.net"},
+                                [
+                                    BinaryNode("contact", {"type": "in"}),
+                                    BinaryNode("status", {"t": "101"}, b"available"),
+                                    BinaryNode("disappearing_mode", {"duration": "86400", "t": "102"}),
+                                    BinaryNode("username", {}, b"alice"),
+                                    BinaryNode(
+                                        "bot",
+                                        {},
+                                        [
+                                            BinaryNode(
+                                                "profile",
+                                                {"persona_id": "persona-1"},
+                                                [
+                                                    BinaryNode("name", {}, b"Helper"),
+                                                    BinaryNode("attributes", {}, b"useful"),
+                                                    BinaryNode("description", {}, b"answers questions"),
+                                                    BinaryNode("category", {}, b"utility"),
+                                                    BinaryNode("default", {}),
+                                                    BinaryNode(
+                                                        "prompts",
+                                                        {},
+                                                        [
+                                                            BinaryNode(
+                                                                "prompt",
+                                                                {},
+                                                                [BinaryNode("emoji", {}, b"?"), BinaryNode("text", {}, b"Ask")],
+                                                            )
+                                                        ],
+                                                    ),
+                                                    BinaryNode(
+                                                        "commands",
+                                                        {},
+                                                        [
+                                                            BinaryNode("description", {}, b"available commands"),
+                                                            BinaryNode(
+                                                                "command",
+                                                                {},
+                                                                [
+                                                                    BinaryNode("name", {}, b"help"),
+                                                                    BinaryNode("description", {}, b"show help"),
+                                                                ],
+                                                            ),
+                                                        ],
+                                                    ),
+                                                ],
+                                            )
+                                        ],
+                                    ),
+                                ],
+                            ),
+                            BinaryNode(
+                                "user",
+                                {"jid": "456@s.whatsapp.net"},
+                                [BinaryNode("contact", {"value": "0"}), BinaryNode("status", {"code": "401"})],
+                            ),
+                        ],
+                    ),
+                    BinaryNode(
+                        "side_list",
+                        {},
+                        [
+                            BinaryNode(
+                                "user",
+                                {"jid": "789@s.whatsapp.net"},
+                                [BinaryNode("username", {}, b"side")],
+                            )
+                        ],
+                    ),
+                ],
+            )
+        ],
+    )
+
+    assert parse_usync_contacts(result)[0].exists is True
+    assert parse_usync_contacts(result)[1].exists is False
+    assert parse_usync_statuses(result)[0].status == "available"
+    assert parse_usync_statuses(result)[1].status == ""
+    assert parse_usync_disappearing_modes(result)[0].duration == 86400
+    assert parse_usync_usernames(result)[0].username == "alice"
+    profile = parse_usync_bot_profiles(result)[0]
+    assert profile.jid == "123@s.whatsapp.net"
+    assert profile.name == "Helper"
+    assert profile.attributes == "useful"
+    assert profile.description == "answers questions"
+    assert profile.category == "utility"
+    assert profile.is_default is True
+    assert profile.prompts == ("? Ask",)
+    assert profile.persona_id == "persona-1"
+    assert profile.commands_description == "available commands"
+    assert profile.commands[0].name == "help"
+    assert profile.commands[0].description == "show help"
+    assert parse_usync_side_list(result)[0]["username"] == "side"
+
+
+def test_usync_generic_query_builder_accepts_named_protocols():
+    query = usync_query_node(
+        ["123@s.whatsapp.net"],
+        ["devices", "contact", "status", "disappearing_mode", "username", "bot"],
+        "tag-generic",
+    )
+    usync = query.content[0]
+    protocol_nodes = usync.content[0].content
+    assert [node.tag for node in protocol_nodes] == ["devices", "contact", "status", "disappearing_mode", "username", "bot"]
+    assert protocol_nodes[0].attrs == {"version": "2"}
+    assert protocol_nodes[-1].content[0].tag == "profile"
+    assert [user.attrs["jid"] for user in usync.content[1].content] == ["123@s.whatsapp.net"]
 
 
 def test_usync_parser_skips_malformed_user_id():

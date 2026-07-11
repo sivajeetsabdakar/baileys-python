@@ -185,6 +185,24 @@ from .receipts import (
 from .reporting import getMessageReportingToken, get_message_reporting_token, shouldIncludeReportingToken, should_include_reporting_token
 from .socket import MediaSendResult, ReconnectPolicy, SendMessageResult, SocketConfig, WhatsAppClient, make_socket, makeWASocket
 from .store import Chat, Contact, InMemoryStore, makeInMemoryStore, make_in_memory_store
+from .usync import (
+    DeviceInfo,
+    USyncBotProfile,
+    USyncBotProfileCommand,
+    USyncContact,
+    USyncDisappearingMode,
+    USyncStatus,
+    USyncUsername,
+    parse_usync_bot_profiles,
+    parse_usync_contacts,
+    parse_usync_disappearing_modes,
+    parse_usync_result,
+    parse_usync_side_list,
+    parse_usync_statuses,
+    parse_usync_usernames,
+    usync_devices_query_node,
+    usync_query_node,
+)
 from .wabinary import BinaryNode, decode_binary_node, encode_binary_node
 from .wam import WAMBinaryInfo, WAMEncodeError, WAMEvent, WAMEventSpec, encodeWAM, encode_wam, load_wam_specs
 from .whatsapp_keys import AppStateKeys, MediaKeys, derive_media_keys, expand_app_state_keys, media_hkdf_info_key
@@ -207,6 +225,7 @@ __all__ = [
     "DirectorySignalKeyStore",
     "DisconnectError",
     "DisconnectReason",
+    "DeviceInfo",
     "DirtyInfo",
     "DecodedAppStatePatch",
     "DecodedAppStateSnapshot",
@@ -263,6 +282,12 @@ __all__ = [
     "SignedPreKeyRotation",
     "SocketConfig",
     "TagGenerator",
+    "USyncBotProfile",
+    "USyncBotProfileCommand",
+    "USyncContact",
+    "USyncDisappearingMode",
+    "USyncStatus",
+    "USyncUsername",
     "WAMessage",
     "WAMBinaryInfo",
     "WAMEncodeError",
@@ -378,6 +403,13 @@ __all__ = [
     "parse_business_profile",
     "parse_catalog",
     "parse_community_metadata",
+    "parse_usync_bot_profiles",
+    "parse_usync_contacts",
+    "parse_usync_disappearing_modes",
+    "parse_usync_result",
+    "parse_usync_side_list",
+    "parse_usync_statuses",
+    "parse_usync_usernames",
     "process_history_sync",
     "parse_dirty_info",
     "parse_notification_info",
@@ -403,6 +435,8 @@ __all__ = [
     "transfer_device",
     "useMultiFileAuthState",
     "use_multi_file_auth_state",
+    "usync_devices_query_node",
+    "usync_query_node",
     "newsletter_metadata_query",
     "wmex_query_node",
 ]

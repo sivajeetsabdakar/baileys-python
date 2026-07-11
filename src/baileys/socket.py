@@ -220,7 +220,7 @@ from .socket_nodes import (
     unified_session_node,
 )
 from .store import InMemoryStore
-from .usync import DeviceInfo, conversation_identities, extract_device_jids, parse_usync_result, split_own_and_other_devices, usync_devices_query_node
+from .usync import DeviceInfo, conversation_identities, extract_device_jids, parse_usync_result, split_own_and_other_devices, usync_devices_query_node, usync_query_node
 from .wam import WAMBinaryInfo, encode_wam
 from .wabinary import BinaryNode
 from .messages import MessageKey, WAMessage, build_message_upsert
@@ -1674,18 +1674,12 @@ class WhatsAppClient:
             raise ValueError("execute_usync_query requires protocols when users are passed")
 
         tag_id = self.queries.next_tag()
-        protocol_nodes = [protocol if isinstance(protocol, BinaryNode) else BinaryNode(str(protocol), {}) for protocol in protocols]
-        user_nodes = [BinaryNode("user", {"jid": jid_normalized_user(jid)}, []) for jid in _dedupe_jids(list(users))]
-        node = BinaryNode(
-            "iq",
-            {"id": tag_id, "to": S_WHATSAPP_NET, "type": "get", "xmlns": "usync"},
-            [
-                BinaryNode(
-                    "usync",
-                    {"context": context, "mode": mode, "sid": tag_id, "last": "true", "index": "0"},
-                    [BinaryNode("query", {}, protocol_nodes), BinaryNode("list", {}, user_nodes)],
-                )
-            ],
+        node = usync_query_node(
+            _dedupe_jids(list(users)),
+            protocols,
+            tag_id,
+            context=context,
+            mode=mode,
         )
         result = await self._query_checked(node, timeout=timeout)
         return {"raw": result, "list": parse_usync_result(result)}
