@@ -348,6 +348,46 @@ def test_phase7_client_methods_call_expected_queries(tmp_path, monkeypatch):
             if node.attrs.get("xmlns") == "w:mex":
                 path = "xwa2_newsletter"
                 return BinaryNode("iq", {}, [BinaryNode("result", {}, json.dumps({"data": {path: {"id": "n@newsletter"}}}).encode())])
+            if node.attrs.get("xmlns") == "w:biz" and node.attrs.get("type") == "get":
+                return BinaryNode(
+                    "iq",
+                    {"type": "result"},
+                    [
+                        BinaryNode(
+                            "business_profile",
+                            {},
+                            [
+                                BinaryNode(
+                                    "profile",
+                                    {"jid": "biz@s.whatsapp.net"},
+                                    [
+                                        BinaryNode("description", {}, b"profile"),
+                                        BinaryNode("website", {}, b"https://example.test"),
+                                        BinaryNode("categories", {}, [BinaryNode("category", {}, b"shop")]),
+                                    ],
+                                )
+                            ],
+                        )
+                    ],
+                )
+            if node.attrs.get("xmlns") == "usync":
+                protocol = node.content[0].content[0].content[0].tag
+                child = (
+                    BinaryNode("status", {"t": "100"}, b"ready")
+                    if protocol == "status"
+                    else BinaryNode("disappearing_mode", {"duration": "86400", "t": "101"})
+                )
+                return BinaryNode(
+                    "iq",
+                    {"type": "result"},
+                    [
+                        BinaryNode(
+                            "usync",
+                            {},
+                            [BinaryNode("list", {}, [BinaryNode("user", {"jid": "peer@s.whatsapp.net"}, [child])])],
+                        )
+                    ],
+                )
             if node.attrs.get("xmlns") == "w:biz:catalog" and node.content[0].tag == "product_catalog_add":
                 return BinaryNode("iq", {}, [node.content[0]])
             if node.tag == "call":
@@ -374,6 +414,17 @@ def test_phase7_client_methods_call_expected_queries(tmp_path, monkeypatch):
         monkeypatch.setattr("baileys.socket.upload_raw_media", fake_upload_raw_media)
 
         await client.update_business_profile({"description": "hello"})
+        business_profile = await client.get_business_profile("biz@s.whatsapp.net")
+        assert business_profile is not None
+        assert business_profile.description == "profile"
+        assert business_profile.websites == ["https://example.test"]
+        assert business_profile.category == "shop"
+        assert (await client.fetch_status("peer@s.whatsapp.net"))[0]["status"] == "ready"
+        assert (await client.fetch_disappearing_duration("peer@s.whatsapp.net"))[0]["duration"] == 86400
+        await client.update_default_disappearing_mode(86400)
+        await client.update_disable_link_previews_privacy(True)
+        clean = await client.clean_dirty_bits("account_sync", from_timestamp=123)
+        presence = await client.presence_subscribe("peer@s.whatsapp.net")
         created = await client.product_create({"name": "Tea", "images": [b"image-bytes"]})
         assert created.image_urls == {"url": "https://mmg.whatsapp.net/product/image/uploaded"}
         assert media_requests == [(b"image-bytes", "product-catalog-image", "mmg.whatsapp.net")]
@@ -385,6 +436,10 @@ def test_phase7_client_methods_call_expected_queries(tmp_path, monkeypatch):
         await client.reject_call("call-1", "user@s.whatsapp.net")
 
         assert queries[0].content[0].tag == "business_profile"
+        assert queries[1].content[0].content[0].attrs["jid"] == "biz@s.whatsapp.net"
+        assert any(node.attrs.get("xmlns") == "disappearing_mode" for node in queries)
+        assert clean.attrs["xmlns"] == "urn:xmpp:whatsapp:dirty"
+        assert presence.attrs["type"] == "subscribe"
         assert any(node.attrs.get("xmlns") == "w:stats" for node in queries)
         assert any(
             node.attrs.get("xmlns") == "w:biz:catalog"
@@ -392,11 +447,18 @@ def test_phase7_client_methods_call_expected_queries(tmp_path, monkeypatch):
             and node.content[0].content[0].content[-1].tag == "media"
             for node in queries
         )
-        assert sent[0].tag == "call"
+        assert any(node.tag == "call" for node in sent)
         assert client.newsletterMetadata.__func__ is client.newsletter_metadata.__func__
         assert client.communityMetadata.__func__ is client.community_metadata.__func__
         assert client.communityAcceptInvite.__func__ is client.community_accept_invite.__func__
         assert client.newsletterUpdatePicture.__func__ is client.newsletter_update_picture.__func__
         assert client.productDelete.__func__ is client.product_delete.__func__
+        assert client.getBusinessProfile.__func__ is client.get_business_profile.__func__
+        assert client.fetchStatus.__func__ is client.fetch_status.__func__
+        assert client.fetchDisappearingDuration.__func__ is client.fetch_disappearing_duration.__func__
+        assert client.presenceSubscribe.__func__ is client.presence_subscribe.__func__
+        assert client.cleanDirtyBits.__func__ is client.clean_dirty_bits.__func__
+        assert client.updateDefaultDisappearingMode.__func__ is client.update_default_disappearing_mode.__func__
+        assert client.updateDisableLinkPreviewsPrivacy.__func__ is client.update_disable_link_previews_privacy.__func__
 
     asyncio.run(scenario())

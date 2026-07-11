@@ -7,6 +7,8 @@ import baileys as b
 from baileys.auth_state import AuthState, JsonCredentialStore
 from baileys.chat_groups import (
     block_status_node,
+    default_disappearing_mode_node,
+    dirty_clean_node,
     on_whatsapp_node,
     group_get_invite_info_node,
     group_join_approval_mode_node,
@@ -17,7 +19,12 @@ from baileys.chat_groups import (
     parse_group_metadata,
     parse_on_whatsapp,
     parse_privacy_settings,
+    parse_usync_disappearing_mode,
+    parse_usync_status,
+    presence_subscribe_node,
     profile_picture_url_node,
+    usync_disappearing_mode_node,
+    usync_status_node,
 )
 from baileys.socket_nodes import IQError, parse_iq_error
 from baileys.socket import make_socket
@@ -182,6 +189,90 @@ def test_on_whatsapp_nodes_and_queries_match_expected_shape():
     assert len(user_nodes[0].content) == 1
     assert user_nodes[0].content[0].tag == "contact"
     assert user_nodes[0].content[0].content == b"+1234567890"
+
+
+def test_usync_status_disappearing_and_presence_nodes_parse():
+    status_query = usync_status_node(["123@s.whatsapp.net"], "tag-s")
+    assert status_query.attrs == {"id": "tag-s", "to": "s.whatsapp.net", "type": "get", "xmlns": "usync"}
+    assert status_query.content[0].content[0].content[0].tag == "status"
+    assert status_query.content[0].content[1].content[0].attrs == {"jid": "123@s.whatsapp.net"}
+
+    disappearing_query = usync_disappearing_mode_node(["123@s.whatsapp.net"], "tag-d")
+    assert disappearing_query.content[0].content[0].content[0].tag == "disappearing_mode"
+
+    parsed_status = parse_usync_status(
+        BinaryNode(
+            "iq",
+            {"type": "result"},
+            [
+                BinaryNode(
+                    "usync",
+                    {},
+                    [
+                        BinaryNode(
+                            "list",
+                            {},
+                            [
+                                BinaryNode(
+                                    "user",
+                                    {"jid": "123@s.whatsapp.net"},
+                                    [BinaryNode("status", {"t": "100"}, b"available")],
+                                ),
+                                BinaryNode(
+                                    "user",
+                                    {"jid": "401@s.whatsapp.net"},
+                                    [BinaryNode("status", {"code": "401"})],
+                                )
+                            ],
+                        )
+                    ],
+                )
+            ],
+        )
+    )
+    assert parsed_status[0]["status"] == "available"
+    assert parsed_status[0]["set_at"] == 100
+    assert parsed_status[1]["status"] == ""
+
+    parsed_disappearing = parse_usync_disappearing_mode(
+        BinaryNode(
+            "iq",
+            {"type": "result"},
+            [
+                BinaryNode(
+                    "usync",
+                    {},
+                    [
+                        BinaryNode(
+                            "list",
+                            {},
+                            [
+                                BinaryNode(
+                                    "user",
+                                    {"jid": "123@s.whatsapp.net"},
+                                    [BinaryNode("disappearing_mode", {"duration": "86400", "t": "101"})],
+                                )
+                            ],
+                        )
+                    ],
+                )
+            ],
+        )
+    )
+    assert parsed_disappearing[0]["duration"] == 86400
+    assert parsed_disappearing[0]["set_at"] == 101
+
+    presence = presence_subscribe_node("123@s.whatsapp.net", "tag-p")
+    assert presence.tag == "presence"
+    assert presence.attrs == {"to": "123@s.whatsapp.net", "id": "tag-p", "type": "subscribe"}
+
+    default_mode = default_disappearing_mode_node(604800, "tag-m")
+    assert default_mode.attrs["xmlns"] == "disappearing_mode"
+    assert default_mode.content[0].attrs == {"duration": "604800"}
+
+    dirty = dirty_clean_node("account_sync", "tag-c", from_timestamp=1234)
+    assert dirty.attrs["xmlns"] == "urn:xmpp:whatsapp:dirty"
+    assert dirty.content[0].attrs == {"type": "account_sync", "timestamp": "1234"}
 
 
 def test_client_phase5_methods_call_query_and_emit_events(tmp_path):

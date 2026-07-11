@@ -37,7 +37,17 @@ from .app_state import (
     lt_hash_subtract_then_add,
 )
 from .client import WhatsAppWebClient
-from .business import CatalogResult, Product, catalog_node, cover_photo_remove_node, cover_photo_update_node, parse_catalog
+from .business import (
+    BusinessProfile,
+    CatalogResult,
+    Product,
+    business_profile_node,
+    catalog_node,
+    cover_photo_remove_node,
+    cover_photo_update_node,
+    parse_business_profile,
+    parse_catalog,
+)
 from .communities import community_create_node, community_link_group_node, community_metadata_node, parse_community_metadata
 from .crypto import (
     aes_decrypt_cbc,
@@ -191,6 +201,7 @@ __all__ = [
     "AppStateSnapshotInfo",
     "Chat",
     "CallInfo",
+    "BusinessProfile",
     "CatalogResult",
     "Contact",
     "DirectorySignalKeyStore",
@@ -271,6 +282,7 @@ __all__ = [
     "app_state_patch_node",
     "app_state_sync_request_node",
     "app_state_sync_key_request_message",
+    "business_profile_node",
     "build_pairing_qr_data",
     "aggregate_message_keys",
     "build_ack_node",
@@ -362,6 +374,7 @@ __all__ = [
     "parse_receipt_info",
     "parse_retry_request",
     "parse_call_info",
+    "parse_business_profile",
     "parse_catalog",
     "parse_community_metadata",
     "process_history_sync",

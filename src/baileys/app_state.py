@@ -615,6 +615,10 @@ def chat_modification_to_app_patch(modification: dict[str, Any], jid: str) -> Ap
     if "pushNameSetting" in modification:
         value.pushNameSetting.name = str(modification["pushNameSetting"])
         return AppPatchCreate("critical_block", ["setting_pushName"], value, 1)
+    if "disableLinkPreviews" in modification:
+        action = modification["disableLinkPreviews"] or {}
+        value.privacySettingDisableLinkPreviewsAction.isPreviewsDisabled = bool(action.get("isPreviewsDisabled"))
+        return AppPatchCreate("regular", ["setting_disableLinkPreviews"], value, 8)
     if "addLabel" in modification:
         label = modification["addLabel"]
         label_id = str(label["id"])

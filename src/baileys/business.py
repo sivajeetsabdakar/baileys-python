@@ -25,6 +25,18 @@ class Product:
 
 
 @dataclass(frozen=True)
+class BusinessProfile:
+    wid: str | None = None
+    address: str | None = None
+    description: str = ""
+    websites: list[str] = field(default_factory=list)
+    email: str | None = None
+    category: str | None = None
+    business_hours: dict[str, Any] | None = None
+    raw: BinaryNode | None = None
+
+
+@dataclass(frozen=True)
 class CatalogResult:
     products: list[Product] = field(default_factory=list)
     next_cursor: str | None = None
@@ -52,6 +64,35 @@ def update_business_profile_node(args: dict[str, Any], tag_id: str) -> BinaryNod
         "iq",
         {"id": tag_id, "to": S_WHATSAPP_NET, "type": "set", "xmlns": "w:biz"},
         [BinaryNode("business_profile", {"v": "3", "mutation_type": "delta"}, children)],
+    )
+
+
+def business_profile_node(jid: str, tag_id: str) -> BinaryNode:
+    return BinaryNode(
+        "iq",
+        {"id": tag_id, "to": S_WHATSAPP_NET, "type": "get", "xmlns": "w:biz"},
+        [BinaryNode("business_profile", {"v": "244"}, [BinaryNode("profile", {"jid": jid_normalized_user(jid)})])],
+    )
+
+
+def parse_business_profile(node: BinaryNode) -> BusinessProfile | None:
+    profile = find_child(find_child(node, "business_profile"), "profile")
+    if profile is None:
+        return None
+    business_hours = find_child(profile, "business_hours")
+    hours = None
+    if business_hours is not None:
+        configs = [dict(child.attrs) for child in _children(business_hours, "business_hours_config")]
+        hours = {"timezone": business_hours.attrs.get("timezone"), "business_config": configs}
+    return BusinessProfile(
+        wid=profile.attrs.get("jid"),
+        address=_child_text(profile, "address"),
+        description=_child_text(profile, "description") or "",
+        websites=[text for child in _children(profile, "website") if (text := _node_text(child)) is not None],
+        email=_child_text(profile, "email"),
+        category=_child_text(find_child(profile, "categories") or profile, "category"),
+        business_hours=hours,
+        raw=profile,
     )
 
 
@@ -178,7 +219,11 @@ def _children(node: BinaryNode, tag: str) -> list[BinaryNode]:
 
 def _child_text(node: BinaryNode, tag: str) -> str | None:
     child = find_child(node, tag)
-    content = node_content_bytes(child)
+    return _node_text(child)
+
+
+def _node_text(node: BinaryNode | None) -> str | None:
+    content = node_content_bytes(node)
     return content.decode("utf-8", errors="replace") if content is not None else None
 
 

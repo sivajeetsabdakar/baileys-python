@@ -701,6 +701,11 @@ def test_send_receipt_and_read_messages_build_receipt_nodes(tmp_path):
         client = make_socket(AuthState.from_store(store))
         client._web = FakeWeb()
 
+        async def fake_privacy(**kwargs):
+            return {"readreceipts": "none"}
+
+        client.fetch_privacy_settings = fake_privacy  # type: ignore[method-assign]
+
         direct = await client.send_receipt("user@s.whatsapp.net", ["m1", "m2"], receipt_type="read")
         bulk = await client.read_messages(
             [
@@ -714,6 +719,7 @@ def test_send_receipt_and_read_messages_build_receipt_nodes(tmp_path):
         assert direct.content[0].content[0].attrs["id"] == "m2"
         assert bulk[0].attrs["to"] == "group@g.us"
         assert bulk[0].attrs["participant"] == "sender@s.whatsapp.net"
+        assert bulk[0].attrs["type"] == "read-self"
         assert bulk[0].content[0].content[0].attrs["id"] == "g2"
         assert [sent.tag for sent in client._web.sent] == ["receipt", "receipt"]
 

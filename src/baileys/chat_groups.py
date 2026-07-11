@@ -7,7 +7,7 @@ from typing import Any, Iterable
 from .defaults import GROUP_SERVER, S_WHATSAPP_NET
 from .jid import jid_normalized_user
 from .message_send import generate_message_id
-from .socket_nodes import find_child
+from .socket_nodes import find_child, node_content_bytes
 from .wabinary import BinaryNode
 
 
@@ -326,6 +326,78 @@ def parse_on_whatsapp(node: BinaryNode) -> list[dict[str, Any]]:
     return results
 
 
+def usync_status_node(jids: Iterable[str], tag_id: str) -> BinaryNode:
+    return _usync_protocol_node(jids, tag_id, "status")
+
+
+def usync_disappearing_mode_node(jids: Iterable[str], tag_id: str) -> BinaryNode:
+    return _usync_protocol_node(jids, tag_id, "disappearing_mode")
+
+
+def _usync_protocol_node(jids: Iterable[str], tag_id: str, protocol: str) -> BinaryNode:
+    users = [BinaryNode("user", {"jid": jid_normalized_user(jid)}, []) for jid in jids]
+    return BinaryNode(
+        "iq",
+        {"id": tag_id, "to": S_WHATSAPP_NET, "type": "get", "xmlns": "usync"},
+        [
+            BinaryNode(
+                "usync",
+                {"context": "interactive", "mode": "query", "sid": tag_id, "last": "true", "index": "0"},
+                [BinaryNode("query", {}, [BinaryNode(protocol, {})]), BinaryNode("list", {}, users)],
+            )
+        ],
+    )
+
+
+def parse_usync_status(node: BinaryNode) -> list[dict[str, Any]]:
+    results = []
+    for user, status in _parse_usync_child(node, "status"):
+        content = node_content_bytes(status)
+        value = content.decode("utf-8", errors="replace") if content else None
+        if value is None and status.attrs.get("code") == "401":
+            value = ""
+        elif value == "":
+            value = None
+        results.append(
+            {
+                "jid": user.attrs.get("jid") or user.attrs.get("id") or "",
+                "status": value,
+                "set_at": int(status.attrs.get("t") or 0),
+                "raw": status,
+            }
+        )
+    return results
+
+
+def parse_usync_disappearing_mode(node: BinaryNode) -> list[dict[str, Any]]:
+    results = []
+    for user, disappearing in _parse_usync_child(node, "disappearing_mode"):
+        results.append(
+            {
+                "jid": user.attrs.get("jid") or user.attrs.get("id") or "",
+                "duration": int(disappearing.attrs.get("duration") or 0),
+                "set_at": int(disappearing.attrs.get("t") or 0),
+                "raw": disappearing,
+            }
+        )
+    return results
+
+
+def _parse_usync_child(node: BinaryNode, tag: str) -> list[tuple[BinaryNode, BinaryNode]]:
+    usync = find_child(node, "usync")
+    list_node = find_child(usync, "list")
+    if list_node is None or not isinstance(list_node.content, list):
+        return []
+    results = []
+    for user in list_node.content:
+        if user.tag != "user":
+            continue
+        child = find_child(user, tag)
+        if child is not None:
+            results.append((user, child))
+    return results
+
+
 def available_presence_node(name: str, presence_type: str) -> BinaryNode:
     if presence_type not in {"available", "unavailable"}:
         raise ValueError(f"unsupported availability presence: {presence_type}")
@@ -338,6 +410,29 @@ def chatstate_presence_node(from_jid: str, to_jid: str, presence_type: str) -> B
     tag = "composing" if presence_type == "recording" else presence_type
     attrs = {"media": "audio"} if presence_type == "recording" else {}
     return BinaryNode("chatstate", {"from": from_jid, "to": to_jid}, [BinaryNode(tag, attrs)])
+
+
+def presence_subscribe_node(jid: str, tag_id: str) -> BinaryNode:
+    return BinaryNode("presence", {"to": jid_normalized_user(jid), "id": tag_id, "type": "subscribe"})
+
+
+def default_disappearing_mode_node(duration: int, tag_id: str) -> BinaryNode:
+    return BinaryNode(
+        "iq",
+        {"id": tag_id, "xmlns": "disappearing_mode", "to": S_WHATSAPP_NET, "type": "set"},
+        [BinaryNode("disappearing_mode", {"duration": str(duration)})],
+    )
+
+
+def dirty_clean_node(kind: str, tag_id: str, *, from_timestamp: int | None = None) -> BinaryNode:
+    attrs = {"type": kind}
+    if from_timestamp is not None:
+        attrs["timestamp"] = str(from_timestamp)
+    return BinaryNode(
+        "iq",
+        {"id": tag_id, "xmlns": "urn:xmpp:whatsapp:dirty", "to": S_WHATSAPP_NET, "type": "set"},
+        [BinaryNode("clean", attrs)],
+    )
 
 
 def chat_modify_node(modification: dict[str, Any], jid: str, tag_id: str) -> BinaryNode:

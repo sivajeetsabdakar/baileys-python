@@ -57,6 +57,11 @@ def test_chat_modification_builds_expected_patch_types():
     assert push_name.index == ["setting_pushName"]
     assert push_name.sync_action.pushNameSetting.name == "New Name"
 
+    link_previews = chat_modification_to_app_patch({"disableLinkPreviews": {"isPreviewsDisabled": True}}, "")
+    assert link_previews.patch_type == "regular"
+    assert link_previews.index == ["setting_disableLinkPreviews"]
+    assert link_previews.sync_action.privacySettingDisableLinkPreviewsAction.isPreviewsDisabled is True
+
 
 def test_app_state_patch_node_encodes_syncd_patch_and_updates_state():
     creds = _app_state_creds()

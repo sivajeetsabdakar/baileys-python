@@ -38,6 +38,7 @@ def test_public_api_exports_core_building_blocks():
     assert bpt.DirtyInfo
     assert bpt.OfflineInfo
     assert bpt.CallInfo
+    assert bpt.BusinessProfile
     assert bpt.CatalogResult
     assert bpt.Product
     assert bpt.MexError
@@ -85,6 +86,8 @@ def test_public_api_exports_core_building_blocks():
     assert callable(bpt.parse_dirty_info)
     assert callable(bpt.parse_offline_info)
     assert callable(bpt.parse_call_info)
+    assert callable(bpt.business_profile_node)
+    assert callable(bpt.parse_business_profile)
     assert callable(bpt.catalog_node)
     assert callable(bpt.group_get_invite_info_node)
     assert callable(bpt.group_toggle_ephemeral_node)
@@ -106,12 +109,15 @@ def test_public_api_exports_core_building_blocks():
     assert callable(bpt.store_tc_tokens_from_iq_result)
     assert callable(bpt.load_wam_specs)
     assert hasattr(bpt.WhatsAppClient, "updateBusinessProfile")
+    assert hasattr(bpt.WhatsAppClient, "getBusinessProfile")
     assert hasattr(bpt.WhatsAppClient, "updateCoverPhoto")
     assert hasattr(bpt.WhatsAppClient, "getCatalog")
     assert hasattr(bpt.WhatsAppClient, "productCreate")
     assert hasattr(bpt.WhatsAppClient, "executeWMexQuery")
     assert hasattr(bpt.WhatsAppClient, "newsletterMetadata")
     assert hasattr(bpt.WhatsAppClient, "newsletterUpdatePicture")
+    assert hasattr(bpt.WhatsAppClient, "fetchStatus")
+    assert hasattr(bpt.WhatsAppClient, "fetchDisappearingDuration")
     assert hasattr(bpt.WhatsAppClient, "communityMetadata")
     assert hasattr(bpt.WhatsAppClient, "communityAcceptInvite")
     assert hasattr(bpt.WhatsAppClient, "communityFetchLinkedGroups")
@@ -130,6 +136,12 @@ def test_public_api_exports_core_building_blocks():
     assert hasattr(bpt.WhatsAppClient, "rejectCall")
     assert hasattr(bpt.WhatsAppClient, "createCallLink")
     assert hasattr(bpt.WhatsAppClient, "addChatLabel")
+    assert hasattr(bpt.WhatsAppClient, "sendReceipts")
+    assert hasattr(bpt.WhatsAppClient, "presenceSubscribe")
+    assert hasattr(bpt.WhatsAppClient, "cleanDirtyBits")
+    assert hasattr(bpt.WhatsAppClient, "star")
+    assert hasattr(bpt.WhatsAppClient, "updateDefaultDisappearingMode")
+    assert hasattr(bpt.WhatsAppClient, "updateDisableLinkPreviewsPrivacy")
     assert hasattr(bpt.WhatsAppClient, "sendWAM")
     assert hasattr(bpt.WhatsAppClient, "sendWAMBuffer")
 

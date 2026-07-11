@@ -47,6 +47,8 @@ from .chat_groups import (
     block_status_node,
     blocklist_fetch_node,
     chatstate_presence_node,
+    default_disappearing_mode_node,
+    dirty_clean_node,
     group_accept_invite_node,
     group_create_node,
     group_get_invite_info_node,
@@ -64,27 +66,35 @@ from .chat_groups import (
     on_whatsapp_node,
     parse_accept_invite,
     parse_blocklist,
+    parse_usync_disappearing_mode,
     parse_group_metadata,
     parse_invite_code,
     parse_on_whatsapp,
     parse_participant_update,
     parse_privacy_settings,
     parse_profile_picture_url,
+    parse_usync_status,
+    presence_subscribe_node,
     privacy_fetch_node,
     privacy_update_node,
     profile_picture_remove_node,
     profile_picture_update_node,
     profile_picture_url_node,
     profile_status_update_node,
+    usync_disappearing_mode_node,
+    usync_status_node,
 )
 from .business import (
+    BusinessProfile,
     CatalogResult,
+    business_profile_node,
     catalog_node,
     collections_node,
     cover_photo_remove_node,
     cover_photo_update_node,
     order_details_node,
     parse_catalog,
+    parse_business_profile,
     parse_product_mutation,
     parse_product_delete,
     product_create_node,
@@ -1329,6 +1339,10 @@ class WhatsAppClient:
     async def update_business_profile(self, updates: dict[str, Any], *, timeout: float = 30) -> BinaryNode:
         return await self._query_checked(update_business_profile_node(updates, self.queries.next_tag()), timeout=timeout)
 
+    async def get_business_profile(self, jid: str, *, timeout: float = 30) -> BusinessProfile | None:
+        result = await self._query_checked(business_profile_node(jid, self.queries.next_tag()), timeout=timeout)
+        return parse_business_profile(result)
+
     async def get_catalog(
         self,
         jid: str | None = None,
@@ -1741,6 +1755,39 @@ class WhatsAppClient:
             await self.ev.emit("connection.update", {"isOnline": presence_type == "available"})
         return node
 
+    async def presence_subscribe(self, jid: str) -> BinaryNode:
+        node = presence_subscribe_node(jid, self.queries.next_tag())
+        await self.send_node(node)
+        return node
+
+    async def fetch_status(self, *jids: str, timeout: float = 30) -> list[dict[str, Any]]:
+        result = await self._query_checked(usync_status_node(jids, self.queries.next_tag()), timeout=timeout)
+        return parse_usync_status(result)
+
+    async def fetch_disappearing_duration(self, *jids: str, timeout: float = 30) -> list[dict[str, Any]]:
+        result = await self._query_checked(usync_disappearing_mode_node(jids, self.queries.next_tag()), timeout=timeout)
+        return parse_usync_disappearing_mode(result)
+
+    async def update_default_disappearing_mode(self, duration: int, *, timeout: float = 30) -> BinaryNode:
+        return await self._query_checked(default_disappearing_mode_node(duration, self.queries.next_tag()), timeout=timeout)
+
+    async def clean_dirty_bits(self, kind: str, *, from_timestamp: int | None = None) -> BinaryNode:
+        node = dirty_clean_node(kind, self.queries.next_tag(), from_timestamp=from_timestamp)
+        await self.send_node(node)
+        return node
+
+    async def update_disable_link_previews_privacy(
+        self,
+        is_previews_disabled: bool,
+        *,
+        timeout: float = 30,
+    ) -> BinaryNode:
+        return await self.chat_modify(
+            {"disableLinkPreviews": {"isPreviewsDisabled": is_previews_disabled}},
+            "",
+            timeout=timeout,
+        )
+
     async def chat_modify(self, modification: dict[str, Any], jid: str, *, timeout: float = 30) -> BinaryNode:
         working = copy.deepcopy(self.auth_state.credentials)
         try:
@@ -1874,6 +1921,13 @@ class WhatsAppClient:
         payload = key if isinstance(key, dict) else {"remote_jid": key.remote_jid, "id": key.id, "participant": key.participant}
         return await self.chat_modify({"star": {"star": star, "messages": [payload]}}, payload.get("remote_jid") or "", timeout=timeout)
 
+    async def star(self, jid: str, messages: list[dict[str, Any] | MessageKey], star: bool = True, *, timeout: float = 30) -> BinaryNode:
+        payloads = [
+            message if isinstance(message, dict) else {"remote_jid": message.remote_jid, "id": message.id, "participant": message.participant}
+            for message in messages
+        ]
+        return await self.chat_modify({"star": {"star": star, "messages": payloads}}, jid, timeout=timeout)
+
     async def dispatch_retry_receipt_node(self, request: RetryRequest) -> RetryOutcome:
         participant = request.key.participant
         local_retry_count = self._increment_retry_count(request.key.id or "", participant)
@@ -1943,12 +1997,21 @@ class WhatsAppClient:
         await self.send_node(node)
         return node
 
-    async def read_messages(self, keys: list[MessageKey | WAMessage]) -> list[BinaryNode]:
+    async def send_receipts(
+        self,
+        keys: list[MessageKey | WAMessage],
+        receipt_type: str | None = None,
+    ) -> list[BinaryNode]:
         message_keys = [key.key if isinstance(key, WAMessage) else key for key in keys]
         sent = []
         for jid, participant, message_ids in aggregate_message_keys(message_keys):
-            sent.append(await self.send_receipt(jid, message_ids, participant=participant, receipt_type="read"))
+            sent.append(await self.send_receipt(jid, message_ids, participant=participant, receipt_type=receipt_type))
         return sent
+
+    async def read_messages(self, keys: list[MessageKey | WAMessage]) -> list[BinaryNode]:
+        privacy = await self.fetch_privacy_settings()
+        receipt_type = "read" if privacy.get("readreceipts") == "all" else "read-self"
+        return await self.send_receipts(keys, receipt_type)
 
     def _increment_retry_count(self, message_id: str, participant: str | None) -> int:
         key = (message_id, participant)
@@ -2360,6 +2423,7 @@ class WhatsAppClient:
     receiveNodes = receive_nodes
     sendAck = send_ack
     sendReceipt = send_receipt
+    sendReceipts = send_receipts
     readMessages = read_messages
     resendMessageForRetry = resend_message_for_retry
     waitForSuccess = wait_for_success
@@ -2398,6 +2462,7 @@ class WhatsAppClient:
     removeProfilePicture = remove_profile_picture
     updateBusinessProfile = update_business_profile
     updateBussinesProfile = update_business_profile
+    getBusinessProfile = get_business_profile
     updateCoverPhoto = update_cover_photo
     removeCoverPhoto = remove_cover_photo
     getCatalog = get_catalog
@@ -2428,6 +2493,8 @@ class WhatsAppClient:
     subscribeNewsletterUpdates = subscribe_newsletter_updates
     fetchAccountReachoutTimelock = fetch_account_reachout_timelock
     fetchMessageCappingInfo = fetch_message_capping_info
+    fetchStatus = fetch_status
+    fetchDisappearingDuration = fetch_disappearing_duration
     communityMetadata = community_metadata
     communityCreate = community_create
     communityCreateGroup = community_create_group
@@ -2458,9 +2525,14 @@ class WhatsAppClient:
     removeChatLabel = remove_chat_label
     addMessageLabel = add_message_label
     removeMessageLabel = remove_message_label
+    starMessage = star_message
     onWhatsApp = on_whatsapp
     sendPresenceUpdate = send_presence_update
+    presenceSubscribe = presence_subscribe
     chatModify = chat_modify
+    cleanDirtyBits = clean_dirty_bits
+    updateDefaultDisappearingMode = update_default_disappearing_mode
+    updateDisableLinkPreviewsPrivacy = update_disable_link_previews_privacy
     requestAppStateSyncKey = request_app_state_sync_key
     fetchAppStateSnapshots = fetch_app_state_snapshots
     syncAppState = sync_app_state

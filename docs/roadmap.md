@@ -285,7 +285,7 @@ tests are stable.
 - Added MEX query helpers and response parsing for `w:mex` GraphQL stanzas,
   including typed `MexError` failures for server-side GraphQL errors.
 - Added business/profile commerce APIs on `WhatsAppClient`: business profile
-  update, catalog reads, collection reads, order details, product create,
+  fetch/update, catalog reads, collection reads, order details, product create,
   product update, product delete, cover-photo update, and cover-photo remove,
   with Baileys-compatible aliases.
 - Added product/catalog node builders and parsers for catalog results, product
@@ -317,14 +317,19 @@ tests are stable.
   key derivation, and `reporting/reporting_token` node generation.
 - Added privacy-token helpers for trusted-contact token storage, expiry
   checks, issuance JID resolution, and `tctoken` node construction.
+- Added additional Node-compatible socket methods for status fetch,
+  disappearing-duration fetch, presence subscription, batch receipts, dirty-bit
+  cleanup, default disappearing mode, link-preview privacy, and starred
+  message patches.
 - Added `scripts/phase7_live_probe.py` for read-only live checks of catalog,
   MEX reachout/message-capping, newsletter metadata, community metadata, and
   optional WAM stats upload.
 - Offline tests cover WAM encoding, MEX response parsing, newsletter query
   shapes, newsletter live-event parsing and dispatch, business/catalog/product
   nodes, catalog product image preparation, community nodes/parsers, label
-  app-state patches, reporting tokens, privacy tokens, public exports, client
-  aliases, and the public API parity manifest.
+  app-state patches, reporting tokens, privacy tokens, status/disappearing
+  USync parsers, presence subscription, batch receipt aggregation, public
+  exports, client aliases, and the public API parity manifest.
 - Live read-only Phase 7 proof currently confirms account reachout timelock
   MEX access. Catalog reads are account-gated on the current non-catalog
   account with `item-not-found`, and message-capping MEX currently returns a
