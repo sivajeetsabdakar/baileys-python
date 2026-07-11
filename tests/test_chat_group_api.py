@@ -8,8 +8,12 @@ from baileys.auth_state import AuthState, JsonCredentialStore
 from baileys.chat_groups import (
     block_status_node,
     on_whatsapp_node,
+    group_get_invite_info_node,
+    group_join_approval_mode_node,
+    group_member_add_mode_node,
     group_metadata_node,
     group_participants_update_node,
+    group_toggle_ephemeral_node,
     parse_group_metadata,
     parse_on_whatsapp,
     parse_privacy_settings,
@@ -44,6 +48,23 @@ def test_group_nodes_and_parsers_match_common_shapes():
     update = group_participants_update_node("123@g.us", ["a@s.whatsapp.net"], "promote", "tag-2")
     assert update.content[0].tag == "promote"
     assert update.content[0].content[0].attrs["jid"] == "a@s.whatsapp.net"
+
+    invite = group_get_invite_info_node("invite-code", "tag-3")
+    assert invite.attrs["to"] == "@g.us"
+    assert invite.content[0].attrs == {"code": "invite-code"}
+
+    ephemeral = group_toggle_ephemeral_node("123@g.us", 60, "tag-4")
+    assert ephemeral.content[0].tag == "ephemeral"
+    assert ephemeral.content[0].attrs == {"expiration": "60"}
+    not_ephemeral = group_toggle_ephemeral_node("123@g.us", 0, "tag-5")
+    assert not_ephemeral.content[0].tag == "not_ephemeral"
+
+    member_mode = group_member_add_mode_node("123@g.us", "all_member_add", "tag-6")
+    assert member_mode.content[0].tag == "member_add_mode"
+    assert member_mode.content[0].content == b"all_member_add"
+
+    approval_mode = group_join_approval_mode_node("123@g.us", "on", "tag-7")
+    assert approval_mode.content[0].content[0].attrs == {"state": "on"}
 
     parsed = parse_group_metadata(
         BinaryNode(
@@ -187,16 +208,43 @@ def test_client_phase5_methods_call_query_and_emit_events(tmp_path):
         metadata = await client.group_metadata("123@g.us")
         privacy = await client.fetch_privacy_settings()
         await client.chat_modify({"archive": True}, "chat@s.whatsapp.net")
+        await client.group_toggle_ephemeral("123@g.us", 0)
+        await client.group_member_add_mode("123@g.us", "all_member_add")
+        await client.group_join_approval_mode("123@g.us", "on")
+        await client.update_messages_privacy("all")
+        await client.update_call_privacy("contacts")
+        await client.update_last_seen_privacy("none")
+        await client.update_online_privacy("match_last_seen")
+        await client.update_profile_picture_privacy("contacts")
+        await client.update_status_privacy("contacts")
+        await client.update_read_receipts_privacy("none")
+        await client.update_groups_add_privacy("contacts")
 
         assert metadata.subject == "Group"
         assert privacy == {"last": "all"}
         assert group_updates[0][0].id == "123@g.us"
         assert chat_updates[0][0]["archive"] is True
         assert queries[0].attrs["xmlns"] == "w:g2"
-        assert queries[-1].attrs["xmlns"] == "w:sync:app:state"
-        assert queries[-1].content[0].tag == "sync"
+        assert queries[2].attrs["xmlns"] == "w:sync:app:state"
+        assert queries[2].content[0].tag == "sync"
+        assert [node.content[0].tag for node in queries[3:6]] == ["not_ephemeral", "member_add_mode", "membership_approval_mode"]
+        assert [node.content[0].content[0].attrs["name"] for node in queries[6:14]] == [
+            "messages",
+            "calladd",
+            "last",
+            "online",
+            "profile",
+            "status",
+            "readreceipts",
+            "groupadd",
+        ]
         assert client.groupMetadata.__func__ is client.group_metadata.__func__
+        assert client.groupToggleEphemeral.__func__ is client.group_toggle_ephemeral.__func__
+        assert client.groupMemberAddMode.__func__ is client.group_member_add_mode.__func__
+        assert client.groupJoinApprovalMode.__func__ is client.group_join_approval_mode.__func__
         assert client.fetchPrivacySettings.__func__ is client.fetch_privacy_settings.__func__
+        assert client.updateMessagesPrivacy.__func__ is client.update_messages_privacy.__func__
+        assert client.updateCallPrivacy.__func__ is client.update_call_privacy.__func__
         assert b.GroupMetadata is not None
 
     asyncio.run(scenario())

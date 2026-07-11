@@ -305,6 +305,10 @@ tests are stable.
   membership-request list/update, invite fetch/revoke/accept/v4/info,
   ephemeral mode, settings, member-add mode, and join-approval mode, with parsers and
   Baileys-compatible aliases.
+- Added Node-compatible group aliases for invite-info lookup, ephemeral toggle,
+  member-add mode, and join-approval mode.
+- Added Node-compatible privacy setter aliases for messages, calls, last seen,
+  online, profile picture, status, read receipts, and group-add controls.
 - Added call helpers for call reject and call-link creation.
 - Added label app-state patch helpers for label edit, chat label association,
   and message label association through `chat_modify`, plus common
@@ -319,8 +323,8 @@ tests are stable.
 - Offline tests cover WAM encoding, MEX response parsing, newsletter query
   shapes, newsletter live-event parsing and dispatch, business/catalog/product
   nodes, catalog product image preparation, community nodes/parsers, label
-  app-state patches, reporting tokens, privacy tokens, public exports, and
-  client aliases.
+  app-state patches, reporting tokens, privacy tokens, public exports, client
+  aliases, and the public API parity manifest.
 - Live read-only Phase 7 proof currently confirms account reachout timelock
   MEX access. Catalog reads are account-gated on the current non-catalog
   account with `item-not-found`, and message-capping MEX currently returns a
@@ -328,8 +332,8 @@ tests are stable.
   is wired but currently times out waiting for a server IQ response on this
   account.
 - Remaining Phase 7 parity gaps are enabled-account newsletter/community/
-  business live mutations, WAM upload live ACK proof, and broader public-method
-  parity checks.
+  business live mutations, WAM upload live ACK proof, and implementation of
+  the deferred methods listed in the public API parity manifest.
 
 ## Live Harness
 

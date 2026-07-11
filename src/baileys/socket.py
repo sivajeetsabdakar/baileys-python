@@ -49,12 +49,16 @@ from .chat_groups import (
     chatstate_presence_node,
     group_accept_invite_node,
     group_create_node,
+    group_get_invite_info_node,
     group_invite_code_node,
+    group_join_approval_mode_node,
     group_leave_node,
+    group_member_add_mode_node,
     group_metadata_node,
     group_participants_update_node,
     group_revoke_invite_node,
     group_setting_update_node,
+    group_toggle_ephemeral_node,
     group_update_description_node,
     group_update_subject_node,
     on_whatsapp_node,
@@ -1173,9 +1177,25 @@ class WhatsAppClient:
             await self.ev.emit("groups.update", [{"id": group_jid, "joined": True}])
         return group_jid
 
+    async def group_get_invite_info(self, code: str, *, timeout: float = 30) -> GroupMetadata:
+        result = await self._query_checked(group_get_invite_info_node(code, self.queries.next_tag()), timeout=timeout)
+        return parse_group_metadata(result)
+
     async def group_setting_update(self, jid: str, setting: str, value: str = "", *, timeout: float = 30) -> None:
         await self._query_checked(group_setting_update_node(jid, setting, value, self.queries.next_tag()), timeout=timeout)
         await self.ev.emit("groups.update", [{"id": jid, "setting": setting, "value": value}])
+
+    async def group_toggle_ephemeral(self, jid: str, ephemeral_expiration: int, *, timeout: float = 30) -> None:
+        await self._query_checked(group_toggle_ephemeral_node(jid, ephemeral_expiration, self.queries.next_tag()), timeout=timeout)
+        await self.ev.emit("groups.update", [{"id": jid, "ephemeral_duration": ephemeral_expiration}])
+
+    async def group_member_add_mode(self, jid: str, mode: str, *, timeout: float = 30) -> None:
+        await self._query_checked(group_member_add_mode_node(jid, mode, self.queries.next_tag()), timeout=timeout)
+        await self.ev.emit("groups.update", [{"id": jid, "member_add_mode": mode}])
+
+    async def group_join_approval_mode(self, jid: str, mode: str, *, timeout: float = 30) -> None:
+        await self._query_checked(group_join_approval_mode_node(jid, mode, self.queries.next_tag()), timeout=timeout)
+        await self.ev.emit("groups.update", [{"id": jid, "join_approval_mode": mode}])
 
     async def fetch_privacy_settings(self, *, timeout: float = 30) -> dict[str, str]:
         result = await self._query_checked(privacy_fetch_node(self.queries.next_tag()), timeout=timeout)
@@ -1183,6 +1203,30 @@ class WhatsAppClient:
 
     async def update_privacy_setting(self, name: str, value: str, *, timeout: float = 30) -> None:
         await self._query_checked(privacy_update_node(name, value, self.queries.next_tag()), timeout=timeout)
+
+    async def update_messages_privacy(self, value: str, *, timeout: float = 30) -> None:
+        await self.update_privacy_setting("messages", value, timeout=timeout)
+
+    async def update_call_privacy(self, value: str, *, timeout: float = 30) -> None:
+        await self.update_privacy_setting("calladd", value, timeout=timeout)
+
+    async def update_last_seen_privacy(self, value: str, *, timeout: float = 30) -> None:
+        await self.update_privacy_setting("last", value, timeout=timeout)
+
+    async def update_online_privacy(self, value: str, *, timeout: float = 30) -> None:
+        await self.update_privacy_setting("online", value, timeout=timeout)
+
+    async def update_profile_picture_privacy(self, value: str, *, timeout: float = 30) -> None:
+        await self.update_privacy_setting("profile", value, timeout=timeout)
+
+    async def update_status_privacy(self, value: str, *, timeout: float = 30) -> None:
+        await self.update_privacy_setting("status", value, timeout=timeout)
+
+    async def update_read_receipts_privacy(self, value: str, *, timeout: float = 30) -> None:
+        await self.update_privacy_setting("readreceipts", value, timeout=timeout)
+
+    async def update_groups_add_privacy(self, value: str, *, timeout: float = 30) -> None:
+        await self.update_privacy_setting("groupadd", value, timeout=timeout)
 
     async def fetch_blocklist(self, *, timeout: float = 30) -> list[str]:
         result = await self._query_checked(blocklist_fetch_node(self.queries.next_tag()), timeout=timeout)
@@ -2330,9 +2374,21 @@ class WhatsAppClient:
     sendGroupInvite = send_group_invite
     groupRevokeInvite = group_revoke_invite
     groupAcceptInvite = group_accept_invite
+    groupGetInviteInfo = group_get_invite_info
     groupSettingUpdate = group_setting_update
+    groupToggleEphemeral = group_toggle_ephemeral
+    groupMemberAddMode = group_member_add_mode
+    groupJoinApprovalMode = group_join_approval_mode
     fetchPrivacySettings = fetch_privacy_settings
     updatePrivacySetting = update_privacy_setting
+    updateMessagesPrivacy = update_messages_privacy
+    updateCallPrivacy = update_call_privacy
+    updateLastSeenPrivacy = update_last_seen_privacy
+    updateOnlinePrivacy = update_online_privacy
+    updateProfilePicturePrivacy = update_profile_picture_privacy
+    updateStatusPrivacy = update_status_privacy
+    updateReadReceiptsPrivacy = update_read_receipts_privacy
+    updateGroupsAddPrivacy = update_groups_add_privacy
     fetchBlocklist = fetch_blocklist
     updateBlockStatus = update_block_status
     profilePictureUrl = profile_picture_url

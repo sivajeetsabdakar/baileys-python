@@ -55,7 +55,15 @@ from .crypto import (
 )
 from .disconnect import DisconnectError, DisconnectReason, failure_to_disconnect, stream_error_to_disconnect
 from .events import EventEmitter, ListenerRef
-from .chat_groups import GroupMetadata, GroupParticipant, ParticipantUpdateResult
+from .chat_groups import (
+    GroupMetadata,
+    GroupParticipant,
+    ParticipantUpdateResult,
+    group_get_invite_info_node,
+    group_join_approval_mode_node,
+    group_member_add_mode_node,
+    group_toggle_ephemeral_node,
+)
 from .history import (
     HistoryChat,
     HistoryContact,
@@ -274,6 +282,10 @@ __all__ = [
     "build_receipt_node",
     "build_text_message_node",
     "group_invite_message",
+    "group_get_invite_info_node",
+    "group_join_approval_mode_node",
+    "group_member_add_mode_node",
+    "group_toggle_ephemeral_node",
     "build_tc_token_from_jid",
     "can_ack_node",
     "catalog_node",

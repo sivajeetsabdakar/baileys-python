@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import importlib.resources
+import json
+from pathlib import Path
 
 import baileys as bpt
 from baileys.client import DEFAULT_ORIGIN, WA_WEBSOCKET_URL, WhatsAppWebClient
@@ -84,6 +86,10 @@ def test_public_api_exports_core_building_blocks():
     assert callable(bpt.parse_offline_info)
     assert callable(bpt.parse_call_info)
     assert callable(bpt.catalog_node)
+    assert callable(bpt.group_get_invite_info_node)
+    assert callable(bpt.group_toggle_ephemeral_node)
+    assert callable(bpt.group_member_add_mode_node)
+    assert callable(bpt.group_join_approval_mode_node)
     assert callable(bpt.cover_photo_update_node)
     assert callable(bpt.parse_catalog)
     assert callable(bpt.wmex_query_node)
@@ -109,6 +115,18 @@ def test_public_api_exports_core_building_blocks():
     assert hasattr(bpt.WhatsAppClient, "communityMetadata")
     assert hasattr(bpt.WhatsAppClient, "communityAcceptInvite")
     assert hasattr(bpt.WhatsAppClient, "communityFetchLinkedGroups")
+    assert hasattr(bpt.WhatsAppClient, "groupGetInviteInfo")
+    assert hasattr(bpt.WhatsAppClient, "groupToggleEphemeral")
+    assert hasattr(bpt.WhatsAppClient, "groupMemberAddMode")
+    assert hasattr(bpt.WhatsAppClient, "groupJoinApprovalMode")
+    assert hasattr(bpt.WhatsAppClient, "updateMessagesPrivacy")
+    assert hasattr(bpt.WhatsAppClient, "updateCallPrivacy")
+    assert hasattr(bpt.WhatsAppClient, "updateLastSeenPrivacy")
+    assert hasattr(bpt.WhatsAppClient, "updateOnlinePrivacy")
+    assert hasattr(bpt.WhatsAppClient, "updateProfilePicturePrivacy")
+    assert hasattr(bpt.WhatsAppClient, "updateStatusPrivacy")
+    assert hasattr(bpt.WhatsAppClient, "updateReadReceiptsPrivacy")
+    assert hasattr(bpt.WhatsAppClient, "updateGroupsAddPrivacy")
     assert hasattr(bpt.WhatsAppClient, "rejectCall")
     assert hasattr(bpt.WhatsAppClient, "createCallLink")
     assert hasattr(bpt.WhatsAppClient, "addChatLabel")
@@ -123,3 +141,15 @@ def test_client_defaults_and_package_data_are_importable(tmp_path):
     assert client.origin == DEFAULT_ORIGIN
     assert client.use_routing_info is True
     assert importlib.resources.files("baileys.generated").joinpath("wabinary_tokens.json").is_file()
+
+
+def test_public_api_parity_manifest_matches_client_surface():
+    manifest = json.loads((Path(__file__).parent / "fixtures" / "public_api_parity.json").read_text(encoding="utf-8"))
+    implemented = set(manifest["implemented_methods"])
+    deferred = set(manifest["deferred_methods"])
+
+    assert implemented
+    assert not implemented & deferred
+    missing = sorted(method for method in implemented if not hasattr(bpt.WhatsAppClient, method))
+    assert missing == []
+    assert all(manifest["deferred_methods"][method] for method in deferred)

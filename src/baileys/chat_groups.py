@@ -99,12 +99,42 @@ def group_accept_invite_node(code: str, tag_id: str) -> BinaryNode:
     return group_query_node(f"@{GROUP_SERVER}", "set", [BinaryNode("invite", {"code": code})], tag_id)
 
 
+def group_get_invite_info_node(code: str, tag_id: str) -> BinaryNode:
+    return group_query_node(f"@{GROUP_SERVER}", "get", [BinaryNode("invite", {"code": code})], tag_id)
+
+
 def group_setting_update_node(jid: str, setting: str, value: str, tag_id: str) -> BinaryNode:
     if setting not in {"announcement", "not_announcement", "locked", "unlocked", "ephemeral"}:
         raise ValueError(f"unsupported group setting: {setting}")
     attrs = {"expiration": value} if setting == "ephemeral" else {}
     tag = "ephemeral" if setting == "ephemeral" else setting
     return group_query_node(jid, "set", [BinaryNode(tag, attrs)], tag_id)
+
+
+def group_toggle_ephemeral_node(jid: str, ephemeral_expiration: int, tag_id: str) -> BinaryNode:
+    content = (
+        BinaryNode("ephemeral", {"expiration": str(ephemeral_expiration)})
+        if ephemeral_expiration
+        else BinaryNode("not_ephemeral", {})
+    )
+    return group_query_node(jid, "set", [content], tag_id)
+
+
+def group_member_add_mode_node(jid: str, mode: str, tag_id: str) -> BinaryNode:
+    if mode not in {"admin_add", "all_member_add"}:
+        raise ValueError(f"unsupported group member add mode: {mode}")
+    return group_query_node(jid, "set", [BinaryNode("member_add_mode", {}, mode.encode("utf-8"))], tag_id)
+
+
+def group_join_approval_mode_node(jid: str, mode: str, tag_id: str) -> BinaryNode:
+    if mode not in {"on", "off"}:
+        raise ValueError(f"unsupported group join approval mode: {mode}")
+    return group_query_node(
+        jid,
+        "set",
+        [BinaryNode("membership_approval_mode", {}, [BinaryNode("group_join", {"state": mode})])],
+        tag_id,
+    )
 
 
 def parse_group_metadata(node: BinaryNode) -> GroupMetadata:
