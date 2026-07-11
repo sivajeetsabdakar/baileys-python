@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import copy
 import json
+import os
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any, Iterator, Protocol
 
 from .auth import AuthCredentials
 
@@ -58,6 +61,13 @@ class AuthState:
             raise RuntimeError("auth state has no credential store")
         self.credential_store.save_credentials(self.credentials)
 
+    @contextmanager
+    def transaction(self) -> Iterator[dict[str, Any]]:
+        working = copy.deepcopy(self.credentials)
+        yield working
+        self.credentials = working
+        self.save_credentials()
+
 
 @dataclass(frozen=True)
 class JsonCredentialStore:
@@ -75,8 +85,7 @@ class JsonCredentialStore:
         return self.load_credentials()
 
     def save_credentials(self, credentials: dict[str, Any]) -> None:
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        self.path.write_text(json.dumps(credentials, indent=2), encoding="utf-8")
+        _write_json_atomic(self.path, credentials)
 
     def load_typed_credentials(self) -> AuthCredentials:
         return AuthCredentials.from_dict(self.load_credentials())
@@ -90,10 +99,11 @@ class MemorySignalKeyStore:
     values: dict[str, dict[str, Any]] = field(default_factory=dict)
 
     def get(self, namespace: str, key: str) -> Any:
-        return self.values.get(namespace, {}).get(key)
+        value = self.values.get(namespace, {}).get(key)
+        return copy.deepcopy(value)
 
     def set(self, namespace: str, key: str, value: Any) -> None:
-        self.values.setdefault(namespace, {})[key] = value
+        self.values.setdefault(namespace, {})[key] = copy.deepcopy(value)
 
     def delete(self, namespace: str, key: str) -> bool:
         bucket = self.values.get(namespace)
@@ -138,9 +148,7 @@ class DirectorySignalKeyStore:
         return json.loads(path.read_text(encoding="utf-8"))
 
     def set(self, namespace: str, key: str, value: Any) -> None:
-        path = self._path(namespace, key)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(value, indent=2), encoding="utf-8")
+        _write_json_atomic(self._path(namespace, key), value)
 
     def delete(self, namespace: str, key: str) -> bool:
         path = self._path(namespace, key)
@@ -162,3 +170,14 @@ useMultiFileAuthState = use_multi_file_auth_state
 
 def _safe_component(value: str) -> str:
     return value.replace("/", "__").replace("\\", "__").replace(":", "-")
+
+
+def _write_json_atomic(path: Path, value: Any) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    try:
+        tmp_path.write_text(json.dumps(value, indent=2), encoding="utf-8")
+        tmp_path.replace(path)
+    finally:
+        if tmp_path.exists():
+            tmp_path.unlink()

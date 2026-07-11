@@ -23,8 +23,8 @@ Legend:
 | Auth | QR pairing | Done | Product `WhatsAppClient.connect_for_qr_pairing()` live-proven: QR refs, scan, `pair-success`, device signature, and saved creds. |
 | Auth | Pairing-code flow | Done | Request, callback finish, `pair-success`, credential persistence, and saved reconnect are live-proven through the product pairing-code probe. |
 | Auth | Saved auth login/reconnect | Done | Product QR probe live-proved saved reconnect through `WhatsAppClient.connect_and_wait()` after QR pairing. |
-| Auth | Multi-file auth state | Partial | Storage interfaces, JSON credential store, directory signal-key store, and `useMultiFileAuthState` alias added; production transactions still needed in later auth hardening. |
-| Auth | Signal key store and transactions | Partial | JSON hydration/export exists; production store API needed. |
+| Auth | Multi-file auth state | Partial | Storage interfaces, JSON credential store, directory signal-key store, and `useMultiFileAuthState` alias added. Built-in JSON credential and directory signal-key stores use atomic writes, and `AuthState.transaction()` commits credential changes only on successful completion; external durable stores are still a later extension. |
+| Auth | Signal key store and transactions | Partial | JSON hydration/export exists, memory and directory signal-key stores isolate mutable values, and built-in file writes are atomic. A production database-backed store API is still needed. |
 | Auth | Prekey upload/digest/rotation | Done | Product socket methods `digest_key_bundle`, `count_pre_keys`, `maintain_pre_keys`, `upload_pre_keys`, and `rotate_signed_pre_key` are wired and tested; login lifecycle runs non-fatal low-count maintenance with bounded upload backoff. |
 | Auth | Routing info | Seeded | WebSocket `ED` and Noise intro supported. |
 | Auth | LID/PN mapping | Partial | USync and history mapping need production store integration. |

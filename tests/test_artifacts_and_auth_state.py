@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from baileys import AuthState, JsonCredentialStore, MemorySignalKeyStore, useMultiFileAuthState
+from baileys import AuthState, DirectorySignalKeyStore, JsonCredentialStore, MemorySignalKeyStore, useMultiFileAuthState
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -60,6 +60,27 @@ def test_json_credential_store_and_auth_state_round_trip(tmp_path):
     assert store.load_credentials()["routing_info"] == "abc"
 
 
+def test_auth_state_transaction_commits_or_rolls_back(tmp_path):
+    store = JsonCredentialStore(tmp_path / "creds.json")
+    store.save_credentials({"registration_id": 1, "me": {"id": "123@s.whatsapp.net"}})
+    state = AuthState.from_store(store)
+
+    with state.transaction() as working:
+        working["registration_id"] = 2
+        working["routing_info"] = "ok"
+
+    assert state.credentials["registration_id"] == 2
+    assert store.load_credentials()["routing_info"] == "ok"
+
+    with pytest.raises(RuntimeError):
+        with state.transaction() as working:
+            working["registration_id"] = 3
+            raise RuntimeError("stop")
+
+    assert state.credentials["registration_id"] == 2
+    assert store.load_credentials()["registration_id"] == 2
+
+
 def test_multi_file_auth_state_signal_key_store(tmp_path):
     multi = useMultiFileAuthState(tmp_path / "auth")
     multi.credential_store.save_credentials(
@@ -80,6 +101,23 @@ def test_multi_file_auth_state_signal_key_store(tmp_path):
     assert state.signal_store.get("session", "alice:1") == {"record": "abc"}
     assert state.signal_store.delete("session", "alice:1")
     assert state.signal_store.get("session", "alice:1") is None
+
+
+def test_signal_key_stores_isolate_mutable_values_and_write_atomically(tmp_path):
+    memory = MemorySignalKeyStore()
+    value = {"record": {"counter": 1}}
+    memory.set("session", "alice:1", value)
+    value["record"]["counter"] = 2
+    loaded = memory.get("session", "alice:1")
+    loaded["record"]["counter"] = 3
+    assert memory.get("session", "alice:1") == {"record": {"counter": 1}}
+
+    directory = DirectorySignalKeyStore(tmp_path / "keys")
+    directory.set("sender/key", "group:alice:1", {"record": "abc"})
+    assert directory.get("sender/key", "group:alice:1") == {"record": "abc"}
+    assert not list((tmp_path / "keys").rglob("*.tmp"))
+    assert directory.delete("sender/key", "group:alice:1")
+    assert directory.get("sender/key", "group:alice:1") is None
 
 
 def test_phase_1_foundation_docs_are_marked_complete_and_portable():

@@ -50,6 +50,8 @@ tests are stable.
   and preserve unknown future fields.
 - Added auth-state storage interfaces, JSON credentials, directory signal-key
   storage, and the `useMultiFileAuthState` compatibility alias.
+- Added atomic JSON writes for built-in credential and directory signal-key
+  stores, plus `AuthState.transaction()` for all-or-nothing credential updates.
 - Added check modes for WAProto and WABinary generated artifacts.
 - Added offline vectors for WABinary tokenized nodes, packed nibble/hex,
   AD/FB/interop JIDs, compressed frames, crypto, media/app-state key
@@ -388,7 +390,7 @@ tests are stable.
 ## Current Verification
 
 - Offline compile check passes for `src`, `scripts`, and `examples`.
-- Offline test suite passes with 154 tests.
+- Offline test suite passes with 156 tests.
 - WABinary token, WAM constants, and WAProto generated artifact checks pass.
 - Product QR pairing and saved reconnect pass against the dedicated test
   account.

@@ -38,6 +38,16 @@ The lower-level auth surfaces are:
 QR pairing, pairing-code linking, saved reconnect, logout, prekey maintenance,
 and disconnect reason mapping are exposed on `WhatsAppClient`.
 
+`JsonCredentialStore` and `DirectorySignalKeyStore` write files atomically.
+Use `AuthState.transaction()` when several credential fields should be updated
+and persisted together:
+
+```python
+with auth_state.transaction() as creds:
+    creds["routing_info"] = "..."
+    creds["next_pre_key_id"] = 100
+```
+
 ## Events
 
 Every socket has an async event emitter at `client.ev`.
