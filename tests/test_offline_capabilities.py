@@ -429,6 +429,56 @@ def test_usync_device_parser_accepts_alt_device_layout_and_id_key():
     assert all("devices" in item for item in parsed)
 
 
+def test_usync_generic_parser_preserves_common_protocol_values():
+    parsed = parse_usync_result(
+        BinaryNode(
+            "iq",
+            {"id": "tag-3", "type": "result"},
+            [
+                BinaryNode(
+                    "usync",
+                    {},
+                    [
+                        BinaryNode(
+                            "list",
+                            {},
+                            [
+                                BinaryNode(
+                                    "user",
+                                    {"jid": "123@s.whatsapp.net"},
+                                    [
+                                        BinaryNode("contact", {"type": "in"}),
+                                        BinaryNode("status", {"t": "101"}, b"available"),
+                                        BinaryNode("disappearing_mode", {"duration": "86400", "t": "102"}),
+                                        BinaryNode("username", {}, b"alice"),
+                                        BinaryNode("business", {"verified": "true"}, b"payload"),
+                                    ],
+                                ),
+                                BinaryNode(
+                                    "user",
+                                    {"jid": "456@s.whatsapp.net"},
+                                    [BinaryNode("contact", {"value": "0"}), BinaryNode("status", {"code": "401"})],
+                                ),
+                            ],
+                        )
+                    ],
+                )
+            ],
+        )
+    )
+
+    assert parsed[0]["contact"] is True
+    assert parsed[0]["status"]["status"] == "available"
+    assert parsed[0]["status"]["set_at"] == 101
+    assert parsed[0]["disappearing_mode"]["duration"] == 86400
+    assert parsed[0]["disappearing_mode"]["set_at"] == 102
+    assert parsed[0]["username"] == "alice"
+    assert parsed[0]["business"]["attrs"] == {"verified": "true"}
+    assert parsed[0]["business"]["content"] == b"payload"
+    assert parsed[1]["contact"] is False
+    assert parsed[1]["status"]["status"] == ""
+
+
 def test_usync_parser_skips_malformed_user_id():
     parsed = parse_usync_result(
         BinaryNode(

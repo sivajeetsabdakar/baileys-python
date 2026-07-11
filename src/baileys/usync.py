@@ -6,7 +6,7 @@ from typing import Iterable
 
 from baileys.defaults import S_WHATSAPP_NET
 from baileys.jid import JidParts, jid_decode, jid_encode, jid_normalized_user
-from baileys.socket_nodes import find_child
+from baileys.socket_nodes import find_child, node_content_bytes
 from baileys.wabinary import BinaryNode
 
 
@@ -80,6 +80,10 @@ def parse_usync_result(node: BinaryNode) -> list[dict[str, object]]:
                     entry["devices"] = _parse_devices(child)
                 elif child.tag == "device":
                     entry["devices"] = _parse_devices(BinaryNode("devices", {}, [child]))
+                else:
+                    value = _parse_usync_child_value(child)
+                    if value is not None:
+                        entry[child.tag] = value
 
         if "devices" not in entry:
             entry["devices"] = {"device_list": [], "key_index": None}
@@ -191,6 +195,35 @@ def _parse_devices(node: BinaryNode) -> dict[str, object]:
             "signed_key_index": key_index_node.content if isinstance(key_index_node.content, bytes) else None,
         }
     return {"device_list": devices, "key_index": key_index}
+
+
+def _parse_usync_child_value(node: BinaryNode) -> object | None:
+    if node.tag == "contact":
+        return (
+            node.attrs.get("type") == "in"
+            or node.attrs.get("value") == "true"
+            or node.attrs.get("value") == "1"
+        )
+    if node.tag == "status":
+        content = node_content_bytes(node)
+        value = content.decode("utf-8", errors="replace") if content else None
+        if value is None and node.attrs.get("code") == "401":
+            value = ""
+        elif value == "":
+            value = None
+        return {"status": value, "set_at": _int_attr(node.attrs.get("t")) or 0, "raw": node}
+    if node.tag == "disappearing_mode":
+        return {
+            "duration": _int_attr(node.attrs.get("duration")) or 0,
+            "set_at": _int_attr(node.attrs.get("t")) or 0,
+            "raw": node,
+        }
+    if node.tag == "username":
+        content = node_content_bytes(node)
+        return content.decode("utf-8", errors="replace") if content else None
+    if node.attrs or node.content is not None:
+        return {"attrs": dict(node.attrs), "content": node_content_bytes(node), "raw": node}
+    return None
 
 
 def _device_list_nodes(node: BinaryNode) -> Iterable[BinaryNode]:
