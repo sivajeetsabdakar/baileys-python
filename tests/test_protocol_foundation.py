@@ -79,6 +79,7 @@ def test_jid_classification_and_normalization_helpers():
     assert is_jid_broadcast("status@broadcast")
     assert is_jid_status("status@broadcast")
     assert is_newsletter("abcd@newsletter")
+    assert not is_newsletter("@s.whatsapp.net")
     assert is_hosted_pn_user("555:99@hosted")
     assert is_hosted_lid_user("555:99@hosted.lid")
     assert is_jid_meta_ai("13135550002@bot")

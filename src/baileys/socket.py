@@ -937,7 +937,10 @@ class WhatsAppClient:
                 remaining = deadline - asyncio.get_running_loop().time()
                 if remaining <= 0:
                     raise asyncio.TimeoutError()
-                await self.receive_nodes(timeout=min(5, remaining))
+                try:
+                    await self.receive_nodes(timeout=min(5, remaining))
+                except (TimeoutError, asyncio.TimeoutError):
+                    continue
             update = await future
         finally:
             self.ev.off("messages.media-update", listener)

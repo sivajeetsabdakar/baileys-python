@@ -138,7 +138,10 @@ def is_pn(jid: str) -> bool:
 
 
 def is_newsletter(jid: str) -> bool:
-    return jid_decode(jid).server == NEWSLETTER_SERVER
+    try:
+        return jid_decode(jid).server == NEWSLETTER_SERVER
+    except ValueError:
+        return False
 
 
 def is_jid_meta_ai(jid: str | None) -> bool:
