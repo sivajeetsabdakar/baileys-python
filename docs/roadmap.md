@@ -380,11 +380,13 @@ tests are stable.
 - `scripts/phase7_live_probe.py` covers read-only Phase 7 catalog, MEX,
   newsletter metadata, community metadata, and optional WAM stats upload checks
   where the account has the required capabilities.
+- `scripts/media_retry_probe.py` covers live media retry request, ACK, and
+  optional post-retry download checks when WhatsApp returns a media update.
 
 ## Current Verification
 
 - Offline compile check passes for `src`, `scripts`, and `examples`.
-- Offline test suite passes with 145 tests.
+- Offline test suite passes with 153 tests.
 - WABinary token, WAM constants, and WAProto generated artifact checks pass.
 - Product QR pairing and saved reconnect pass against the dedicated test
   account.
@@ -406,5 +408,8 @@ tests are stable.
   account and are reported as such by `scripts/phase7_live_probe.py`. Optional
   WAM stats upload is wired but timed out waiting for a server response on the
   current account.
+- Latest media retry probe captures inbound peer image media and receives a
+  server ACK for the retry receipt. The final encrypted media-update response
+  still depends on WhatsApp returning a reupload for unavailable media.
 - Public docs are kept to relative repository paths and avoid local machine
   setup details.

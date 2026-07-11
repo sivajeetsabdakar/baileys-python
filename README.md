@@ -19,6 +19,8 @@ and Phase 5 API foundations:
 - offline parity tests and minimal public API tests
 - examples for saved-auth login and pairing-code request
 - compatibility matrix in `docs/compatibility-matrix.md`
+- public API guide in `docs/public-api.md`
+- migration guide for Node Baileys users in `docs/migration-guide.md`
 - live/proof scripts under `scripts/`
 - product QR pairing plus saved reconnect through
   `scripts/product_qr_pairing_probe.py`
@@ -69,4 +71,6 @@ asyncio.run(main())
 ## Roadmap
 
 See `docs/roadmap.md` for the implementation timeline and
-`docs/compatibility-matrix.md` for the public Baileys parity checklist.
+`docs/compatibility-matrix.md` for the public Baileys parity checklist. See
+`docs/public-api.md` for the current Python API and `docs/migration-guide.md`
+for Node Baileys migration notes.
