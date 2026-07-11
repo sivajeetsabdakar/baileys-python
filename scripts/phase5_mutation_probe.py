@@ -70,6 +70,20 @@ async def participant_step(label: str, probe: Probe) -> bool:
     return await run_step(label, checked)
 
 
+async def add_or_invite_step(label: str, probe: Probe) -> bool:
+    async def checked() -> object:
+        result = await probe()
+        updates = result.get("results", []) if isinstance(result, dict) else result
+        if updates:
+            failures = [item for item in updates if getattr(item, "status", "200") != "200"]
+            if failures:
+                statuses = ", ".join(f"{item.jid}:{item.status}" for item in failures)
+                raise RuntimeError(f"participant update failed: {statuses}")
+        return result
+
+    return await run_step(label, checked)
+
+
 async def main() -> int:
     parser = argparse.ArgumentParser(description="Run explicit Phase 5 live mutation checks.")
     parser.add_argument("--creds-path", default=str(ROOT / "auth" / "product_qr_creds.json"))
@@ -187,27 +201,40 @@ async def main() -> int:
                     "GROUP_REMOVE",
                     lambda: client.group_participants_update(args.group_jid, [mutation_jid], "remove", timeout=args.timeout),
                 )
-                ok &= await participant_step(
+                ok &= await add_or_invite_step(
                     "GROUP_ADD_RESTORE",
-                    lambda: client.group_participants_update(args.group_jid, [mutation_jid], "add", timeout=args.timeout),
+                    lambda: client.group_participants_update_or_invite(
+                        args.group_jid,
+                        [mutation_jid],
+                        "add",
+                        timeout=args.timeout,
+                        wait_for_ack=args.timeout,
+                    ),
                 )
             else:
-                ok &= await participant_step(
+                ok &= await add_or_invite_step(
                     "GROUP_ADD",
-                    lambda: client.group_participants_update(args.group_jid, [add_remove_participant_jid], "add", timeout=args.timeout),
+                    lambda: client.group_participants_update_or_invite(
+                        args.group_jid,
+                        [add_remove_participant_jid],
+                        "add",
+                        timeout=args.timeout,
+                        wait_for_ack=args.timeout,
+                    ),
                 )
                 ok &= await participant_step(
                     "GROUP_REMOVE",
                     lambda: client.group_participants_update(args.group_jid, [add_remove_participant_jid], "remove", timeout=args.timeout),
                 )
                 if args.restore_after_remove:
-                    ok &= await participant_step(
+                    ok &= await add_or_invite_step(
                         "GROUP_ADD_RESTORE",
-                        lambda: client.group_participants_update(
+                        lambda: client.group_participants_update_or_invite(
                             args.group_jid,
                             [add_remove_participant_jid],
                             "add",
                             timeout=args.timeout,
+                            wait_for_ack=args.timeout,
                         ),
                     )
 

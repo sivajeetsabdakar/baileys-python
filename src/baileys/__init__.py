@@ -108,6 +108,7 @@ from .message_send import (
     build_message_content_node,
     build_proto_message_node,
     build_text_message_node,
+    group_invite_message,
 )
 from .messages import MessageKey, MessageUpsert, WAMessage, build_message_upsert
 from .mex import MexError, parse_wmex_result, wmex_query_node
@@ -259,6 +260,7 @@ __all__ = [
     "build_message_upsert",
     "build_receipt_node",
     "build_text_message_node",
+    "group_invite_message",
     "build_tc_token_from_jid",
     "can_ack_node",
     "catalog_node",

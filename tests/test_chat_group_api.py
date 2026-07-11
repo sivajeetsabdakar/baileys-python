@@ -232,6 +232,43 @@ def test_group_participant_update_raises_iq_error_and_skips_event(tmp_path):
     asyncio.run(scenario())
 
 
+def test_group_participant_add_can_fallback_to_invite(tmp_path):
+    async def scenario():
+        store = JsonCredentialStore(tmp_path / "creds.json")
+        store.save_credentials(_creds_with_app_state())
+        client = make_socket(AuthState.from_store(store))
+        invite_events = []
+        sent_invites = []
+        client.ev.on("group-participants.invite", lambda payload: invite_events.append(payload))
+
+        async def fake_query(node, **kwargs):
+            return BinaryNode(
+                "iq",
+                {"type": "error", "id": node.attrs.get("id", "x")},
+                [BinaryNode("error", {"code": "463", "text": "account_reachout_restricted"})],
+            )
+
+        async def fake_send_group_invite(to_jid, group_jid, **kwargs):
+            sent_invites.append((to_jid, group_jid, kwargs))
+            return {"message_id": "invite-1", "remote_jid": to_jid}
+
+        client.query = fake_query  # type: ignore[method-assign]
+        client.send_group_invite = fake_send_group_invite  # type: ignore[method-assign]
+
+        result = await client.group_participants_update_or_invite(
+            "123@g.us",
+            ["a@s.whatsapp.net"],
+            "add",
+            wait_for_ack=2,
+        )
+
+        assert result["fallback"] == "group_invite"
+        assert sent_invites == [("a@s.whatsapp.net", "123@g.us", {"timeout": 30, "wait_for_ack": 2})]
+        assert invite_events[0]["reason"] == "account_reachout_restricted"
+
+    asyncio.run(scenario())
+
+
 def test_group_description_update_sends_previous_description_id(tmp_path):
     async def scenario():
         store = JsonCredentialStore(tmp_path / "creds.json")

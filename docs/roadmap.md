@@ -226,11 +226,13 @@ tests are stable.
   and full app-state replay are live-proven through
   `scripts/app_state_key_probe.py`.
 - Group participant remove is live-proven against the dedicated test group.
-  Participant add remains account-gated in the current live account with
-  `account_reachout_restricted`, and temporary group create does not return a
-  response before timeout or leave a created group in the participating list.
-  Product APIs now raise explicit IQ errors for server-side rejections instead
-  of returning empty success results.
+  Raw participant add remains account-gated in the current live account with
+  `account_reachout_restricted`; `group_participants_update_or_invite` now
+  falls back to a structured group invite message, and structured invite send is
+  live-proven with ACK. Temporary group create does not return a response before
+  timeout or leave a created group in the participating list. Product APIs now
+  raise explicit IQ errors for server-side rejections instead of returning empty
+  success results.
 
 ## Phase 6 Delivered
 

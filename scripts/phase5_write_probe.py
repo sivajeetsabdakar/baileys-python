@@ -42,6 +42,7 @@ async def main() -> int:
     parser.add_argument("--group-jid", help="group jid for participant updates")
     parser.add_argument("--group-action", choices=["add", "remove", "promote", "demote"], help="group participant action")
     parser.add_argument("--group-participants", default="", help="comma separated participant jids")
+    parser.add_argument("--send-group-invite-to", help="jid or phone number that should receive a structured group invite")
     args = parser.parse_args()
 
     pending = []
@@ -57,6 +58,8 @@ async def main() -> int:
         participants = _parse_participants(args.group_participants)
         if participants:
             pending.append(f"group_participants {args.group_action} in {args.group_jid}")
+    if args.group_jid and args.send_group_invite_to:
+        pending.append(f"group_invite to {args.send_group_invite_to}")
 
     if not pending:
         print("NO_WRITE_OPS selected. Use --presence, --set-profile-name, --set-profile-status, or group flags.")
@@ -124,6 +127,21 @@ async def main() -> int:
                     f"count={len(participants)}",
                     flush=True,
                 )
+
+        if args.group_jid and args.send_group_invite_to:
+            invite_to = _phone_to_jid(args.send_group_invite_to)
+            result = await client.send_group_invite(
+                invite_to,
+                args.group_jid,
+                text="Join the test group",
+                timeout=args.timeout,
+                wait_for_ack=args.timeout,
+            )
+            print(
+                f"GROUP_INVITE_SENT to={invite_to} group={args.group_jid} "
+                f"id={result.message_id} related_response={result.acked}",
+                flush=True,
+            )
 
         print("PHASE5_WRITE_PROBE_DONE", flush=True)
     finally:

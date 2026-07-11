@@ -203,6 +203,29 @@ def contacts_array_message(display_name: str, contacts: Iterable[dict[str, str]]
     return message
 
 
+def group_invite_message(
+    group_jid: str,
+    invite_code: str,
+    group_name: str,
+    *,
+    invite_expiration: int = 0,
+    caption: str | None = None,
+    jpeg_thumbnail: bytes | None = None,
+) -> proto.Message:
+    message = proto.Message()
+    invite = message.groupInviteMessage
+    invite.groupJid = group_jid
+    invite.inviteCode = invite_code
+    invite.inviteExpiration = int(invite_expiration)
+    invite.groupName = group_name
+    if caption:
+        invite.caption = caption
+    if jpeg_thumbnail:
+        invite.jpegThumbnail = jpeg_thumbnail
+    message.messageContextInfo.messageSecret = os.urandom(32)
+    return message
+
+
 def normalize_message_content(content: str | proto.Message | dict[str, Any]) -> tuple[proto.Message, str]:
     if isinstance(content, proto.Message):
         return content, _message_type_for_proto(content)
@@ -279,6 +302,24 @@ def normalize_message_content(content: str | proto.Message | dict[str, Any]) -> 
         if not isinstance(contacts, list):
             raise UnsupportedMessageContent("contacts content must be a list")
         return contacts_array_message(str(content.get("display_name") or "Contacts"), contacts), "contacts"
+    if "group_invite" in content or "groupInvite" in content:
+        invite = content.get("group_invite") or content.get("groupInvite")
+        if not isinstance(invite, dict):
+            raise UnsupportedMessageContent("group_invite content must be a mapping")
+        for key in ("jid", "invite_code", "subject"):
+            if key not in invite:
+                raise UnsupportedMessageContent(f"group_invite content requires {key}")
+        return (
+            group_invite_message(
+                str(invite["jid"]),
+                str(invite["invite_code"]),
+                str(invite["subject"]),
+                invite_expiration=int(invite.get("invite_expiration", invite.get("inviteExpiration", 0))),
+                caption=invite.get("caption") or invite.get("text"),
+                jpeg_thumbnail=invite.get("jpeg_thumbnail") or invite.get("jpegThumbnail"),
+            ),
+            "url",
+        )
 
     raise UnsupportedMessageContent(f"unsupported message content keys: {', '.join(sorted(content))}")
 
@@ -504,6 +545,7 @@ def _message_type_for_proto(message: proto.Message) -> str:
         ("locationMessage", "location"),
         ("contactMessage", "contact"),
         ("contactsArrayMessage", "contacts"),
+        ("groupInviteMessage", "url"),
         ("imageMessage", "image"),
         ("videoMessage", "video"),
         ("audioMessage", "audio"),

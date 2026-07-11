@@ -75,6 +75,24 @@ def test_message_content_builders_cover_common_shapes():
     assert kind == "contact"
     assert contact.contactMessage.displayName == "Alice"
 
+    group_invite, kind = normalize_message_content(
+        {
+            "group_invite": {
+                "jid": "123@g.us",
+                "invite_code": "abc123",
+                "invite_expiration": 12345,
+                "subject": "Test Group",
+                "caption": "Join",
+            }
+        }
+    )
+    assert kind == "url"
+    assert group_invite.groupInviteMessage.groupJid == "123@g.us"
+    assert group_invite.groupInviteMessage.inviteCode == "abc123"
+    assert group_invite.groupInviteMessage.inviteExpiration == 12345
+    assert group_invite.groupInviteMessage.groupName == "Test Group"
+    assert group_invite.groupInviteMessage.caption == "Join"
+
 
 def test_message_content_builders_reject_invalid_poll_and_pin():
     key = {"remote_jid": "chat@s.whatsapp.net", "id": "m1", "from_me": False}

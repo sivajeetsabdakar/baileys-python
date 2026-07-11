@@ -183,6 +183,7 @@ from .retry import RetrySessionBundle, inject_retry_session_from_receipt
 from .session_assert import encrypt_session_query_node, inject_sessions_from_encrypt_result
 from .socket_nodes import (
     SocketNodeKind,
+    IQError,
     classify_node,
     client_ping_node,
     find_child,
@@ -1089,9 +1090,70 @@ class WhatsAppClient:
         await self.ev.emit("group-participants.update", {"id": jid, "participants": participants, "action": action, "results": updates})
         return updates
 
+    async def group_participants_update_or_invite(
+        self,
+        jid: str,
+        participants: list[str],
+        action: str,
+        *,
+        timeout: float = 30,
+        wait_for_ack: float = 0,
+    ) -> dict[str, Any]:
+        try:
+            updates = await self.group_participants_update(jid, participants, action, timeout=timeout)
+            return {"action": action, "results": updates, "invites": []}
+        except IQError as exc:
+            if action != "add" or "account_reachout_restricted" not in (exc.text or ""):
+                raise
+            invites = [
+                await self.send_group_invite(
+                    participant,
+                    jid,
+                    timeout=timeout,
+                    wait_for_ack=wait_for_ack,
+                )
+                for participant in participants
+            ]
+            await self.ev.emit(
+                "group-participants.invite",
+                {"id": jid, "participants": participants, "reason": exc.text, "invites": invites},
+            )
+            return {"action": action, "results": [], "invites": invites, "fallback": "group_invite"}
+
     async def group_invite_code(self, jid: str, *, timeout: float = 30) -> str | None:
         result = await self._query_checked(group_invite_code_node(jid, self.queries.next_tag()), timeout=timeout)
         return parse_invite_code(result)
+
+    async def send_group_invite(
+        self,
+        to_jid: str,
+        group_jid: str,
+        *,
+        text: str | None = None,
+        invite_expiration: int = 0,
+        timeout: float = 30,
+        wait_for_ack: float = 0,
+    ) -> SendMessageResult:
+        metadata = await self.group_metadata(group_jid, timeout=timeout)
+        invite_code = await self.group_invite_code(group_jid, timeout=timeout)
+        if not invite_code:
+            raise ValueError(f"group invite code unavailable for {group_jid}")
+        content = {
+            "group_invite": {
+                "jid": metadata.id or group_jid,
+                "invite_code": invite_code,
+                "invite_expiration": invite_expiration,
+                "subject": metadata.subject or group_jid,
+                "caption": text,
+            }
+        }
+        return await self.send_message(
+            to_jid,
+            content,
+            use_usync=True,
+            timeout=timeout,
+            wait_for_ack=wait_for_ack,
+        )
 
     async def group_revoke_invite(self, jid: str, *, timeout: float = 30) -> str | None:
         result = await self._query_checked(group_revoke_invite_node(jid, self.queries.next_tag()), timeout=timeout)
@@ -2232,7 +2294,9 @@ class WhatsAppClient:
     groupUpdateSubject = group_update_subject
     groupUpdateDescription = group_update_description
     groupParticipantsUpdate = group_participants_update
+    groupParticipantsUpdateOrInvite = group_participants_update_or_invite
     groupInviteCode = group_invite_code
+    sendGroupInvite = send_group_invite
     groupRevokeInvite = group_revoke_invite
     groupAcceptInvite = group_accept_invite
     groupSettingUpdate = group_setting_update
