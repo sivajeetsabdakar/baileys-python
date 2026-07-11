@@ -30,6 +30,19 @@ Ship a core beta before full parity once auth, sockets, events, common
 send/receive, media, groups, profile/privacy, docs, examples, and live smoke
 tests are stable.
 
+## Design References
+
+- `docs/architecture-design.md` defines the target package layers, event
+  taxonomy, and error model.
+- `docs/storage-design.md` defines the durable auth, signal-key, app-state,
+  LID/PN mapping, replay, and event-store plan.
+- `docs/inbound-processing-design.md` defines the remaining message decrypt,
+  content normalization, retry, device-change, and store integration plan.
+- `docs/live-verification-design.md` defines the live suite, account-gated
+  capability tracking, and probe result format.
+- `docs/release-hardening-design.md` defines Phase 8 and Phase 9 release gates,
+  packaging checks, observability, and hardening backlog.
+
 ## Phase 0 Delivered
 
 - `src/baileys/` package seeded from the proven spike.

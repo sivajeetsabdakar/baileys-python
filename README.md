@@ -21,6 +21,7 @@ and Phase 5 API foundations:
 - compatibility matrix in `docs/compatibility-matrix.md`
 - public API guide in `docs/public-api.md`
 - migration guide for Node Baileys users in `docs/migration-guide.md`
+- architecture and remaining implementation designs in `docs/architecture-design.md`
 - live/proof scripts under `scripts/`
 - product QR pairing plus saved reconnect through
   `scripts/product_qr_pairing_probe.py`
@@ -73,4 +74,5 @@ asyncio.run(main())
 See `docs/roadmap.md` for the implementation timeline and
 `docs/compatibility-matrix.md` for the public Baileys parity checklist. See
 `docs/public-api.md` for the current Python API and `docs/migration-guide.md`
-for Node Baileys migration notes.
+for Node Baileys migration notes. See `docs/architecture-design.md` for the
+remaining implementation design.

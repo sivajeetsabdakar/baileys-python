@@ -1,0 +1,237 @@
+# Storage Design
+
+The package currently ships with JSON credential storage, directory-backed
+signal keys, and an in-memory event store. The target design is to keep these
+simple defaults while adding durable adapters behind stable interfaces.
+
+## Current Built-In Guarantees
+
+- `JsonCredentialStore` writes credentials atomically.
+- `DirectorySignalKeyStore` writes key files atomically.
+- `MemorySignalKeyStore` isolates mutable values with deep copies.
+- `AuthState.transaction()` persists credential mutations only when the block
+  completes successfully.
+- `InMemoryStore` is bindable to socket events and idempotent for duplicate
+  message ids.
+
+## Interfaces
+
+### Credential Store
+
+Required methods:
+
+- `load_credentials() -> dict`
+- `save_credentials(credentials: dict) -> None`
+
+Target extension:
+
+- optional `transaction(callback)` or context-manager support.
+- optional optimistic version checks for concurrent writers.
+- optional backup/export helper for account migration.
+
+### Signal Key Store
+
+Required methods:
+
+- `get(namespace, key)`
+- `set(namespace, key, value)`
+- `delete(namespace, key)`
+
+Target extension:
+
+- `get_many(namespace, keys)`
+- `set_many(namespace, values)`
+- `delete_many(namespace, keys)`
+- transaction support shared with credential updates.
+
+### Event Store
+
+Target methods:
+
+- `bind(events)`
+- `unbind(events)`
+- `load_messages(jid, count=None)`
+- `load_message(jid, message_id, participant=None)`
+- `upsert_message(message)`
+- `apply_message_update(update)`
+- `apply_receipt_update(update)`
+- `upsert_chat(chat)`
+- `upsert_contact(contact)`
+- `upsert_lid_pn_mapping(lid_jid, pn_jid, source)`
+- `get_lid_for_pn(pn_jid)`
+- `get_pn_for_lid(lid_jid)`
+- `save_app_state(collection, state)`
+- `load_app_state(collection)`
+- `save_recent_outbound(message_id, node, expires_at)`
+- `load_recent_outbound(message_id)`
+
+## SQLite Adapter
+
+SQLite should be the first durable adapter because it is local, easy to test,
+and good enough for single-process bots.
+
+### Tables
+
+`credentials`
+
+- `id text primary key`
+- `data_json text not null`
+- `updated_at integer not null`
+
+`signal_keys`
+
+- `namespace text not null`
+- `key text not null`
+- `data_json text not null`
+- `updated_at integer not null`
+- primary key: `(namespace, key)`
+
+`messages`
+
+- `remote_jid text not null`
+- `message_id text not null`
+- `participant text not null default ''`
+- `from_me integer not null default 0`
+- `timestamp integer`
+- `push_name text`
+- `message_blob blob`
+- `message_json text`
+- `status integer`
+- `updated_at integer not null`
+- primary key: `(remote_jid, message_id, participant)`
+
+`message_updates`
+
+- `remote_jid text not null`
+- `message_id text not null`
+- `participant text not null default ''`
+- `update_json text not null`
+- `updated_at integer not null`
+- primary key: `(remote_jid, message_id, participant)`
+
+`message_receipts`
+
+- `remote_jid text not null`
+- `message_id text not null`
+- `participant text not null default ''`
+- `user_jid text not null`
+- `receipt_json text not null`
+- `updated_at integer not null`
+- primary key: `(remote_jid, message_id, participant, user_jid)`
+
+`chats`
+
+- `jid text primary key`
+- `name text`
+- `conversation_timestamp integer`
+- `unread_count integer not null default 0`
+- `updated_at integer not null`
+
+`contacts`
+
+- `jid text primary key`
+- `name text`
+- `notify text`
+- `phone_number text`
+- `lid text`
+- `updated_at integer not null`
+
+`lid_pn_mappings`
+
+- `lid_jid text primary key`
+- `pn_jid text`
+- `source text not null`
+- `updated_at integer not null`
+
+`app_state`
+
+- `collection text primary key`
+- `version integer not null`
+- `hash_json text not null`
+- `index_json text not null`
+- `updated_at integer not null`
+
+`recent_outbound`
+
+- `message_id text primary key`
+- `node_json text not null`
+- `expires_at integer not null`
+- `updated_at integer not null`
+
+`media_cache`
+
+- `file_sha256 text primary key`
+- `media_type text not null`
+- `upload_json text not null`
+- `expires_at integer`
+- `updated_at integer not null`
+
+### Transaction Rules
+
+- Auth credential and signal-key updates that belong to the same socket action
+  must commit in one transaction.
+- Failed socket operations must not persist partially updated sessions,
+  prekeys, signed prekeys, or LID/PN mappings.
+- Recent outbound replay writes should happen after the message node is sent.
+- Retry replay reads must tolerate expired or missing entries.
+- App-state patch application must persist LT hash state only after MAC
+  validation succeeds.
+
+## Postgres Adapter
+
+Postgres should use the same logical schema as SQLite and add:
+
+- advisory or row locks for auth-state writers.
+- JSONB indexes for selected query surfaces if needed.
+- connection-pool integration supplied by the application.
+- explicit migration files.
+
+## Redis Adapter
+
+Redis should be treated as an optional cache/replay store, not the only durable
+source of truth unless the application accepts that tradeoff.
+
+Good Redis uses:
+
+- recent outbound replay cache.
+- media upload cache.
+- short-lived query or token caches.
+- pub/sub for multi-process event fanout.
+
+Risky Redis uses:
+
+- long-term credentials without persistence.
+- app-state LT hash as the only copy.
+- message history as the only copy.
+
+## Serialization
+
+- WAProto messages should be stored as protobuf bytes when possible.
+- Binary nodes can be stored as JSON using the package node conversion helper
+  once added.
+- Credentials and Signal records stay JSON-compatible to preserve current auth
+  files.
+- Unknown fields must be preserved.
+
+## Implementation Order
+
+1. Define public storage protocols for credentials, signal keys, app-state
+   state, LID/PN mappings, recent outbound replay, and event store operations.
+2. Refactor socket code to depend on protocols where concrete file stores are
+   still assumed.
+3. Add SQLite credential and signal-key store.
+4. Add SQLite event store.
+5. Add replay cache integration for retry receipts.
+6. Add LID/PN mapping store integration for USync, group metadata, and history.
+7. Add migration and backup helpers.
+8. Add Postgres adapter after SQLite semantics are stable.
+
+## Acceptance
+
+- File-backed stores keep current tests green.
+- SQLite-backed auth can pair, reconnect, send, receive, and logout.
+- Failed prekey/session operations do not corrupt persisted credentials.
+- Reconnect replay does not duplicate messages.
+- LID/PN mapping survives process restart.
+- App-state sync survives process restart.
+- Recent outbound retry replay survives short process restarts within its TTL.
