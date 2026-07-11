@@ -9,9 +9,10 @@ from typing import Any, Iterable
 
 import aiohttp
 
-from baileys.crypto import aes_decrypt_cbc, aes_encrypt_cbc, hmac_sign, sha256
+from baileys.crypto import aes_decrypt_cbc, aes_decrypt_gcm, aes_encrypt_cbc, aes_encrypt_gcm, hkdf, hmac_sign, random_bytes, sha256
 from baileys.defaults import DEFAULT_ORIGIN, MEDIA_PATH_MAP, S_WHATSAPP_NET
 from baileys.generated import WAProto_pb2 as proto
+from baileys.jid import jid_normalized_user
 from baileys.socket_nodes import find_child
 from baileys.wabinary import BinaryNode
 from baileys.whatsapp_keys import derive_media_keys
@@ -62,6 +63,13 @@ class MediaPayload:
     height: int = 0
     seconds: int = 0
     ptt: bool = False
+
+
+@dataclass(frozen=True)
+class MediaRetryEvent:
+    key: dict[str, Any]
+    media: dict[str, bytes] | None = None
+    error: Exception | None = None
 
 
 def media_conn_node(tag_id: str) -> BinaryNode:
@@ -120,6 +128,95 @@ def decrypt_media(encrypted: bytes, media_key: bytes, media_type: str) -> bytes:
     if mac != expected:
         raise ValueError("invalid media mac")
     return aes_decrypt_cbc(ciphertext, keys.cipher_key, keys.iv)
+
+
+def media_retry_key(media_key: bytes) -> bytes:
+    return hkdf(media_key, 32, info=b"WhatsApp Media Retry Notification")
+
+
+def encrypt_media_retry_request(key: Any, media_key: bytes, me_id: str) -> BinaryNode:
+    message_id = _message_key_value(key, "id")
+    remote_jid = _message_key_value(key, "remote_jid", "remoteJid")
+    if not message_id:
+        raise ValueError("media retry request requires message key id")
+    if not remote_jid:
+        raise ValueError("media retry request requires remote jid")
+
+    receipt = proto.ServerErrorReceipt()
+    receipt.stanzaId = message_id
+    iv = random_bytes(12)
+    ciphertext = aes_encrypt_gcm(receipt.SerializeToString(), media_retry_key(media_key), iv, message_id.encode())
+    rmr_attrs = {
+        "jid": remote_jid,
+        "from_me": str(bool(_message_key_value(key, "from_me", "fromMe"))).lower(),
+    }
+    participant = _message_key_value(key, "participant")
+    if participant:
+        rmr_attrs["participant"] = participant
+    return BinaryNode(
+        "receipt",
+        {"id": message_id, "to": jid_normalized_user(me_id), "type": "server-error"},
+        [
+            BinaryNode("encrypt", {}, [BinaryNode("enc_p", {}, ciphertext), BinaryNode("enc_iv", {}, iv)]),
+            BinaryNode("rmr", rmr_attrs),
+        ],
+    )
+
+
+def decode_media_retry_node(node: BinaryNode) -> MediaRetryEvent | None:
+    rmr = find_child(node, "rmr")
+    if rmr is None:
+        return None
+    key = {
+        "id": node.attrs.get("id"),
+        "remote_jid": rmr.attrs.get("jid"),
+        "from_me": rmr.attrs.get("from_me") == "true",
+        "participant": rmr.attrs.get("participant"),
+    }
+    error = find_child(node, "error")
+    if error is not None:
+        code = error.attrs.get("code", "")
+        return MediaRetryEvent(key=key, error=ValueError(f"failed to re-upload media ({code})"))
+    encrypted = find_child(node, "encrypt")
+    ciphertext = _child_bytes(encrypted, "enc_p") if encrypted is not None else None
+    iv = _child_bytes(encrypted, "enc_iv") if encrypted is not None else None
+    if ciphertext is None or iv is None:
+        return MediaRetryEvent(key=key, error=ValueError("failed to re-upload media (missing ciphertext)"))
+    return MediaRetryEvent(key=key, media={"ciphertext": ciphertext, "iv": iv})
+
+
+def decrypt_media_retry_data(media: dict[str, bytes], media_key: bytes, message_id: str) -> proto.MediaRetryNotification:
+    plaintext = aes_decrypt_gcm(media["ciphertext"], media_retry_key(media_key), media["iv"], message_id.encode())
+    return proto.MediaRetryNotification.FromString(plaintext)
+
+
+def encrypt_media_retry_response(
+    media_key: bytes,
+    message_id: str,
+    direct_path: str,
+    *,
+    result: int | None = None,
+    message_secret: bytes | None = None,
+    iv: bytes | None = None,
+) -> dict[str, bytes]:
+    notification = proto.MediaRetryNotification()
+    notification.stanzaId = message_id
+    notification.directPath = direct_path
+    notification.result = proto.MediaRetryNotification.ResultType.SUCCESS if result is None else result
+    if message_secret is not None:
+        notification.messageSecret = message_secret
+    actual_iv = iv or random_bytes(12)
+    ciphertext = aes_encrypt_gcm(notification.SerializeToString(), media_retry_key(media_key), actual_iv, message_id.encode())
+    return {"ciphertext": ciphertext, "iv": actual_iv}
+
+
+def media_retry_status_code(result: int) -> int | None:
+    return {
+        proto.MediaRetryNotification.ResultType.SUCCESS: 200,
+        proto.MediaRetryNotification.ResultType.DECRYPTION_ERROR: 412,
+        proto.MediaRetryNotification.ResultType.NOT_FOUND: 404,
+        proto.MediaRetryNotification.ResultType.GENERAL_ERROR: 418,
+    }.get(result)
 
 
 def upload_token(file_enc_sha256: bytes) -> str:
@@ -334,3 +431,20 @@ def _default_mimetype(media_type: str) -> str:
         "document": "application/octet-stream",
         "sticker": "image/webp",
     }[media_type]
+
+
+def _message_key_value(key: Any, *names: str) -> Any:
+    if isinstance(key, dict):
+        for name in names:
+            if name in key:
+                return key[name]
+        return None
+    for name in names:
+        if hasattr(key, name):
+            return getattr(key, name)
+    return None
+
+
+def _child_bytes(node: BinaryNode, tag: str) -> bytes | None:
+    child = find_child(node, tag)
+    return child.content if child is not None and isinstance(child.content, bytes) else None

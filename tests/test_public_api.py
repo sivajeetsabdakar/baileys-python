@@ -64,6 +64,7 @@ def test_public_api_exports_core_building_blocks():
     assert callable(bpt.decode_syncd_patch)
     assert callable(bpt.apply_app_state_sync)
     assert bpt.MediaKeys
+    assert bpt.MediaRetryEvent
     assert bpt.PreKeyNodeResult
     assert bpt.PreKeyMaintenanceResult
     assert bpt.SignedPreKeyRotation
@@ -152,6 +153,7 @@ def test_public_api_exports_core_building_blocks():
     assert hasattr(bpt.WhatsAppClient, "getBotListV2")
     assert hasattr(bpt.WhatsAppClient, "issuePrivacyTokens")
     assert hasattr(bpt.WhatsAppClient, "updateMemberLabel")
+    assert hasattr(bpt.WhatsAppClient, "updateMediaMessage")
     assert hasattr(bpt.WhatsAppClient, "sendPeerDataOperationMessage")
     assert hasattr(bpt.WhatsAppClient, "resyncAppState")
     assert hasattr(bpt.WhatsAppClient, "refreshMediaConn")

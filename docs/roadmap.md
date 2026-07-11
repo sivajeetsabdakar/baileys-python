@@ -339,7 +339,8 @@ tests are stable.
   USync parsers, generic USync wrapper shapes, bot-list parsing, privacy-token
   issuance, peer-data/member-label protocol messages, presence subscription,
   contact and quick-reply app-state patches, batch receipt aggregation,
-  media/USync wrappers, public exports, client aliases, and the public API
+  media/USync wrappers, media retry request/response crypto,
+  `updateMediaMessage`, public exports, client aliases, and the public API
   parity manifest.
 - Live read-only Phase 7 proof currently confirms account reachout timelock
   MEX access. Catalog reads are account-gated on the current non-catalog
@@ -348,9 +349,8 @@ tests are stable.
   is wired but currently times out waiting for a server IQ response on this
   account.
 - Remaining Phase 7 parity gaps are enabled-account newsletter/community/
-  business live mutations, WAM upload live ACK proof, media retry/reupload
-  through `updateMediaMessage`, and broader live proof for low-level peer-data,
-  bot, privacy-token, and USync edge surfaces.
+  business live mutations, WAM upload live ACK proof, and broader live proof for
+  low-level peer-data, bot, privacy-token, USync, and media retry edge surfaces.
 
 ## Live Harness
 

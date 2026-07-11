@@ -118,7 +118,7 @@ from .jid import (
     transferDevice,
     transfer_device,
 )
-from .media import MediaPayload, MediaUploadResult, download_external_blob, media_message, read_media_payload
+from .media import MediaPayload, MediaRetryEvent, MediaUploadResult, download_external_blob, media_message, read_media_payload
 from .message_send import (
     MessageOptions,
     OutboundMessage,
@@ -231,6 +231,7 @@ __all__ = [
     "MissingAppStateKey",
     "MediaKeys",
     "MediaPayload",
+    "MediaRetryEvent",
     "MediaSendResult",
     "MediaUploadResult",
     "MexError",

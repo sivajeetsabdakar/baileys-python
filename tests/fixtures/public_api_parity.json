@@ -119,6 +119,7 @@
     "updateCoverPhoto",
     "updateGroupsAddPrivacy",
     "updateLastSeenPrivacy",
+    "updateMediaMessage",
     "updateMemberLabel",
     "updateMessagesPrivacy",
     "updateOnlinePrivacy",
@@ -131,7 +132,5 @@
     "updateStatusPrivacy",
     "waUploadToServer"
   ],
-  "deferred_methods": {
-    "updateMediaMessage": "media retry/reupload remains incomplete"
-  }
+  "deferred_methods": {}
 }

@@ -136,13 +136,18 @@ from .communities import (
 from .media import (
     MediaConn,
     MediaPayload,
+    MediaRetryEvent,
     MediaUploadResult,
+    decode_media_retry_node,
     decrypt_media,
+    decrypt_media_retry_data,
     download_external_blob,
     download_media,
     encrypt_media,
+    encrypt_media_retry_request,
     media_conn_node,
     media_message,
+    media_retry_status_code,
     media_url_from_direct_path,
     parse_media_conn,
     read_media_payload,
@@ -751,6 +756,11 @@ class WhatsAppClient:
         return info
 
     async def dispatch_receipt_node(self, node: BinaryNode) -> None:
+        media_update = decode_media_retry_node(node)
+        if media_update is not None:
+            await self.ev.emit("messages.media-update", [media_update])
+            return
+
         retry_request = parse_retry_request(node, self.auth_state.credentials)
         if retry_request is not None:
             await self.dispatch_retry_receipt_node(retry_request)
@@ -888,6 +898,69 @@ class WhatsAppClient:
         if media_key is None or media_type is None:
             return encrypted
         return decrypt_media(encrypted, media_key, media_type)
+
+    async def update_media_message(
+        self,
+        message: WAMessage | proto.WebMessageInfo,
+        *,
+        timeout: float = 30,
+    ) -> WAMessage | proto.WebMessageInfo:
+        key, proto_message = _media_retry_message_parts(message)
+        content = _media_content_from_message(proto_message)
+        media_key = bytes(getattr(content, "mediaKey", b""))
+        message_id = _message_key_id(key)
+        if not media_key:
+            raise ValueError("media message is missing mediaKey")
+        if not message_id:
+            raise ValueError("media message is missing key id")
+        me = self.auth_state.credentials.get("me", {}).get("id")
+        if not me:
+            raise RuntimeError("cannot update media message before login")
+
+        future: asyncio.Future[MediaRetryEvent] = asyncio.get_running_loop().create_future()
+
+        def on_media_update(payload) -> None:
+            updates = payload if isinstance(payload, list) else [payload]
+            for update in updates:
+                event = _coerce_media_retry_event(update)
+                if event is None or event.key.get("id") != message_id:
+                    continue
+                if not future.done():
+                    future.set_result(event)
+                return
+
+        listener = self.ev.on("messages.media-update", on_media_update)
+        try:
+            await self.send_node(encrypt_media_retry_request(key, media_key, me))
+            deadline = asyncio.get_running_loop().time() + timeout
+            while not future.done():
+                remaining = deadline - asyncio.get_running_loop().time()
+                if remaining <= 0:
+                    raise asyncio.TimeoutError()
+                await self.receive_nodes(timeout=min(5, remaining))
+            update = await future
+        finally:
+            self.ev.off("messages.media-update", listener)
+
+        if update.error is not None:
+            raise update.error
+        if update.media is None:
+            raise ValueError("media retry update missing media payload")
+        retry = decrypt_media_retry_data(update.media, media_key, message_id)
+        if retry.result != proto.MediaRetryNotification.ResultType.SUCCESS:
+            status = media_retry_status_code(retry.result) or 404
+            result_name = proto.MediaRetryNotification.ResultType.Name(retry.result)
+            raise ValueError(f"media re-upload failed by device ({result_name}, status={status})")
+        if not retry.directPath:
+            raise ValueError("media retry update missing direct path")
+
+        content.directPath = retry.directPath
+        content.url = media_url_from_direct_path(retry.directPath, self.get_media_host())
+        await self.ev.emit(
+            "messages.update",
+            [{"key": _message_key_dict(key), "update": {"message": proto_message}}],
+        )
+        return message
 
     async def send_media_message(
         self,
@@ -2615,6 +2688,7 @@ class WhatsAppClient:
     sendMessage = send_message
     relayMessage = relay_message
     downloadMediaMessage = download_media_message
+    updateMediaMessage = update_media_message
     sendMediaMessage = send_media_message
     refreshMediaConn = refresh_media_conn
     getMediaHost = get_media_host
@@ -2835,6 +2909,57 @@ def _parse_bot_list_v2(node: BinaryNode) -> list[dict[str, str]]:
                 continue
             parsed.append({"jid": jid, "persona_id": child.attrs.get("persona_id") or child.attrs.get("personaId") or ""})
     return parsed
+
+
+def _media_retry_message_parts(message: WAMessage | proto.WebMessageInfo) -> tuple[Any, proto.Message]:
+    if isinstance(message, WAMessage):
+        if message.message is None:
+            raise ValueError("media retry requires message content")
+        return message.key, message.message
+    if isinstance(message, proto.WebMessageInfo):
+        if not message.HasField("message"):
+            raise ValueError("media retry requires message content")
+        return message.key, message.message
+    raise TypeError(f"unsupported media retry message type: {type(message).__name__}")
+
+
+def _media_content_from_message(message: proto.Message) -> Any:
+    for field_name in ("imageMessage", "videoMessage", "audioMessage", "documentMessage", "stickerMessage"):
+        if message.HasField(field_name):
+            return getattr(message, field_name)
+    raise ValueError("message does not contain supported media content")
+
+
+def _message_key_id(key: Any) -> str | None:
+    if isinstance(key, dict):
+        return key.get("id")
+    return getattr(key, "id", None)
+
+
+def _message_key_dict(key: Any) -> dict[str, Any]:
+    if isinstance(key, MessageKey):
+        return {
+            "remote_jid": key.remote_jid,
+            "id": key.id,
+            "from_me": key.from_me,
+            "participant": key.participant,
+        }
+    if isinstance(key, proto.MessageKey):
+        return {
+            "remote_jid": key.remoteJid or None,
+            "id": key.id or None,
+            "from_me": bool(key.fromMe),
+            "participant": key.participant or None,
+        }
+    return dict(key) if isinstance(key, dict) else {"id": getattr(key, "id", None)}
+
+
+def _coerce_media_retry_event(update: Any) -> MediaRetryEvent | None:
+    if isinstance(update, MediaRetryEvent):
+        return update
+    if isinstance(update, dict) and isinstance(update.get("key"), dict):
+        return MediaRetryEvent(key=update["key"], media=update.get("media"), error=update.get("error"))
+    return None
 
 
 def _coerce_disconnect_error(exc: Exception) -> DisconnectError:

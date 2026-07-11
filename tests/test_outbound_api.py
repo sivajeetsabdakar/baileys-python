@@ -5,7 +5,18 @@ import asyncio
 import baileys as b
 from baileys.auth_state import AuthState, JsonCredentialStore
 from baileys.generated import WAProto_pb2 as proto
-from baileys.media import EncryptedMedia, MediaPayload, MediaUploadResult, media_message, read_media_payload
+from baileys.media import (
+    EncryptedMedia,
+    MediaPayload,
+    MediaRetryEvent,
+    MediaUploadResult,
+    decode_media_retry_node,
+    decrypt_media_retry_data,
+    encrypt_media_retry_request,
+    encrypt_media_retry_response,
+    media_message,
+    read_media_payload,
+)
 import baileys.message_send as message_send_module
 from baileys.message_send import (
     OutboundMessage,
@@ -138,6 +149,77 @@ def test_media_payload_and_message_builders(tmp_path):
     assert message.documentMessage.fileName == "note.txt"
     assert message.documentMessage.caption == "doc"
     assert message.documentMessage.directPath == "/v/t/file"
+
+
+def test_media_retry_request_and_response_round_trip():
+    key = b.MessageKey("chat@s.whatsapp.net", "m1", from_me=False, participant="sender@s.whatsapp.net")
+    media_key = b"k" * 32
+    request = encrypt_media_retry_request(key, media_key, "me@s.whatsapp.net")
+
+    assert request.tag == "receipt"
+    assert request.attrs == {"id": "m1", "to": "me@s.whatsapp.net", "type": "server-error"}
+    assert request.content[0].tag == "encrypt"
+    assert request.content[1].attrs == {
+        "jid": "chat@s.whatsapp.net",
+        "from_me": "false",
+        "participant": "sender@s.whatsapp.net",
+    }
+
+    encrypted = encrypt_media_retry_response(media_key, "m1", "/v/t/new")
+    response = BinaryNode(
+        "receipt",
+        {"id": "m1"},
+        [
+            BinaryNode("encrypt", {}, [BinaryNode("enc_p", {}, encrypted["ciphertext"]), BinaryNode("enc_iv", {}, encrypted["iv"])]),
+            BinaryNode("rmr", {"jid": "chat@s.whatsapp.net", "from_me": "false"}),
+        ],
+    )
+    event = decode_media_retry_node(response)
+
+    assert event is not None
+    assert event.key["id"] == "m1"
+    assert event.error is None
+    retry = decrypt_media_retry_data(event.media, media_key, "m1")  # type: ignore[arg-type]
+    assert retry.result == proto.MediaRetryNotification.ResultType.SUCCESS
+    assert retry.directPath == "/v/t/new"
+
+
+def test_update_media_message_requests_reupload_and_updates_content(tmp_path):
+    async def scenario():
+        store = JsonCredentialStore(tmp_path / "creds.json")
+        store.save_credentials(_minimal_creds())
+        client = make_socket(AuthState.from_store(store))
+        sent = []
+        updates = []
+        client.ev.on("messages.update", lambda payload: updates.extend(payload))
+        media_key = b"k" * 32
+        message = proto.Message()
+        message.imageMessage.mediaKey = media_key
+        message.imageMessage.directPath = "/v/t/old"
+        wa_message = b.WAMessage(b.MessageKey("chat@s.whatsapp.net", "m1", from_me=False), message)
+
+        async def fake_send_node(node):
+            sent.append(node)
+            encrypted = encrypt_media_retry_response(media_key, "m1", "/v/t/new")
+            await client.ev.emit(
+                "messages.media-update",
+                [MediaRetryEvent(key={"id": "m1"}, media=encrypted)],
+            )
+
+        client.send_node = fake_send_node  # type: ignore[method-assign]
+
+        result = await client.update_media_message(wa_message)
+
+        assert result is wa_message
+        assert sent[0].attrs["type"] == "server-error"
+        assert sent[0].content[1].tag == "rmr"
+        assert message.imageMessage.directPath == "/v/t/new"
+        assert message.imageMessage.url == "https://mmg.whatsapp.net/v/t/new"
+        assert updates[0]["key"]["id"] == "m1"
+        assert updates[0]["update"]["message"] is message
+        assert client.updateMediaMessage.__func__ is client.update_media_message.__func__
+
+    asyncio.run(scenario())
 
 
 def test_proto_message_builder_accepts_additional_attributes():
