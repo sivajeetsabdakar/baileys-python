@@ -16,7 +16,11 @@ class Product:
     description: str | None = None
     currency: str | None = None
     price: int | None = None
+    retailer_id: str | None = None
+    url: str | None = None
     hidden: bool | None = None
+    image_urls: dict[str, str] | None = None
+    review_status: dict[str, str] | None = None
     raw: BinaryNode | None = None
 
 
@@ -154,7 +158,11 @@ def parse_product(node: BinaryNode) -> Product:
         description=_child_text(node, "description"),
         currency=_child_text(node, "currency"),
         price=_optional_int(_child_text(node, "price")),
+        retailer_id=_child_text(node, "retailer_id"),
+        url=_child_text(node, "url"),
         hidden=_optional_bool(_child_text(node, "is_hidden") or node.attrs.get("is_hidden")),
+        image_urls=_parse_image_urls(find_child(node, "media")),
+        review_status=_parse_status_info(find_child(node, "status_info")),
         raw=node,
     )
 
@@ -206,6 +214,7 @@ def _product_mutation_node(container_tag: str, product_id: str | None, product: 
 
 
 def _product_node(product_id: str | None, product: dict[str, Any]) -> BinaryNode:
+    attrs: dict[str, str] = {}
     children: list[BinaryNode] = []
     if product_id:
         children.append(BinaryNode("id", {}, product_id.encode("utf-8")))
@@ -216,7 +225,7 @@ def _product_node(product_id: str | None, product: dict[str, Any]) -> BinaryNode
         "price": "price",
         "url": "url",
         "retailer_id": "retailer_id",
-        "is_hidden": "is_hidden",
+        "retailerId": "retailer_id",
     }
     for source, tag in field_names.items():
         if source in product and product[source] is not None:
@@ -224,4 +233,55 @@ def _product_node(product_id: str | None, product: dict[str, Any]) -> BinaryNode
             if isinstance(value, bool):
                 value = "true" if value else "false"
             children.append(BinaryNode(tag, {}, str(value).encode("utf-8")))
-    return BinaryNode("product", {}, children)
+    images = product.get("images")
+    if images:
+        children.append(_product_media_node(images))
+    if "origin_country_code" in product or "originCountryCode" in product:
+        origin = product.get("origin_country_code", product.get("originCountryCode"))
+        if origin is None:
+            attrs = {"compliance_category": "COUNTRY_ORIGIN_EXEMPT"}
+        else:
+            children.append(BinaryNode("compliance_info", {}, [BinaryNode("country_code_origin", {}, str(origin).encode("utf-8"))]))
+    if "is_hidden" in product and product["is_hidden"] is not None:
+        attrs["is_hidden"] = str(product["is_hidden"]).lower()
+    elif "isHidden" in product and product["isHidden"] is not None:
+        attrs["is_hidden"] = str(product["isHidden"]).lower()
+    return BinaryNode("product", attrs, children)
+
+
+def _product_media_node(images: list[Any]) -> BinaryNode:
+    image_nodes = []
+    for image in images:
+        url: str | None = None
+        if isinstance(image, str):
+            url = image
+        elif isinstance(image, dict):
+            url = image.get("url")
+        if not url:
+            raise ValueError("product images must be uploaded before building product nodes")
+        image_nodes.append(BinaryNode("image", {}, [BinaryNode("url", {}, str(url).encode("utf-8"))]))
+    return BinaryNode("media", {}, image_nodes)
+
+
+def _parse_image_urls(media_node: BinaryNode | None) -> dict[str, str] | None:
+    image = find_child(media_node, "image") if media_node is not None else None
+    if image is None:
+        return None
+    requested = _child_text(image, "request_image_url")
+    original = _child_text(image, "original_image_url")
+    url = _child_text(image, "url")
+    values = {}
+    if requested:
+        values["requested"] = requested
+    if original:
+        values["original"] = original
+    if url:
+        values["url"] = url
+    return values or None
+
+
+def _parse_status_info(status_node: BinaryNode | None) -> dict[str, str] | None:
+    if status_node is None:
+        return None
+    status = _child_text(status_node, "status")
+    return {"whatsapp": status} if status else None

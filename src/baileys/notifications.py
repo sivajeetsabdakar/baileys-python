@@ -110,6 +110,8 @@ def _notification_category(notification_type: str | None, child_tags: tuple[str,
         return "identity"
     if notification_type in {"contacts", "contact"} or tags & {"contact", "contacts"}:
         return "contacts"
+    if notification_type in {"newsletter", "mex"} or tags & {"newsletter", "mex"}:
+        return "newsletter"
     if notification_type in {"w:gp2", "group", "participant"} or tags & {"participant", "participants", "add", "remove", "promote", "demote"}:
         return "groups"
     if notification_type in {"app_state", "app-state", "sync", "server_sync"} or tags & {"collection", "patch", "sync"}:
@@ -118,8 +120,6 @@ def _notification_category(notification_type: str | None, child_tags: tuple[str,
         return "privacy"
     if notification_type in {"server_props", "props"} or tags & {"props", "server_props"}:
         return "server_props"
-    if notification_type in {"newsletter", "mex"} or tags & {"newsletter", "mex"}:
-        return "newsletter"
     return notification_type or "unknown"
 
 

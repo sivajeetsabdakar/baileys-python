@@ -112,7 +112,16 @@ from .message_send import (
 )
 from .messages import MessageKey, MessageUpsert, WAMessage, build_message_upsert
 from .mex import MexError, parse_wmex_result, wmex_query_node
-from .newsletter import NewsletterMetadata, newsletter_metadata_query, parse_newsletter_metadata
+from .newsletter import (
+    NewsletterMetadata,
+    NewsletterParticipantUpdate,
+    NewsletterReactionUpdate,
+    NewsletterSettingsUpdate,
+    NewsletterViewUpdate,
+    newsletter_metadata_query,
+    parse_newsletter_metadata,
+    parse_newsletter_notification_events,
+)
 from .notifications import (
     CallInfo,
     DirtyInfo,
@@ -208,6 +217,10 @@ __all__ = [
     "MexError",
     "MultiFileAuthState",
     "NewsletterMetadata",
+    "NewsletterParticipantUpdate",
+    "NewsletterReactionUpdate",
+    "NewsletterSettingsUpdate",
+    "NewsletterViewUpdate",
     "NotificationInfo",
     "OfflineInfo",
     "OutboundMessage",
@@ -345,6 +358,7 @@ __all__ = [
     "parse_offline_info",
     "parse_iq_error",
     "parse_newsletter_metadata",
+    "parse_newsletter_notification_events",
     "parse_wmex_result",
     "pairing_code_finish_node",
     "pairing_code_hello_node",

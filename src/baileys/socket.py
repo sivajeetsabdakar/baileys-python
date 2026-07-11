@@ -25,6 +25,7 @@ from .app_state import (
     inject_app_state_sync_key_share,
 )
 from .client import WhatsAppWebClient
+from .crypto import sha256
 from .disconnect import (
     DisconnectError,
     DisconnectReason,
@@ -127,8 +128,10 @@ from .media import (
     encrypt_media,
     media_conn_node,
     media_message,
+    media_url_from_direct_path,
     parse_media_conn,
     read_media_payload,
+    upload_raw_media,
     upload_media,
 )
 from .message_send import OutboundMessage, build_message_content_node, build_proto_message_node
@@ -143,10 +146,11 @@ from .newsletter import (
     newsletter_reaction_node,
     newsletter_simple_query,
     newsletter_update_query,
+    parse_newsletter_notification_events,
     parse_live_update_duration,
     parse_newsletter_metadata,
 )
-from .jid import is_jid_group, is_lid, is_pn, jid_decode_tuple, jid_encode, jid_normalized_user, phone_number_to_jid
+from .jid import is_jid_group, is_lid, is_newsletter, is_pn, jid_decode_tuple, jid_encode, jid_normalized_user, phone_number_to_jid
 from .noise import generate_noise_key_pair
 from .pairing_code import (
     PairSuccess,
@@ -698,6 +702,9 @@ class WhatsAppClient:
             return None
         await self.ev.emit("notifications.upsert", info)
         await self.ev.emit(f"notifications.{info.category}", info)
+        if info.category == "newsletter" or info.type in {"newsletter", "mex"} or (info.from_jid and is_newsletter(info.from_jid)):
+            for event, payload in parse_newsletter_notification_events(node):
+                await self.ev.emit(event, payload)
         return info
 
     async def dispatch_dirty_node(self, node: BinaryNode) -> DirtyInfo | None:
@@ -1315,12 +1322,36 @@ class WhatsAppClient:
         return await self._query_checked(cover_photo_remove_node(fbid, self.queries.next_tag()), timeout=timeout)
 
     async def product_create(self, product: dict[str, Any], *, timeout: float = 30) -> Any:
+        product = await self._prepare_product_images(product, timeout=timeout)
         result = await self._query_checked(product_create_node(product, self.queries.next_tag()), timeout=timeout)
         return parse_product_mutation(result, "product_catalog_add")
 
     async def product_update(self, product_id: str, product: dict[str, Any], *, timeout: float = 30) -> Any:
+        product = await self._prepare_product_images(product, timeout=timeout)
         result = await self._query_checked(product_update_node(product_id, product, self.queries.next_tag()), timeout=timeout)
         return parse_product_mutation(result, "product_catalog_edit")
+
+    async def _prepare_product_images(self, product: dict[str, Any], *, timeout: float) -> dict[str, Any]:
+        images = product.get("images")
+        if not images:
+            return product
+        prepared: list[dict[str, str]] = []
+        media_conn: MediaConn | None = None
+        for image in images:
+            if isinstance(image, str) and "whatsapp.net" in image:
+                prepared.append({"url": image})
+                continue
+            if isinstance(image, dict) and isinstance(image.get("url"), str) and "whatsapp.net" in image["url"]:
+                prepared.append({"url": image["url"]})
+                continue
+
+            source = image.get("source") if isinstance(image, dict) and "source" in image else image
+            payload = read_media_payload(source, "product-catalog-image", mimetype="image/jpeg")
+            media_conn = media_conn or await self._get_media_conn(timeout=timeout)
+            upload = await upload_raw_media(payload.data, media_conn, sha256(payload.data), payload.media_type, timeout=int(timeout))
+            direct_or_url = upload.media_url or media_url_from_direct_path(upload.direct_path, upload.host)
+            prepared.append({"url": direct_or_url})
+        return {**product, "images": prepared}
 
     async def product_delete(self, product_ids: list[str], *, timeout: float = 30) -> dict[str, int]:
         result = await self._query_checked(product_delete_node(product_ids, self.queries.next_tag()), timeout=timeout)

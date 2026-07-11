@@ -166,6 +166,42 @@ async def upload_media(
     raise ValueError(f"media upload failed on all hosts: {last_error}") from last_error
 
 
+async def upload_raw_media(
+    data: bytes,
+    media_conn: MediaConn,
+    file_sha256: bytes,
+    media_type: str,
+    *,
+    timeout: int = 45,
+) -> MediaUploadResult:
+    token = upload_token(file_sha256)
+    path = MEDIA_PATH_MAP[media_type]
+    headers = {"Content-Type": "application/octet-stream", "Origin": DEFAULT_ORIGIN}
+    last_error: Exception | None = None
+    for host in media_conn.hosts:
+        auth = __import__("urllib.parse").parse.quote(media_conn.auth, safe="")
+        url = f"https://{host.hostname}{path}/{token}?auth={auth}&token={token}"
+        try:
+            async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=timeout)) as session:
+                async with session.post(url, data=data, headers=headers) as response:
+                    text = await response.text()
+                    if response.status >= 400:
+                        raise ValueError(f"upload failed status={response.status} body={text[:200]}")
+                    payload = await response.json(content_type=None)
+            media_url = payload.get("url") or ""
+            direct_path = payload.get("direct_path") or ""
+            if media_url or direct_path:
+                return MediaUploadResult(media_url=media_url, direct_path=direct_path, host=host.hostname, raw=payload)
+            raise ValueError(f"upload response missing media identifiers: {payload!r}")
+        except Exception as exc:
+            last_error = exc
+    raise ValueError(f"raw media upload failed on all hosts: {last_error}") from last_error
+
+
+def media_url_from_direct_path(direct_path: str, host: str = "mmg.whatsapp.net") -> str:
+    return direct_path if direct_path.startswith(("http://", "https://")) else f"https://{host}{direct_path}"
+
+
 async def download_media(upload: MediaUploadResult, *, timeout: int = 45) -> bytes:
     url = upload.media_url or f"https://{upload.host}{upload.direct_path}"
     async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=timeout)) as session:

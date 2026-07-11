@@ -289,11 +289,17 @@ tests are stable.
   product update, product delete, cover-photo update, and cover-photo remove,
   with Baileys-compatible aliases.
 - Added product/catalog node builders and parsers for catalog results, product
-  mutations, and product delete responses.
+  mutations, product delete responses, product review status, uploaded product
+  image URLs, origin-country compliance, and retailer IDs.
+- Added catalog product image upload preparation through the product create and
+  update paths using the raw product-catalog image upload endpoint.
 - Added newsletter/MEX APIs for create, update, metadata, follow, unfollow,
   mute, unmute, subscribers, admin count, ownership/demote/delete operations,
   picture update/remove, reactions, message fetch, and live-update subscription, with
   Baileys-compatible aliases.
+- Added newsletter notification processing for reaction, view, participant, and
+  settings events from direct newsletter notifications and legacy MEX
+  newsletter notifications.
 - Added community APIs for metadata, create, linked group create/link/unlink,
   linked group fetch, leave, subject/description updates, participants update,
   membership-request list/update, invite fetch/revoke/accept/v4/info,
@@ -311,7 +317,8 @@ tests are stable.
   MEX reachout/message-capping, newsletter metadata, community metadata, and
   optional WAM stats upload.
 - Offline tests cover WAM encoding, MEX response parsing, newsletter query
-  shapes, business/catalog/product nodes, community nodes/parsers, label
+  shapes, newsletter live-event parsing and dispatch, business/catalog/product
+  nodes, catalog product image preparation, community nodes/parsers, label
   app-state patches, reporting tokens, privacy tokens, public exports, and
   client aliases.
 - Live read-only Phase 7 proof currently confirms account reachout timelock
@@ -320,8 +327,7 @@ tests are stable.
   server GraphQL bad request for this account/request shape. WAM stats upload
   is wired but currently times out waiting for a server IQ response on this
   account.
-- Remaining Phase 7 parity gaps are product image media for catalog products,
-  newsletter live event processing, enabled-account newsletter/community/
+- Remaining Phase 7 parity gaps are enabled-account newsletter/community/
   business live mutations, WAM upload live ACK proof, and broader public-method
   parity checks.
 

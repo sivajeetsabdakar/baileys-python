@@ -11,6 +11,7 @@ from baileys.business import (
     cover_photo_remove_node,
     cover_photo_update_node,
     parse_catalog,
+    parse_product,
     parse_product_delete,
     product_create_node,
     product_delete_node,
@@ -28,7 +29,13 @@ from baileys.communities import (
 )
 from baileys.app_state import chat_modification_to_app_patch
 from baileys.mex import QUERY_IDS, parse_wmex_result, wmex_query_node
-from baileys.newsletter import newsletter_fetch_messages_node, newsletter_metadata_query, parse_newsletter_metadata
+from baileys.media import MediaConn, MediaHost, MediaUploadResult
+from baileys.newsletter import (
+    newsletter_fetch_messages_node,
+    newsletter_metadata_query,
+    parse_newsletter_metadata,
+    parse_newsletter_notification_events,
+)
 from baileys.socket import make_socket
 from baileys.wabinary import BinaryNode
 
@@ -53,10 +60,26 @@ def test_business_catalog_nodes_and_parsers():
     assert catalog.attrs["jid"] == "123@s.whatsapp.net"
     assert catalog.content[-1].tag == "after"
 
-    create = product_create_node({"name": "Tea", "price": 1200, "currency": "INR", "is_hidden": False}, "tag-2")
+    create = product_create_node(
+        {
+            "name": "Tea",
+            "price": 1200,
+            "currency": "INR",
+            "is_hidden": False,
+            "images": [{"url": "https://mmg.whatsapp.net/product/image/abc"}],
+            "origin_country_code": None,
+        },
+        "tag-2",
+    )
     product = create.content[0].content[0]
     assert product.tag == "product"
-    assert [child.tag for child in product.content] == ["name", "currency", "price", "is_hidden"]
+    assert product.attrs == {"compliance_category": "COUNTRY_ORIGIN_EXEMPT", "is_hidden": "false"}
+    assert [child.tag for child in product.content] == ["name", "currency", "price", "media"]
+    assert product.content[-1].content[0].content[0].content == b"https://mmg.whatsapp.net/product/image/abc"
+
+    edit = product_create_node({"name": "Tea", "retailerId": "sku-1", "originCountryCode": "IN"}, "tag-2b")
+    edit_product = edit.content[0].content[0]
+    assert [child.tag for child in edit_product.content] == ["name", "retailer_id", "compliance_info"]
 
     parsed = parse_catalog(
         BinaryNode(
@@ -74,6 +97,23 @@ def test_business_catalog_nodes_and_parsers():
                                 BinaryNode("id", {}, b"p1"),
                                 BinaryNode("name", {}, b"Tea"),
                                 BinaryNode("price", {}, b"1200"),
+                                BinaryNode("retailer_id", {}, b"sku-1"),
+                                BinaryNode("url", {}, b"https://example.test/item"),
+                                BinaryNode(
+                                    "media",
+                                    {},
+                                    [
+                                        BinaryNode(
+                                            "image",
+                                            {},
+                                            [
+                                                BinaryNode("request_image_url", {}, b"https://mmg.whatsapp.net/requested"),
+                                                BinaryNode("original_image_url", {}, b"https://mmg.whatsapp.net/original"),
+                                            ],
+                                        )
+                                    ],
+                                ),
+                                BinaryNode("status_info", {}, [BinaryNode("status", {}, b"APPROVED")]),
                             ],
                         )
                     ],
@@ -84,6 +124,13 @@ def test_business_catalog_nodes_and_parsers():
     assert parsed.next_cursor == "next"
     assert parsed.products[0].id == "p1"
     assert parsed.products[0].price == 1200
+    assert parsed.products[0].retailer_id == "sku-1"
+    assert parsed.products[0].url == "https://example.test/item"
+    assert parsed.products[0].image_urls == {
+        "requested": "https://mmg.whatsapp.net/requested",
+        "original": "https://mmg.whatsapp.net/original",
+    }
+    assert parsed.products[0].review_status == {"whatsapp": "APPROVED"}
 
     delete = product_delete_node(["p1", "p2"], "tag-3")
     assert delete.content[0].tag == "product_catalog_delete"
@@ -93,6 +140,19 @@ def test_business_catalog_nodes_and_parsers():
     assert cover.content[0].content[0].attrs == {"id": "fb1", "op": "update", "token": "tok", "ts": "123"}
     remove_cover = cover_photo_remove_node("fb1", "tag-5")
     assert remove_cover.content[0].content[0].attrs == {"op": "delete", "id": "fb1"}
+
+
+def test_parse_product_handles_hidden_attrs_and_uploaded_image_urls():
+    product = parse_product(
+        BinaryNode(
+            "product",
+            {"id": "p2", "name": "Coffee", "is_hidden": "true"},
+            [BinaryNode("media", {}, [BinaryNode("image", {}, [BinaryNode("url", {}, b"https://mmg.whatsapp.net/product")])])],
+        )
+    )
+    assert product.id == "p2"
+    assert product.hidden is True
+    assert product.image_urls == {"url": "https://mmg.whatsapp.net/product"}
 
 
 def test_wmex_and_newsletter_shapes_parse():
@@ -113,6 +173,88 @@ def test_wmex_and_newsletter_shapes_parse():
     fetch = newsletter_fetch_messages_node("1@newsletter", 10, since=5, after=6, tag_id="m3")
     assert fetch.attrs["xmlns"] == "newsletter"
     assert fetch.content[0].attrs == {"count": "10", "since": "5", "after": "6"}
+
+    events = parse_newsletter_notification_events(
+        BinaryNode(
+            "notification",
+            {"from": "1@newsletter", "participant": "admin@s.whatsapp.net", "type": "newsletter"},
+            [
+                BinaryNode("reaction", {"message_id": "77"}, [BinaryNode("reaction", {}, b"+1")]),
+                BinaryNode("view", {"message_id": "78"}, b"12"),
+                BinaryNode("participant", {"jid": "user@s.whatsapp.net", "action": "promote", "role": "ADMIN"}),
+                BinaryNode(
+                    "update",
+                    {},
+                    [BinaryNode("settings", {}, [BinaryNode("name", {}, b"News"), BinaryNode("description", {}, b"Updates")])],
+                ),
+            ],
+        )
+    )
+    assert [event for event, _ in events] == [
+        "newsletter.reaction",
+        "newsletter.view",
+        "newsletter-participants.update",
+        "newsletter-settings.update",
+    ]
+    assert events[0][1].reaction == {"count": 1, "code": "+1"}
+    assert events[1][1].count == 12
+    assert events[2][1].new_role == "ADMIN"
+    assert events[3][1].update == {"name": "News", "description": "Updates"}
+
+    mex_events = parse_newsletter_notification_events(
+        BinaryNode(
+            "notification",
+            {"type": "mex", "from": "server@s.whatsapp.net"},
+            [
+                BinaryNode(
+                    "mex",
+                    {},
+                    json.dumps(
+                        {
+                            "operation": "NotificationNewsletterAdminPromote",
+                            "updates": [{"jid": "1@newsletter", "user": "user@s.whatsapp.net"}],
+                        }
+                    ).encode(),
+                )
+            ],
+        )
+    )
+    assert mex_events[0][0] == "newsletter-participants.update"
+    assert mex_events[0][1].action == "promote"
+
+
+def test_client_dispatch_emits_newsletter_events(tmp_path):
+    async def scenario():
+        client = make_socket(_creds_with_app_state(tmp_path))
+        reactions = []
+        views = []
+        participants = []
+        settings = []
+        client.ev.on("newsletter.reaction", lambda payload: reactions.append(payload))
+        client.ev.on("newsletter.view", lambda payload: views.append(payload))
+        client.ev.on("newsletter-participants.update", lambda payload: participants.append(payload))
+        client.ev.on("newsletter-settings.update", lambda payload: settings.append(payload))
+
+        info = await client.dispatch_notification_node(
+            BinaryNode(
+                "notification",
+                {"id": "n1", "from": "1@newsletter", "participant": "admin@s.whatsapp.net", "type": "newsletter"},
+                [
+                    BinaryNode("reaction", {"message_id": "77"}, [BinaryNode("reaction", {}, b"+1")]),
+                    BinaryNode("view", {"message_id": "78"}, b"3"),
+                    BinaryNode("participant", {"jid": "user@s.whatsapp.net", "action": "promote", "role": "ADMIN"}),
+                    BinaryNode("update", {}, [BinaryNode("settings", {}, [BinaryNode("name", {}, b"News")])]),
+                ],
+            )
+        )
+
+        assert info.category == "newsletter"
+        assert reactions[0].server_id == "77"
+        assert views[0].count == 3
+        assert participants[0].user == "user@s.whatsapp.net"
+        assert settings[0].update == {"name": "News"}
+
+    asyncio.run(scenario())
 
 
 def test_community_nodes_and_parser():
@@ -194,17 +336,20 @@ def test_label_chat_modifications_build_app_state_patches():
     assert remove_message.sync_action.labelAssociationAction.labeled is False
 
 
-def test_phase7_client_methods_call_expected_queries(tmp_path):
+def test_phase7_client_methods_call_expected_queries(tmp_path, monkeypatch):
     async def scenario():
         client = make_socket(_creds_with_app_state(tmp_path))
         queries = []
         sent = []
+        media_requests = []
 
         async def fake_query(node, **kwargs):
             queries.append(node)
             if node.attrs.get("xmlns") == "w:mex":
                 path = "xwa2_newsletter"
                 return BinaryNode("iq", {}, [BinaryNode("result", {}, json.dumps({"data": {path: {"id": "n@newsletter"}}}).encode())])
+            if node.attrs.get("xmlns") == "w:biz:catalog" and node.content[0].tag == "product_catalog_add":
+                return BinaryNode("iq", {}, [node.content[0]])
             if node.tag == "call":
                 return BinaryNode("call", node.attrs, [BinaryNode("link_create", {"token": "abc"})])
             if node.attrs.get("xmlns") == "w:biz:catalog" and node.content[0].tag == "product_catalog_delete":
@@ -216,10 +361,22 @@ def test_phase7_client_methods_call_expected_queries(tmp_path):
         async def fake_send(node):
             sent.append(node)
 
+        async def fake_media_conn(**kwargs):
+            return MediaConn(auth="auth", ttl=3600, hosts=[MediaHost(hostname="mmg.whatsapp.net")])
+
+        async def fake_upload_raw_media(data, media_conn, file_sha256, media_type, **kwargs):
+            media_requests.append((data, media_type, media_conn.hosts[0].hostname))
+            return MediaUploadResult(host="mmg.whatsapp.net", direct_path="/product/image/uploaded")
+
         client.query = fake_query  # type: ignore[method-assign]
         client.send_node = fake_send  # type: ignore[method-assign]
+        client._get_media_conn = fake_media_conn  # type: ignore[method-assign]
+        monkeypatch.setattr("baileys.socket.upload_raw_media", fake_upload_raw_media)
 
         await client.update_business_profile({"description": "hello"})
+        created = await client.product_create({"name": "Tea", "images": [b"image-bytes"]})
+        assert created.image_urls == {"url": "https://mmg.whatsapp.net/product/image/uploaded"}
+        assert media_requests == [(b"image-bytes", "product-catalog-image", "mmg.whatsapp.net")]
         assert await client.product_delete(["p1"]) == {"deleted": 1}
         assert (await client.newsletter_metadata("jid", "n@newsletter")).id == "n@newsletter"
         assert (await client.community_metadata("123@g.us")).id == "123@g.us"
@@ -229,6 +386,12 @@ def test_phase7_client_methods_call_expected_queries(tmp_path):
 
         assert queries[0].content[0].tag == "business_profile"
         assert any(node.attrs.get("xmlns") == "w:stats" for node in queries)
+        assert any(
+            node.attrs.get("xmlns") == "w:biz:catalog"
+            and node.content[0].tag == "product_catalog_add"
+            and node.content[0].content[0].content[-1].tag == "media"
+            for node in queries
+        )
         assert sent[0].tag == "call"
         assert client.newsletterMetadata.__func__ is client.newsletter_metadata.__func__
         assert client.communityMetadata.__func__ is client.community_metadata.__func__
