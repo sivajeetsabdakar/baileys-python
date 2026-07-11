@@ -615,10 +615,36 @@ def chat_modification_to_app_patch(modification: dict[str, Any], jid: str) -> Ap
     if "pushNameSetting" in modification:
         value.pushNameSetting.name = str(modification["pushNameSetting"])
         return AppPatchCreate("critical_block", ["setting_pushName"], value, 1)
+    if "contact" in modification:
+        contact = modification["contact"]
+        if contact:
+            if contact.get("fullName") is not None:
+                value.contactAction.fullName = str(contact["fullName"])
+            if contact.get("firstName") is not None:
+                value.contactAction.firstName = str(contact["firstName"])
+            if contact.get("lidJid") is not None:
+                value.contactAction.lidJid = str(contact["lidJid"])
+            if contact.get("saveOnPrimaryAddressbook") is not None:
+                value.contactAction.saveOnPrimaryAddressbook = bool(contact["saveOnPrimaryAddressbook"])
+            if contact.get("pnJid") is not None:
+                value.contactAction.pnJid = str(contact["pnJid"])
+            if contact.get("username") is not None:
+                value.contactAction.username = str(contact["username"])
+            return AppPatchCreate("critical_unblock_low", ["contact", jid], value, 2)
+        return AppPatchCreate("critical_unblock_low", ["contact", jid], value, 2, proto.SyncdMutation.REMOVE)
     if "disableLinkPreviews" in modification:
         action = modification["disableLinkPreviews"] or {}
         value.privacySettingDisableLinkPreviewsAction.isPreviewsDisabled = bool(action.get("isPreviewsDisabled"))
         return AppPatchCreate("regular", ["setting_disableLinkPreviews"], value, 8)
+    if "quickReply" in modification:
+        quick_reply = modification["quickReply"] or {}
+        value.quickReplyAction.count = int(quick_reply.get("count") or 0)
+        value.quickReplyAction.deleted = bool(quick_reply.get("deleted", False))
+        value.quickReplyAction.keywords.extend(str(item) for item in quick_reply.get("keywords") or [])
+        value.quickReplyAction.message = str(quick_reply.get("message") or "")
+        value.quickReplyAction.shortcut = str(quick_reply.get("shortcut") or "")
+        timestamp = str(quick_reply.get("timestamp") or int(time.time()))
+        return AppPatchCreate("regular", ["quick_reply", timestamp], value, 2)
     if "addLabel" in modification:
         label = modification["addLabel"]
         label_id = str(label["id"])

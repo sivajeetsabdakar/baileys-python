@@ -313,6 +313,8 @@ tests are stable.
 - Added label app-state patch helpers for label edit, chat label association,
   and message label association through `chat_modify`, plus common
   Baileys-style aliases.
+- Added contact and quick-reply app-state patch helpers with common
+  Baileys-style aliases.
 - Added reporting-token helpers for protobuf field filtering, message-secret
   key derivation, and `reporting/reporting_token` node generation.
 - Added privacy-token helpers for trusted-contact token storage, expiry
@@ -321,6 +323,8 @@ tests are stable.
   disappearing-duration fetch, presence subscription, batch receipts, dirty-bit
   cleanup, default disappearing mode, link-preview privacy, and starred
   message patches.
+- Added public wrappers for media connection refresh, current media host,
+  media upload, and USync device discovery.
 - Added `scripts/phase7_live_probe.py` for read-only live checks of catalog,
   MEX reachout/message-capping, newsletter metadata, community metadata, and
   optional WAM stats upload.
@@ -328,8 +332,9 @@ tests are stable.
   shapes, newsletter live-event parsing and dispatch, business/catalog/product
   nodes, catalog product image preparation, community nodes/parsers, label
   app-state patches, reporting tokens, privacy tokens, status/disappearing
-  USync parsers, presence subscription, batch receipt aggregation, public
-  exports, client aliases, and the public API parity manifest.
+  USync parsers, presence subscription, contact and quick-reply app-state
+  patches, batch receipt aggregation, media/USync wrappers, public exports,
+  client aliases, and the public API parity manifest.
 - Live read-only Phase 7 proof currently confirms account reachout timelock
   MEX access. Catalog reads are account-gated on the current non-catalog
   account with `item-not-found`, and message-capping MEX currently returns a

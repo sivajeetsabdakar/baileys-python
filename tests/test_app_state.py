@@ -62,6 +62,28 @@ def test_chat_modification_builds_expected_patch_types():
     assert link_previews.index == ["setting_disableLinkPreviews"]
     assert link_previews.sync_action.privacySettingDisableLinkPreviewsAction.isPreviewsDisabled is True
 
+    contact = chat_modification_to_app_patch(
+        {"contact": {"fullName": "Ada Lovelace", "firstName": "Ada", "pnJid": "123@s.whatsapp.net"}},
+        "123@s.whatsapp.net",
+    )
+    assert contact.patch_type == "critical_unblock_low"
+    assert contact.index == ["contact", "123@s.whatsapp.net"]
+    assert contact.sync_action.contactAction.fullName == "Ada Lovelace"
+    assert contact.sync_action.contactAction.pnJid == "123@s.whatsapp.net"
+
+    remove_contact = chat_modification_to_app_patch({"contact": None}, "123@s.whatsapp.net")
+    assert remove_contact.operation == proto.SyncdMutation.REMOVE
+
+    quick_reply = chat_modification_to_app_patch(
+        {"quickReply": {"timestamp": "100", "shortcut": "hi", "message": "Hello", "keywords": ["hello"]}},
+        "",
+    )
+    assert quick_reply.patch_type == "regular"
+    assert quick_reply.index == ["quick_reply", "100"]
+    assert quick_reply.sync_action.quickReplyAction.shortcut == "hi"
+    assert quick_reply.sync_action.quickReplyAction.message == "Hello"
+    assert list(quick_reply.sync_action.quickReplyAction.keywords) == ["hello"]
+
 
 def test_app_state_patch_node_encodes_syncd_patch_and_updates_state():
     creds = _app_state_creds()

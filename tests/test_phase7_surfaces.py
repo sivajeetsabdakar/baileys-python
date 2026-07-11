@@ -372,6 +372,30 @@ def test_phase7_client_methods_call_expected_queries(tmp_path, monkeypatch):
                 )
             if node.attrs.get("xmlns") == "usync":
                 protocol = node.content[0].content[0].content[0].tag
+                if protocol == "devices":
+                    return BinaryNode(
+                        "iq",
+                        {"type": "result"},
+                        [
+                            BinaryNode(
+                                "usync",
+                                {},
+                                [
+                                    BinaryNode(
+                                        "list",
+                                        {},
+                                        [
+                                            BinaryNode(
+                                                "user",
+                                                {"jid": "peer@s.whatsapp.net"},
+                                                [BinaryNode("devices", {}, [BinaryNode("device-list", {}, [BinaryNode("device", {"id": "0"})])])],
+                                            )
+                                        ],
+                                    )
+                                ],
+                            )
+                        ],
+                    )
                 child = (
                     BinaryNode("status", {"t": "100"}, b"ready")
                     if protocol == "status"
@@ -408,10 +432,15 @@ def test_phase7_client_methods_call_expected_queries(tmp_path, monkeypatch):
             media_requests.append((data, media_type, media_conn.hosts[0].hostname))
             return MediaUploadResult(host="mmg.whatsapp.net", direct_path="/product/image/uploaded")
 
+        async def fake_upload_media(data, media_conn, file_enc_sha256, media_type, **kwargs):
+            media_requests.append((data, media_type, media_conn.hosts[0].hostname))
+            return MediaUploadResult(host="mmg.whatsapp.net", media_url="https://mmg.whatsapp.net/uploaded")
+
         client.query = fake_query  # type: ignore[method-assign]
         client.send_node = fake_send  # type: ignore[method-assign]
         client._get_media_conn = fake_media_conn  # type: ignore[method-assign]
         monkeypatch.setattr("baileys.socket.upload_raw_media", fake_upload_raw_media)
+        monkeypatch.setattr("baileys.socket.upload_media", fake_upload_media)
 
         await client.update_business_profile({"description": "hello"})
         business_profile = await client.get_business_profile("biz@s.whatsapp.net")
@@ -425,9 +454,20 @@ def test_phase7_client_methods_call_expected_queries(tmp_path, monkeypatch):
         await client.update_disable_link_previews_privacy(True)
         clean = await client.clean_dirty_bits("account_sync", from_timestamp=123)
         presence = await client.presence_subscribe("peer@s.whatsapp.net")
+        await client.add_or_edit_contact("peer@s.whatsapp.net", {"fullName": "Peer", "pnJid": "peer@s.whatsapp.net"})
+        await client.remove_contact("peer@s.whatsapp.net")
+        await client.add_or_edit_quick_reply({"timestamp": "100", "shortcut": "hi", "message": "Hello"})
+        await client.remove_quick_reply("100")
+        media_conn = await client.refresh_media_conn(force=True)
+        client._media_conn = media_conn
+        assert client.get_media_host() == "mmg.whatsapp.net"
+        upload = await client.wa_upload_to_server(b"plain-image", "image")
+        devices = await client.get_usync_devices(["peer@s.whatsapp.net"], ignore_zero_devices=False)
+        assert upload.media_url == "https://mmg.whatsapp.net/uploaded"
+        assert devices[0].jid == "peer@s.whatsapp.net"
         created = await client.product_create({"name": "Tea", "images": [b"image-bytes"]})
         assert created.image_urls == {"url": "https://mmg.whatsapp.net/product/image/uploaded"}
-        assert media_requests == [(b"image-bytes", "product-catalog-image", "mmg.whatsapp.net")]
+        assert media_requests[-1] == (b"image-bytes", "product-catalog-image", "mmg.whatsapp.net")
         assert await client.product_delete(["p1"]) == {"deleted": 1}
         assert (await client.newsletter_metadata("jid", "n@newsletter")).id == "n@newsletter"
         assert (await client.community_metadata("123@g.us")).id == "123@g.us"
@@ -460,5 +500,13 @@ def test_phase7_client_methods_call_expected_queries(tmp_path, monkeypatch):
         assert client.cleanDirtyBits.__func__ is client.clean_dirty_bits.__func__
         assert client.updateDefaultDisappearingMode.__func__ is client.update_default_disappearing_mode.__func__
         assert client.updateDisableLinkPreviewsPrivacy.__func__ is client.update_disable_link_previews_privacy.__func__
+        assert client.addOrEditContact.__func__ is client.add_or_edit_contact.__func__
+        assert client.removeContact.__func__ is client.remove_contact.__func__
+        assert client.addOrEditQuickReply.__func__ is client.add_or_edit_quick_reply.__func__
+        assert client.removeQuickReply.__func__ is client.remove_quick_reply.__func__
+        assert client.refreshMediaConn.__func__ is client.refresh_media_conn.__func__
+        assert client.getMediaHost.__func__ is client.get_media_host.__func__
+        assert client.waUploadToServer.__func__ is client.wa_upload_to_server.__func__
+        assert client.getUSyncDevices.__func__ is client.get_usync_devices.__func__
 
     asyncio.run(scenario())

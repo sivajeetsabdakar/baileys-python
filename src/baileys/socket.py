@@ -136,6 +136,7 @@ from .communities import (
 from .media import (
     MediaConn,
     MediaPayload,
+    MediaUploadResult,
     decrypt_media,
     download_external_blob,
     download_media,
@@ -213,7 +214,7 @@ from .socket_nodes import (
     unified_session_node,
 )
 from .store import InMemoryStore
-from .usync import conversation_identities, extract_device_jids, parse_usync_result, split_own_and_other_devices, usync_devices_query_node
+from .usync import DeviceInfo, conversation_identities, extract_device_jids, parse_usync_result, split_own_and_other_devices, usync_devices_query_node
 from .wam import WAMBinaryInfo, encode_wam
 from .wabinary import BinaryNode
 from .messages import MessageKey, WAMessage, build_message_upsert
@@ -1073,6 +1074,51 @@ class WhatsAppClient:
         self._media_conn_expires_at = time.time() + max(0, media_conn.ttl - 60)
         return media_conn
 
+    async def refresh_media_conn(self, force: bool = False, *, timeout: float = 30) -> MediaConn:
+        if force:
+            self._media_conn = None
+            self._media_conn_expires_at = 0.0
+        return await self._get_media_conn(timeout=timeout)
+
+    def get_media_host(self) -> str:
+        if self._media_conn is not None and self._media_conn.hosts:
+            return self._media_conn.hosts[0].hostname
+        return "mmg.whatsapp.net"
+
+    async def wa_upload_to_server(
+        self,
+        data: bytes | bytearray | str | Path,
+        media_type: str,
+        *,
+        raw: bool = False,
+        timeout: float = 45,
+    ) -> MediaUploadResult:
+        payload = read_media_payload(data, media_type)
+        media_conn = await self._get_media_conn(timeout=timeout)
+        if raw:
+            return await upload_raw_media(payload.data, media_conn, sha256(payload.data), payload.media_type, timeout=int(timeout))
+        encrypted = encrypt_media(payload.data, payload.media_type)
+        return await upload_media(encrypted.encrypted, media_conn, encrypted.file_enc_sha256, payload.media_type, timeout=int(timeout))
+
+    async def get_usync_devices(
+        self,
+        jids: list[str],
+        *,
+        use_cache: bool = True,
+        ignore_zero_devices: bool = False,
+        timeout: float = 30,
+    ) -> list[DeviceInfo]:
+        result = await self.query(usync_devices_query_node(jids, self.queries.next_tag()), timeout=timeout, drive_receive=True)
+        parsed = parse_usync_result(result)
+        if not use_cache:
+            self._store_lid_pn_mappings(self.auth_state.credentials, parsed)
+        return extract_device_jids(
+            parsed,
+            self.auth_state.credentials["me"]["id"],
+            self.auth_state.credentials.get("me", {}).get("lid"),
+            exclude_zero_devices=ignore_zero_devices,
+        )
+
     async def group_metadata(self, jid: str, *, timeout: float = 30) -> GroupMetadata:
         result = await self._query_checked(group_metadata_node(jid, self.queries.next_tag()), timeout=timeout)
         metadata = parse_group_metadata(result)
@@ -1660,6 +1706,18 @@ class WhatsAppClient:
         )
         child = find_child(result, "link_create")
         return child.attrs.get("token") if child is not None else None
+
+    async def add_or_edit_contact(self, jid: str, contact: dict[str, Any], *, timeout: float = 30) -> BinaryNode:
+        return await self.chat_modify({"contact": contact}, jid, timeout=timeout)
+
+    async def remove_contact(self, jid: str, *, timeout: float = 30) -> BinaryNode:
+        return await self.chat_modify({"contact": None}, jid, timeout=timeout)
+
+    async def add_or_edit_quick_reply(self, quick_reply: dict[str, Any], *, timeout: float = 30) -> BinaryNode:
+        return await self.chat_modify({"quickReply": quick_reply}, "", timeout=timeout)
+
+    async def remove_quick_reply(self, timestamp: str, *, timeout: float = 30) -> BinaryNode:
+        return await self.chat_modify({"quickReply": {"timestamp": timestamp, "deleted": True}}, "", timeout=timeout)
 
     async def add_label(self, jid: str, label: dict[str, Any], *, timeout: float = 30) -> BinaryNode:
         return await self.chat_modify({"addLabel": label}, jid, timeout=timeout)
@@ -2419,6 +2477,10 @@ class WhatsAppClient:
     relayMessage = relay_message
     downloadMediaMessage = download_media_message
     sendMediaMessage = send_media_message
+    refreshMediaConn = refresh_media_conn
+    getMediaHost = get_media_host
+    waUploadToServer = wa_upload_to_server
+    getUSyncDevices = get_usync_devices
     sendNode = send_node
     receiveNodes = receive_nodes
     sendAck = send_ack
@@ -2520,6 +2582,10 @@ class WhatsAppClient:
     communityJoinApprovalMode = community_join_approval_mode
     rejectCall = reject_call
     createCallLink = create_call_link
+    addOrEditContact = add_or_edit_contact
+    removeContact = remove_contact
+    addOrEditQuickReply = add_or_edit_quick_reply
+    removeQuickReply = remove_quick_reply
     addLabel = add_label
     addChatLabel = add_chat_label
     removeChatLabel = remove_chat_label
