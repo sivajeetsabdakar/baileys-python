@@ -13,6 +13,10 @@ simple defaults while adding durable adapters behind stable interfaces.
   completes successfully.
 - `InMemoryStore` is bindable to socket events and idempotent for duplicate
   message ids.
+- `ReplayStore` defines recent outbound replay persistence, with
+  `InMemoryReplayStore` as the default implementation.
+- `binary_node_to_json` and `binary_node_from_json` preserve BinaryNode attrs,
+  byte content, string content, and child nodes for durable replay adapters.
 
 ## Interfaces
 
@@ -64,6 +68,10 @@ Target methods:
 - `load_app_state(collection)`
 - `save_recent_outbound(message_id, node, expires_at)`
 - `load_recent_outbound(message_id)`
+
+The socket calls these through `ReplayStore` after a message node is sent and
+again when a retry receipt needs a replay. Expired or missing entries are
+treated as unavailable messages, not socket errors.
 
 ## SQLite Adapter
 
@@ -207,8 +215,8 @@ Risky Redis uses:
 ## Serialization
 
 - WAProto messages should be stored as protobuf bytes when possible.
-- Binary nodes can be stored as JSON using the package node conversion helper
-  once added.
+- Binary nodes can be stored as JSON using `binary_node_to_json` and restored
+  with `binary_node_from_json`.
 - Credentials and Signal records stay JSON-compatible to preserve current auth
   files.
 - Unknown fields must be preserved.
@@ -217,11 +225,15 @@ Risky Redis uses:
 
 1. Define public storage protocols for credentials, signal keys, app-state
    state, LID/PN mappings, recent outbound replay, and event store operations.
+   Recent outbound replay is now covered by `ReplayStore`; the other storage
+   protocols remain future work.
 2. Refactor socket code to depend on protocols where concrete file stores are
    still assumed.
 3. Add SQLite credential and signal-key store.
 4. Add SQLite event store.
-5. Add replay cache integration for retry receipts.
+5. Add replay cache integration for retry receipts. This is done for the
+   public interface and in-memory default; SQLite persistence remains with the
+   SQLite adapter.
 6. Add LID/PN mapping store integration for USync, group metadata, and history.
 7. Add migration and backup helpers.
 8. Add Postgres adapter after SQLite semantics are stable.

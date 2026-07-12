@@ -192,6 +192,7 @@ from .receipts import (
     receipt_node_for_message,
     receipt_status_from_type,
 )
+from .replay import InMemoryReplayStore, ReplayEntry, ReplayStore, binary_node_from_json, binary_node_to_json
 from .reporting import getMessageReportingToken, get_message_reporting_token, shouldIncludeReportingToken, should_include_reporting_token
 from .socket import MediaSendResult, ReconnectPolicy, SendMessageResult, SocketConfig, WhatsAppClient, make_socket, makeWASocket
 from .store import Chat, Contact, InMemoryStore, makeInMemoryStore, make_in_memory_store
@@ -255,6 +256,7 @@ __all__ = [
     "HistorySyncResult",
     "IQError",
     "InMemoryStore",
+    "InMemoryReplayStore",
     "JidParts",
     "JsonCredentialStore",
     "LTHashState",
@@ -293,6 +295,8 @@ __all__ = [
     "QueryManager",
     "QueryResult",
     "ReconnectPolicy",
+    "ReplayEntry",
+    "ReplayStore",
     "ReceiptInfo",
     "RetryOutcome",
     "RetryRequest",
@@ -338,6 +342,8 @@ __all__ = [
     "build_message_upsert",
     "build_receipt_node",
     "build_text_message_node",
+    "binary_node_from_json",
+    "binary_node_to_json",
     "group_invite_message",
     "group_get_invite_info_node",
     "group_join_approval_mode_node",

@@ -56,6 +56,11 @@ def test_public_api_exports_core_building_blocks():
     assert bpt.ReceiptInfo
     assert bpt.RetryRequest
     assert bpt.RetryOutcome
+    assert bpt.ReplayEntry
+    assert bpt.ReplayStore
+    assert bpt.InMemoryReplayStore
+    assert callable(bpt.binary_node_to_json)
+    assert callable(bpt.binary_node_from_json)
     assert bpt.AppStateKeys
     assert bpt.AppStateCollectionSync
     assert bpt.AppliedAppStateSync
@@ -80,6 +85,9 @@ def test_public_api_exports_core_building_blocks():
     assert hasattr(bpt.WhatsAppClient, "logout")
     assert hasattr(bpt.WhatsAppClient, "ReconnectPolicy")
     assert hasattr(bpt.WhatsAppClient, "resendMessageForRetry")
+    assert hasattr(bpt.WhatsAppClient, "saveRecentOutbound")
+    assert hasattr(bpt.WhatsAppClient, "loadRecentOutbound")
+    assert hasattr(bpt.WhatsAppClient, "pruneRecentOutbound")
     assert callable(bpt.parse_receipt_info)
     assert callable(bpt.parse_retry_request)
     assert callable(bpt.receipt_status_from_type)

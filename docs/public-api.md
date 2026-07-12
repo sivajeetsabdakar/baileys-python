@@ -113,6 +113,23 @@ Useful catch surfaces:
 - `IQError`
 - `MexError`
 
+## Replay Store
+
+Retry receipts can replay recently sent outbound message nodes through the
+socket replay store. The default `InMemoryReplayStore` preserves current
+behavior; applications can pass another `ReplayStore` implementation to
+`make_socket` when recent outbound replay should survive process restarts.
+
+Useful helpers:
+
+- `ReplayStore`
+- `InMemoryReplayStore`
+- `binary_node_to_json`
+- `binary_node_from_json`
+- `client.save_recent_outbound`
+- `client.load_recent_outbound`
+- `client.prune_recent_outbound`
+
 ## Sending Messages
 
 Pythonic methods and Baileys aliases both work:

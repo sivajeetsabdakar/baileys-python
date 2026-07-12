@@ -120,7 +120,6 @@ Secrets to avoid logging:
 Phase 8:
 
 - deeper API-specific typed errors.
-- durable replay interface.
 - SQLite auth/store prototype if small enough.
 - release soak planning.
 

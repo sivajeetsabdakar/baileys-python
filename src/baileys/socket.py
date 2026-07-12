@@ -206,6 +206,7 @@ from .receipts import (
     parse_receipt_info,
     parse_retry_request,
 )
+from .replay import InMemoryReplayStore, ReplayStore
 from .retry import RetrySessionBundle, inject_retry_session_from_receipt
 from .session_assert import encrypt_session_query_node, inject_sessions_from_encrypt_result
 from .socket_nodes import (
@@ -277,6 +278,7 @@ class SocketConfig:
     auto_prekey_maintenance: bool = True
     reconnect_policy: ReconnectPolicy = field(default_factory=ReconnectPolicy)
     max_msg_retry_count: int = 5
+    replay_ttl_seconds: float = 300
 
 
 @dataclass(frozen=True)
@@ -356,6 +358,8 @@ class WhatsAppClient:
         reconnect_multiplier: float = 2,
         max_msg_retry_count: int = 5,
         logger: logging.Logger | None = None,
+        replay_store: ReplayStore | None = None,
+        replay_ttl_seconds: float = 300,
     ) -> None:
         self.auth_state = _coerce_auth_state(auth)
         self.config = SocketConfig(
@@ -373,6 +377,7 @@ class WhatsAppClient:
                 multiplier=reconnect_multiplier,
             ),
             max_msg_retry_count=max_msg_retry_count,
+            replay_ttl_seconds=replay_ttl_seconds,
         )
         self.ev = EventEmitter()
         self.events = self.ev
@@ -390,6 +395,7 @@ class WhatsAppClient:
         self._server_time_offset_ms = 0
         self._message_retry_counts: dict[tuple[str, str | None], int] = {}
         self._recent_outbound: dict[str, BinaryNode] = {}
+        self.replay_store = replay_store or InMemoryReplayStore()
         self._media_conn: MediaConn | None = None
         self._media_conn_expires_at = 0.0
         self.logger = logger or get_logger("socket")
@@ -885,7 +891,7 @@ class WhatsAppClient:
 
         await self.send_node(outbound.node)
         await self._commit_credentials(self.auth_state.credentials)
-        self._recent_outbound[outbound.message_id] = outbound.node
+        self.save_recent_outbound(outbound.message_id, outbound.node)
         acked = await self._wait_for_message_ack(outbound.message_id, timeout) if timeout > 0 else False
         await self.ev.emit(
             "messages.send",
@@ -2270,11 +2276,29 @@ class WhatsAppClient:
     async def resend_message_for_retry(self, request: RetryRequest) -> bool:
         if not request.key.id:
             return False
-        node = self._recent_outbound.get(request.key.id)
+        node = self.load_recent_outbound(request.key.id)
         if node is None:
             return False
         await self.send_node(node)
         return True
+
+    def save_recent_outbound(self, message_id: str, node: BinaryNode, *, ttl: float | None = None) -> None:
+        if not message_id:
+            return
+        expires_at = time.time() + (self.config.replay_ttl_seconds if ttl is None else ttl)
+        self._recent_outbound[message_id] = node
+        self.replay_store.save_recent_outbound(message_id, node, expires_at)
+
+    def load_recent_outbound(self, message_id: str) -> BinaryNode | None:
+        node = self.replay_store.load_recent_outbound(message_id)
+        if node is not None:
+            self._recent_outbound[message_id] = node
+            return node
+        self._recent_outbound.pop(message_id, None)
+        return None
+
+    def prune_recent_outbound(self) -> int:
+        return self.replay_store.prune_expired()
 
     async def send_ack(self, node: BinaryNode, *, error_code: int | None = None) -> bool:
         if not self.config.auto_ack or not can_ack_node(node):
@@ -2732,6 +2756,9 @@ class WhatsAppClient:
     sendReceipts = send_receipts
     readMessages = read_messages
     resendMessageForRetry = resend_message_for_retry
+    saveRecentOutbound = save_recent_outbound
+    loadRecentOutbound = load_recent_outbound
+    pruneRecentOutbound = prune_recent_outbound
     waitForSuccess = wait_for_success
     groupMetadata = group_metadata
     groupCreate = group_create
