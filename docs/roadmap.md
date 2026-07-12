@@ -362,13 +362,14 @@ tests are stable.
   `updateMediaMessage`, public exports, client aliases, and the public API
   parity manifest.
 - Live Phase 7 proof currently confirms WhatsApp Business QR pairing, saved
-  reconnect, business profile fetch, catalog read, reversible product update,
-  and account reachout timelock MEX access. Node-shaped hidden product creation
-  reaches the catalog server but currently returns `bad-request` on this
-  account. Message-capping MEX currently returns a server GraphQL bad request
-  for this account/request shape. WAM stats upload is wired but currently times
-  out waiting for a server IQ response on this account.
-- Remaining Phase 7 parity gaps are product create/delete live proof,
+  reconnect, business profile fetch, catalog read, temporary product
+  create/delete using an existing catalog image, reversible product update, and
+  account reachout timelock MEX access. Product creation with a freshly
+  generated raw-upload image reaches the catalog server but currently returns
+  `bad-request` on this account. Message-capping MEX currently returns a server
+  GraphQL bad request for this account/request shape. WAM stats upload is wired
+  but currently times out waiting for a server IQ response on this account.
+- Remaining Phase 7 parity gaps are collections/order/cover-photo live proof,
   enabled-account newsletter/community live mutations, WAM upload live ACK
   proof, and broader live proof for low-level peer-data, bot, privacy-token,
   USync, and media retry edge surfaces.
@@ -427,11 +428,12 @@ tests are stable.
 - Latest Phase 6 re-verification applied all five saved app-state collections
   without blocked collections, decrypt errors, or history processing errors.
 - Latest Phase 7 probe confirms WhatsApp Business QR pairing, saved reconnect,
-  business profile fetch, catalog read, reversible product update, and account
-  reachout timelock MEX access. Temporary product creation reaches the catalog
-  server but returns `bad-request` on the current account. Message-capping
-  checks are server-gated on the current account, and optional WAM stats upload
-  is wired but timed out waiting for a server response.
+  business profile fetch, catalog read, temporary product create/delete using an
+  existing catalog image, reversible product update, and account reachout
+  timelock MEX access. Temporary product creation with a freshly generated
+  raw-upload image reaches the catalog server but returns `bad-request`.
+  Message-capping checks are server-gated on the current account, and optional
+  WAM stats upload is wired but timed out waiting for a server response.
 - Latest media retry probe captures inbound peer image media and receives a
   server ACK for the retry receipt. The final encrypted media-update response
   still depends on WhatsApp returning a reupload for unavailable media.

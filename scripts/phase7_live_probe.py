@@ -97,6 +97,16 @@ async def main() -> int:
                 async def catalog_write_step() -> object:
                     product_id = None
                     product_name = f"Baileys Python Probe {client.queries.next_tag()}"
+                    catalog_before_create = await client.get_catalog(args.business_jid, limit=5, timeout=args.timeout)
+                    image_url = next(
+                        (
+                            product.image_urls.get("original") or product.image_urls.get("requested")
+                            for product in catalog_before_create.products
+                            if product.image_urls
+                        ),
+                        None,
+                    )
+                    images = [{"url": image_url}] if image_url else [probe_product_image()]
                     try:
                         created = await client.product_create(
                             {
@@ -107,7 +117,7 @@ async def main() -> int:
                                 "retailerId": "baileys-python-probe",
                                 "originCountryCode": None,
                                 "isHidden": True,
-                                "images": [probe_product_image()],
+                                "images": images,
                             },
                             timeout=args.timeout,
                         )
@@ -119,6 +129,7 @@ async def main() -> int:
                         return {
                             "created_id": product_id,
                             "created_name": getattr(created, "name", None),
+                            "image_source": "existing_catalog" if image_url else "generated_upload",
                             "catalog_products_after_create": len(catalog_after_create.products),
                             "deleted": deleted,
                         }
