@@ -119,12 +119,10 @@ Secrets to avoid logging:
 
 Phase 8:
 
-- live-suite wrapper with JSON summary.
-- clean package build and install smoke.
 - stricter typed errors.
 - durable replay interface.
 - SQLite auth/store prototype if small enough.
-- example refresh for common bot-style usage.
+- release soak planning.
 
 Phase 9:
 

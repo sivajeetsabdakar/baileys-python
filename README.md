@@ -18,10 +18,11 @@ hardening is in progress:
 - proven crypto, Noise, Signal, WABinary, media, pairing-code, retry, USync, and
   saved-auth client modules copied from the spike
 - offline parity tests and minimal public API tests
-- examples for saved-auth login and pairing-code request
+- examples for saved-auth login, pairing-code request, and a small echo bot
 - compatibility matrix in `docs/compatibility-matrix.md`
 - public API guide in `docs/public-api.md`
 - migration guide for Node Baileys users in `docs/migration-guide.md`
+- release checklist in `docs/release-checklist.md`
 - architecture and remaining implementation designs in `docs/architecture-design.md`
 - live/proof scripts under `scripts/`
 - product QR pairing plus saved reconnect through

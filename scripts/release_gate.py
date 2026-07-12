@@ -86,6 +86,7 @@ def main() -> int:
     run_step("WAM generated check", [sys.executable, "scripts/generate_wam_constants.py", "--check"])
     docs_hygiene()
     import_smoke(sys.executable)
+    run_step("example pairing-code request", [sys.executable, "examples/pairing_code_request.py"])
 
     wheel: Path | None = None
     if not args.skip_build:

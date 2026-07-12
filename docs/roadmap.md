@@ -42,6 +42,8 @@ tests are stable.
   capability tracking, and probe result format.
 - `docs/release-hardening-design.md` defines Phase 8 and Phase 9 release gates,
   packaging checks, observability, and hardening backlog.
+- `docs/release-checklist.md` gives the maintainer checklist for core-beta
+  release candidates.
 
 ## Phase 0 Delivered
 
@@ -388,11 +390,15 @@ tests are stable.
   probes with redacted JSON summaries.
 - Added configurable `baileys` logger helpers and socket lifecycle/query/node
   log hooks with redacted node summaries.
+- Refreshed examples for saved-auth login, no-network pairing-code node
+  construction, and a small inbound echo bot. The release gate now runs the
+  no-network example smoke test.
+- Added `docs/release-checklist.md` for core-beta candidate review.
 - Phase 8 now treats the deferred Phase 7 live-proof items as Todo evidence
   gaps, not core-beta blockers, as long as gated cases report cleanly and the
   compatibility matrix stays explicit.
-- Next Phase 8 targets are refreshed examples for bot-style usage and
-  release-candidate checklist cleanup.
+- Next Phase 8 targets are stricter typed errors, durable replay interface
+  design, optional SQLite auth/store prototype, and release soak planning.
 
 ## Live Harness
 
