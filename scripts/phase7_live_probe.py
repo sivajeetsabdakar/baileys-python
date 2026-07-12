@@ -21,12 +21,17 @@ Probe = Callable[[], Awaitable[object]]
 
 def probe_product_image() -> bytes:
     try:
-        from PIL import Image
+        from PIL import Image, ImageDraw
     except ImportError as exc:
         raise RuntimeError("catalog write probe requires Pillow") from exc
 
     output = io.BytesIO()
-    Image.new("RGB", (100, 100), (36, 132, 255)).save(output, format="JPEG", quality=90)
+    image = Image.new("RGB", (640, 640), (245, 245, 235))
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((70, 70, 570, 570), outline=(28, 94, 86), width=12)
+    draw.ellipse((190, 150, 450, 410), fill=(67, 160, 142))
+    draw.text((150, 475), "Baileys Python Probe", fill=(20, 20, 20))
+    image.save(output, format="JPEG", quality=92)
     return output.getvalue()
 
 
@@ -55,6 +60,7 @@ async def main() -> int:
     parser.add_argument("--skip-mex", action="store_true")
     parser.add_argument("--send-wam", action="store_true", help="Send a minimal WAM stats buffer through w:stats.")
     parser.add_argument("--apply-catalog-write", action="store_true", help="Create and delete a temporary catalog product.")
+    parser.add_argument("--force-generated-catalog-image", action="store_true", help="Use a freshly generated upload for catalog writes.")
     parser.add_argument("--catalog-update-product-id", help="Temporarily rename an existing catalog product, then revert it.")
     parser.add_argument("--allow-limits", action="store_true", help="Exit successfully when account/server limits are reported.")
     args = parser.parse_args()
@@ -97,15 +103,17 @@ async def main() -> int:
                 async def catalog_write_step() -> object:
                     product_id = None
                     product_name = f"Baileys Python Probe {client.queries.next_tag()}"
-                    catalog_before_create = await client.get_catalog(args.business_jid, limit=5, timeout=args.timeout)
-                    image_url = next(
-                        (
-                            product.image_urls.get("original") or product.image_urls.get("requested")
-                            for product in catalog_before_create.products
-                            if product.image_urls
-                        ),
-                        None,
-                    )
+                    image_url = None
+                    if not args.force_generated_catalog_image:
+                        catalog_before_create = await client.get_catalog(args.business_jid, limit=5, timeout=args.timeout)
+                        image_url = next(
+                            (
+                                product.image_urls.get("original") or product.image_urls.get("requested")
+                                for product in catalog_before_create.products
+                                if product.image_urls
+                            ),
+                            None,
+                        )
                     images = [{"url": image_url}] if image_url else [probe_product_image()]
                     try:
                         created = await client.product_create(

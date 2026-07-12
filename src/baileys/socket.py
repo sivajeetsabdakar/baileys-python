@@ -1504,8 +1504,22 @@ class WhatsAppClient:
 
     async def product_create(self, product: dict[str, Any], *, timeout: float = 30) -> Any:
         product = await self._prepare_product_images(product, timeout=timeout)
-        result = await self._query_checked(product_create_node(product, self.queries.next_tag()), timeout=timeout)
+        try:
+            result = await self._query_checked(product_create_node(product, self.queries.next_tag()), timeout=timeout)
+        except (TimeoutError, asyncio.TimeoutError):
+            recovered = await self._recover_created_product(product, timeout=timeout)
+            if recovered is None:
+                raise
+            return recovered
         return parse_product_mutation(result, "product_catalog_add")
+
+    async def _recover_created_product(self, product: dict[str, Any], *, timeout: float) -> Any:
+        name = product.get("name")
+        if not name:
+            return None
+        catalog = await self.get_catalog(limit=50, timeout=timeout)
+        matches = [item for item in catalog.products if item.name == name]
+        return matches[0] if len(matches) == 1 else None
 
     async def product_update(self, product_id: str, product: dict[str, Any], *, timeout: float = 30) -> Any:
         product = await self._prepare_product_images(product, timeout=timeout)
@@ -1530,7 +1544,7 @@ class WhatsAppClient:
             payload = read_media_payload(source, "product-catalog-image", mimetype="image/jpeg")
             media_conn = media_conn or await self._get_media_conn(timeout=timeout)
             upload = await upload_raw_media(payload.data, media_conn, sha256(payload.data), payload.media_type, timeout=int(timeout))
-            direct_or_url = upload.media_url or media_url_from_direct_path(upload.direct_path, upload.host)
+            direct_or_url = media_url_from_direct_path(upload.direct_path) if upload.direct_path else upload.media_url
             prepared.append({"url": direct_or_url})
         return {**product, "images": prepared}
 

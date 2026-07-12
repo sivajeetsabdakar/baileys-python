@@ -258,6 +258,44 @@ def test_client_dispatch_emits_newsletter_events(tmp_path):
     asyncio.run(scenario())
 
 
+def test_product_create_recovers_from_timeout_by_catalog_name(tmp_path):
+    async def scenario():
+        client = make_socket(_creds_with_app_state(tmp_path))
+        sent_nodes = []
+
+        async def fake_query(node, **kwargs):
+            sent_nodes.append(node)
+            if node.content[0].tag == "product_catalog_add":
+                raise TimeoutError()
+            return BinaryNode(
+                "iq",
+                {"type": "result"},
+                [
+                    BinaryNode(
+                        "product_catalog",
+                        {},
+                        [
+                            BinaryNode(
+                                "product",
+                                {},
+                                [
+                                    BinaryNode("id", {}, b"created-1"),
+                                    BinaryNode("name", {}, b"Unique Probe Product"),
+                                ],
+                            )
+                        ],
+                    )
+                ],
+            )
+
+        client._query_checked = fake_query  # type: ignore[method-assign]
+        created = await client.product_create({"name": "Unique Probe Product"})
+        assert created.id == "created-1"
+        assert [node.content[0].tag for node in sent_nodes] == ["product_catalog_add", "product_catalog"]
+
+    asyncio.run(scenario())
+
+
 def test_community_nodes_and_parser():
     node = community_create_node("Community", "Description", "c1")
     create = node.content[0]
@@ -493,6 +531,18 @@ def test_phase7_client_methods_call_expected_queries(tmp_path, monkeypatch):
         created = await client.product_create({"name": "Tea", "images": [b"image-bytes"]})
         assert created.image_urls == {"url": "https://mmg.whatsapp.net/product/image/uploaded"}
         assert media_requests[-1] == (b"image-bytes", "product-catalog-image", "mmg.whatsapp.net")
+
+        async def fake_upload_raw_media_with_upload_host(data, media_conn, file_sha256, media_type, **kwargs):
+            return MediaUploadResult(
+                host="upload-fna.whatsapp.net",
+                media_url="https://upload-fna.whatsapp.net/product/image/ignored",
+                direct_path="/product/image/direct",
+            )
+
+        monkeypatch.setattr("baileys.socket.upload_raw_media", fake_upload_raw_media_with_upload_host)
+        created = await client.product_create({"name": "Tea", "images": [b"image-bytes"]})
+        assert created.image_urls == {"url": "https://mmg.whatsapp.net/product/image/direct"}
+
         assert await client.product_delete(["p1"]) == {"deleted": 1}
         assert (await client.newsletter_metadata("jid", "n@newsletter")).id == "n@newsletter"
         assert (await client.community_metadata("123@g.us")).id == "123@g.us"

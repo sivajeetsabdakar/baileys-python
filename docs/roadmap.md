@@ -364,11 +364,13 @@ tests are stable.
 - Live Phase 7 proof currently confirms WhatsApp Business QR pairing, saved
   reconnect, business profile fetch, catalog read, temporary product
   create/delete using an existing catalog image, reversible product update, and
-  account reachout timelock MEX access. Product creation with a freshly
-  generated raw-upload image reaches the catalog server but currently returns
-  `bad-request` on this account. Message-capping MEX currently returns a server
-  GraphQL bad request for this account/request shape. WAM stats upload is wired
-  but currently times out waiting for a server IQ response on this account.
+  temporary product create/delete using a freshly generated raw-upload image.
+  Fresh catalog image uploads use the Node-compatible direct-path media URL and
+  recover by unique catalog name if the server applies the create but does not
+  return the mutation IQ before timeout. Message-capping MEX currently returns
+  a server GraphQL bad request for this account/request shape. WAM stats upload
+  is wired but currently times out waiting for a server IQ response on this
+  account.
 - Remaining Phase 7 parity gaps are collections/order/cover-photo live proof,
   enabled-account newsletter/community live mutations, WAM upload live ACK
   proof, and broader live proof for low-level peer-data, bot, privacy-token,
@@ -429,9 +431,9 @@ tests are stable.
   without blocked collections, decrypt errors, or history processing errors.
 - Latest Phase 7 probe confirms WhatsApp Business QR pairing, saved reconnect,
   business profile fetch, catalog read, temporary product create/delete using an
-  existing catalog image, reversible product update, and account reachout
-  timelock MEX access. Temporary product creation with a freshly generated
-  raw-upload image reaches the catalog server but returns `bad-request`.
+  existing catalog image, temporary product create/delete using a freshly
+  generated raw-upload image, reversible product update, and account reachout
+  timelock MEX access.
   Message-capping checks are server-gated on the current account, and optional
   WAM stats upload is wired but timed out waiting for a server response.
 - Latest media retry probe captures inbound peer image media and receives a
