@@ -55,6 +55,7 @@ async def main() -> int:
     parser.add_argument("--skip-mex", action="store_true")
     parser.add_argument("--send-wam", action="store_true", help="Send a minimal WAM stats buffer through w:stats.")
     parser.add_argument("--apply-catalog-write", action="store_true", help="Create and delete a temporary catalog product.")
+    parser.add_argument("--catalog-update-product-id", help="Temporarily rename an existing catalog product, then revert it.")
     parser.add_argument("--allow-limits", action="store_true", help="Exit successfully when account/server limits are reported.")
     args = parser.parse_args()
 
@@ -129,6 +130,45 @@ async def main() -> int:
                                 pass
 
                 ok = await run_step("CATALOG_WRITE", catalog_write_step) and ok
+
+            if args.catalog_update_product_id:
+                async def catalog_update_step() -> object:
+                    catalog = await client.get_catalog(args.business_jid, limit=25, timeout=args.timeout)
+                    product = next((item for item in catalog.products if item.id == args.catalog_update_product_id), None)
+                    if product is None:
+                        raise ValueError(f"catalog product not found: {args.catalog_update_product_id}")
+                    image_url = product.image_urls.get("original") or product.image_urls.get("requested")
+                    base_payload = {
+                        "name": product.name or "Catalog Probe Product",
+                        "description": product.description or product.name or "Catalog Probe Product",
+                        "currency": product.currency or "INR",
+                        "price": product.price or 0,
+                        "isHidden": product.hidden if product.hidden is not None else False,
+                    }
+                    if image_url:
+                        base_payload["images"] = [{"url": image_url}]
+
+                    updated = None
+                    try:
+                        updated = await client.product_update(
+                            args.catalog_update_product_id,
+                            {**base_payload, "name": f"{base_payload['name']} Probe"},
+                            timeout=args.timeout,
+                        )
+                        reverted = await client.product_update(args.catalog_update_product_id, base_payload, timeout=args.timeout)
+                        return {
+                            "product_id": args.catalog_update_product_id,
+                            "updated_name": getattr(updated, "name", None),
+                            "reverted_name": getattr(reverted, "name", None),
+                        }
+                    finally:
+                        if updated is not None:
+                            try:
+                                await client.product_update(args.catalog_update_product_id, base_payload, timeout=args.timeout)
+                            except Exception:
+                                pass
+
+                ok = await run_step("CATALOG_UPDATE", catalog_update_step) and ok
 
         if not args.skip_mex:
             ok = await run_step("REACHOUT_TIMELOCK", lambda: client.fetch_account_reachout_timelock(timeout=args.timeout)) and ok

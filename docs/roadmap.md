@@ -361,14 +361,14 @@ tests are stable.
   media/USync wrappers, media retry request/response crypto,
   `updateMediaMessage`, public exports, client aliases, and the public API
   parity manifest.
-- Live read-only Phase 7 proof currently confirms WhatsApp Business QR pairing,
-  saved reconnect, business profile fetch, and account reachout timelock MEX
-  access. Catalog reads and Node-shaped hidden product creation return
-  `item-not-found` until the current Business account has an initialized catalog
-  surface. Message-capping MEX currently returns a server GraphQL bad request
+- Live Phase 7 proof currently confirms WhatsApp Business QR pairing, saved
+  reconnect, business profile fetch, catalog read, reversible product update,
+  and account reachout timelock MEX access. Node-shaped hidden product creation
+  reaches the catalog server but currently returns `bad-request` on this
+  account. Message-capping MEX currently returns a server GraphQL bad request
   for this account/request shape. WAM stats upload is wired but currently times
   out waiting for a server IQ response on this account.
-- Remaining Phase 7 parity gaps are initialized-catalog product live proof,
+- Remaining Phase 7 parity gaps are product create/delete live proof,
   enabled-account newsletter/community live mutations, WAM upload live ACK
   proof, and broader live proof for low-level peer-data, bot, privacy-token,
   USync, and media retry edge surfaces.
@@ -400,8 +400,9 @@ tests are stable.
   persistence, history event visibility, and app-state sync-key request probes.
 - `scripts/phase7_live_probe.py` covers read-only Phase 7 business profile,
   catalog, MEX, newsletter metadata, community metadata, optional WAM stats
-  upload checks, and explicit temporary catalog write checks where the account
-  has the required capabilities.
+  upload checks, explicit temporary catalog create checks, and reversible
+  existing-product update checks where the account has the required
+  capabilities.
 - `scripts/media_retry_probe.py` covers live media retry request, ACK, and
   optional post-retry download checks when WhatsApp returns a media update.
 
@@ -426,11 +427,11 @@ tests are stable.
 - Latest Phase 6 re-verification applied all five saved app-state collections
   without blocked collections, decrypt errors, or history processing errors.
 - Latest Phase 7 probe confirms WhatsApp Business QR pairing, saved reconnect,
-  business profile fetch, and account reachout timelock MEX access. Catalog read
-  and temporary product creation both return `item-not-found` on the current
-  account until its catalog surface is initialized. Message-capping checks are
-  server-gated on the current account, and optional WAM stats upload is wired
-  but timed out waiting for a server response.
+  business profile fetch, catalog read, reversible product update, and account
+  reachout timelock MEX access. Temporary product creation reaches the catalog
+  server but returns `bad-request` on the current account. Message-capping
+  checks are server-gated on the current account, and optional WAM stats upload
+  is wired but timed out waiting for a server response.
 - Latest media retry probe captures inbound peer image media and receives a
   server ACK for the retry receipt. The final encrypted media-update response
   still depends on WhatsApp returning a reupload for unavailable media.
