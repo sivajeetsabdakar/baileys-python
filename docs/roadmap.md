@@ -20,8 +20,8 @@ Baileys names such as `sendMessage`, `relayMessage`, `groupMetadata`,
 | 4 | Outbound messages and media breadth | Done |
 | 5 | Chats, profile, privacy, groups | Done |
 | 6 | History and app-state completeness | Done |
-| 7 | Business, newsletters, communities, edge surfaces | Partial |
-| 8 | Core beta release hardening | Not started |
+| 7 | Business, newsletters, communities, edge surfaces | Done with deferred live-proof Todos |
+| 8 | Core beta release hardening | In progress |
 | 9 | Full parity hardening | Not started |
 
 ## Release Strategy
@@ -286,7 +286,7 @@ tests are stable.
   applied all five app-state collections on a saved session without blocked
   collections, decrypt errors, or history processing errors.
 
-## Phase 7 Partial
+## Phase 7 Delivered
 
 - Added WAM binary telemetry encoding primitives with Pythonic
   `encode_wam` and Baileys-style `encodeWAM` aliases. The encoder supports the
@@ -374,10 +374,22 @@ tests are stable.
   account/request shape. Collections, community create, and WAM stats upload are
   wired but time out waiting for server IQ responses on this account; the
   community create attempt did not leave a participating community behind.
-- Remaining Phase 7 parity gaps are collections/order live proof, community
-  live proof, WAM upload live ACK proof, enabled-account newsletter event proof,
-  and broader live proof for account-gated WAUSync and media retry edge
-  surfaces.
+- Deferred Phase 7 live-proof Todos are collections, order details, community
+  metadata/mutation proof, WAM upload ACK, newsletter event proof, and broader
+  account-gated WAUSync/media-retry edge surfaces. These are tracked as
+  account/data-gated live proof rather than blocking core beta hardening.
+
+## Phase 8 In Progress
+
+- Added `scripts/release_gate.py` as the local core-beta release gate runner.
+  It runs compile, pytest, generated WABinary/WAProto/WAM checks, public-docs
+  hygiene, import smoke, package build, and clean wheel install smoke.
+- Phase 8 now treats the deferred Phase 7 live-proof items as Todo evidence
+  gaps, not core-beta blockers, as long as gated cases report cleanly and the
+  compatibility matrix stays explicit.
+- Next Phase 8 targets are a JSON live-suite summary wrapper, refreshed
+  examples for bot-style usage, structured logging, and clean install/package
+  verification in a fresh environment.
 
 ## Live Harness
 
@@ -415,6 +427,9 @@ tests are stable.
   community metadata, and WAM stats.
 - `scripts/media_retry_probe.py` covers live media retry request, ACK, and
   optional post-retry download checks when WhatsApp returns a media update.
+- `scripts/release_gate.py` runs the core beta release gates for compile,
+  tests, generated artifacts, docs hygiene, package build, clean install, and
+  import smoke.
 
 ## Current Verification
 

@@ -8,7 +8,7 @@ version = "0.1.0a0"
 description = "Async Python implementation of the WhatsApp Web protocol inspired by Baileys."
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
-license = { text = "MIT" }
+license = "MIT"
 authors = [{ name = "Baileys Python contributors" }]
 keywords = ["whatsapp", "baileys", "websocket", "asyncio"]
 dependencies = [

@@ -10,7 +10,8 @@ the production implementation target.
 ## Current State
 
 The product package has live-proven auth, inbound, outbound, media, app-state,
-and Phase 5 API foundations:
+business/catalog, newsletter, and Phase 5 API foundations. Phase 8 core-beta
+hardening is in progress:
 
 - installable Python package under `src/baileys`
 - generated WAProto and WABinary token package data
@@ -38,9 +39,15 @@ and Phase 5 API foundations:
 - `scripts/phase5_live_probe.py` for read-only Phase 5 live validation
 - `scripts/phase5_mutation_probe.py` for explicit Phase 5 mutation validation
 - `scripts/app_state_key_probe.py` for app-state key and snapshot diagnostics
+- `scripts/phase7_live_probe.py` and `scripts/phase7_remaining_probe.py` for
+  Phase 7 business, newsletter, community, WAM, privacy-token, bot-list, and
+  peer-data proof tracking
+- `scripts/release_gate.py` for compile, test, generated artifact, docs,
+  package build, clean install, and import smoke checks
 
-This is not full Baileys parity yet. It is the first product baseline for the
-full roadmap.
+This is not full Baileys parity yet. Account-gated live proof items are tracked
+as explicit Todos in the compatibility matrix while core beta hardening
+continues.
 
 ## Install For Development
 
@@ -52,6 +59,12 @@ python -m pip install -e ".[dev]"
 
 ```powershell
 python -m pytest -q
+```
+
+## Run Release Gates
+
+```powershell
+python scripts/release_gate.py
 ```
 
 ## Minimal Saved-Auth Login
