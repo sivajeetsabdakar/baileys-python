@@ -45,6 +45,7 @@ hardening is in progress:
   peer-data proof tracking
 - `scripts/live_suite.py` for JSON summaries of selected read-only and explicit
   write live probes
+- `scripts/soak_suite.py` for timed reconnect/receive-loop soak summaries
 - `scripts/release_gate.py` for compile, test, generated artifact, docs,
   package build, clean install, and import smoke checks
 
@@ -80,6 +81,12 @@ Write probes are opt-in:
 
 ```powershell
 python scripts/live_suite.py --include-write --to 120363000000000000@g.us
+```
+
+## Run Soak Summary
+
+```powershell
+python scripts/soak_suite.py --duration 3600
 ```
 
 ## Minimal Saved-Auth Login

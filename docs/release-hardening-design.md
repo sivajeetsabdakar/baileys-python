@@ -121,7 +121,7 @@ Phase 8:
 
 - deeper API-specific typed errors.
 - SQLite auth/store prototype if small enough.
-- release soak planning.
+- long release soak run.
 
 Phase 9:
 

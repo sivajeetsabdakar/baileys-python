@@ -30,6 +30,18 @@ Keep the JSON summary as local release evidence. Update
 `docs/compatibility-matrix.md` only with stable capability status, not pasted
 machine-specific output.
 
+Run a short soak before a candidate build:
+
+```powershell
+python scripts/soak_suite.py --duration 3600
+```
+
+Run the longer soak before marking the core beta ready:
+
+```powershell
+python scripts/soak_suite.py --duration 86400
+```
+
 ## Manual Review
 
 - Confirm `docs/compatibility-matrix.md` has no stale Done entries.

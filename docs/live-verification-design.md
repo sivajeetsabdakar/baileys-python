@@ -108,6 +108,12 @@ Planned groups:
 The first version can wrap existing scripts and normalize their outputs. Later
 versions can use pytest markers.
 
+Use the soak wrapper for release evidence:
+
+```powershell
+python scripts/soak_suite.py --duration 3600
+```
+
 ## Gated Capability Tracking
 
 The live suite should emit a JSON summary:
