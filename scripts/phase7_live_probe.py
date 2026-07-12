@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import io
 import sys
 from pathlib import Path
 from typing import Awaitable, Callable
@@ -16,6 +17,17 @@ from baileys import IQError, MexError, WAMBinaryInfo, WAMEvent, make_socket  # n
 
 
 Probe = Callable[[], Awaitable[object]]
+
+
+def probe_product_image() -> bytes:
+    try:
+        from PIL import Image
+    except ImportError as exc:
+        raise RuntimeError("catalog write probe requires Pillow") from exc
+
+    output = io.BytesIO()
+    Image.new("RGB", (100, 100), (36, 132, 255)).save(output, format="JPEG", quality=90)
+    return output.getvalue()
 
 
 async def run_step(label: str, probe: Probe) -> bool:
@@ -42,6 +54,7 @@ async def main() -> int:
     parser.add_argument("--skip-catalog", action="store_true")
     parser.add_argument("--skip-mex", action="store_true")
     parser.add_argument("--send-wam", action="store_true", help="Send a minimal WAM stats buffer through w:stats.")
+    parser.add_argument("--apply-catalog-write", action="store_true", help="Create and delete a temporary catalog product.")
     parser.add_argument("--allow-limits", action="store_true", help="Exit successfully when account/server limits are reported.")
     args = parser.parse_args()
 
@@ -59,11 +72,63 @@ async def main() -> int:
         ok = True
 
         if not args.skip_catalog:
+            async def business_profile_step() -> object:
+                jid = args.business_jid or client.auth_state.credentials.get("me", {}).get("id")
+                profile = await client.get_business_profile(jid, timeout=args.timeout)
+                if profile is None:
+                    return None
+                return {
+                    "wid": profile.wid,
+                    "description": profile.description,
+                    "category": profile.category,
+                    "websites": len(profile.websites),
+                }
+
+            ok = await run_step("BUSINESS_PROFILE", business_profile_step) and ok
+
             async def catalog_step() -> object:
                 catalog = await client.get_catalog(args.business_jid, limit=5, timeout=args.timeout)
                 return {"products": len(catalog.products), "next_cursor": catalog.next_cursor}
 
             ok = await run_step("CATALOG", catalog_step) and ok
+
+            if args.apply_catalog_write:
+                async def catalog_write_step() -> object:
+                    product_id = None
+                    product_name = f"Baileys Python Probe {client.queries.next_tag()}"
+                    try:
+                        created = await client.product_create(
+                            {
+                                "name": product_name,
+                                "description": "Temporary product for protocol verification. Safe to delete.",
+                                "currency": "INR",
+                                "price": "10000",
+                                "retailerId": "baileys-python-probe",
+                                "originCountryCode": None,
+                                "isHidden": True,
+                                "images": [probe_product_image()],
+                            },
+                            timeout=args.timeout,
+                        )
+                        product_id = getattr(created, "id", None)
+                        catalog_after_create = await client.get_catalog(args.business_jid, limit=5, timeout=args.timeout)
+                        deleted = None
+                        if product_id:
+                            deleted = await client.product_delete([product_id], timeout=args.timeout)
+                        return {
+                            "created_id": product_id,
+                            "created_name": getattr(created, "name", None),
+                            "catalog_products_after_create": len(catalog_after_create.products),
+                            "deleted": deleted,
+                        }
+                    finally:
+                        if product_id:
+                            try:
+                                await client.product_delete([product_id], timeout=args.timeout)
+                            except Exception:
+                                pass
+
+                ok = await run_step("CATALOG_WRITE", catalog_write_step) and ok
 
         if not args.skip_mex:
             ok = await run_step("REACHOUT_TIMELOCK", lambda: client.fetch_account_reachout_timelock(timeout=args.timeout)) and ok
