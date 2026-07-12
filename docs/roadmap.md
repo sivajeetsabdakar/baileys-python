@@ -386,11 +386,13 @@ tests are stable.
   hygiene, import smoke, package build, and clean wheel install smoke.
 - Added `scripts/live_suite.py` to run selected read-only and explicit write
   probes with redacted JSON summaries.
+- Added configurable `baileys` logger helpers and socket lifecycle/query/node
+  log hooks with redacted node summaries.
 - Phase 8 now treats the deferred Phase 7 live-proof items as Todo evidence
   gaps, not core-beta blockers, as long as gated cases report cleanly and the
   compatibility matrix stays explicit.
-- Next Phase 8 targets are refreshed examples for bot-style usage, structured
-  logging, and release-candidate checklist cleanup.
+- Next Phase 8 targets are refreshed examples for bot-style usage and
+  release-candidate checklist cleanup.
 
 ## Live Harness
 

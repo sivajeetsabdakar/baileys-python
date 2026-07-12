@@ -121,7 +121,6 @@ Phase 8:
 
 - live-suite wrapper with JSON summary.
 - clean package build and install smoke.
-- structured logging.
 - stricter typed errors.
 - durable replay interface.
 - SQLite auth/store prototype if small enough.

@@ -77,6 +77,23 @@ Common event names:
 Unknown inbound nodes remain observable through raw node events instead of
 crashing the socket.
 
+## Logging
+
+The library uses the `baileys` logger namespace and stays quiet until logging is
+configured by the application:
+
+```python
+from baileys import configure_logging, make_socket
+
+configure_logging("INFO")
+client = make_socket("auth/product_qr_creds.json")
+```
+
+Structured log records include connection state, query ids, node tags, child
+tags, retry stages, and close reasons. Node payload bytes, keys, tokens,
+signatures, and long opaque values are redacted before they are attached to log
+records.
+
 ## Sending Messages
 
 Pythonic methods and Baileys aliases both work:

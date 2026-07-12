@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import copy
+import logging
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -171,6 +172,7 @@ from .newsletter import (
     parse_newsletter_metadata,
 )
 from .jid import is_jid_group, is_lid, is_newsletter, is_pn, jid_decode_tuple, jid_encode, jid_normalized_user, phone_number_to_jid
+from .logging_utils import exception_log_summary, get_logger, node_log_summary
 from .noise import generate_noise_key_pair
 from .pairing_code import (
     PairSuccess,
@@ -353,6 +355,7 @@ class WhatsAppClient:
         reconnect_max_delay: float = 30,
         reconnect_multiplier: float = 2,
         max_msg_retry_count: int = 5,
+        logger: logging.Logger | None = None,
     ) -> None:
         self.auth_state = _coerce_auth_state(auth)
         self.config = SocketConfig(
@@ -389,6 +392,7 @@ class WhatsAppClient:
         self._recent_outbound: dict[str, BinaryNode] = {}
         self._media_conn: MediaConn | None = None
         self._media_conn_expires_at = 0.0
+        self.logger = logger or get_logger("socket")
 
     @property
     def creds(self) -> dict[str, Any]:
@@ -414,6 +418,7 @@ class WhatsAppClient:
         if creds_path is None:
             raise ValueError("connect currently requires AuthState backed by JsonCredentialStore")
 
+        self.logger.info("connecting", extra={"event": "connection.connecting"})
         await self.ev.emit("connection.update", {"connection": "connecting"})
         web = WhatsAppWebClient(
             creds_path,
@@ -425,6 +430,7 @@ class WhatsAppClient:
         try:
             await web.connect(open_timeout=open_timeout, close_timeout=close_timeout)
         except Exception as exc:
+            self.logger.warning("connect failed", extra={"event": "connection.close", "error": exception_log_summary(exc)})
             await self.ev.emit("connection.update", {"connection": "close", "last_disconnect": exc})
             raise
 
@@ -434,6 +440,7 @@ class WhatsAppClient:
         if web.creds is not None:
             self.auth_state.credentials = web.creds
             await self.ev.emit("creds.update", self.auth_state.credentials)
+        self.logger.info("connected", extra={"event": "connection.open"})
         await self.ev.emit("connection.update", {"connection": "open"})
 
     async def connect_for_qr_pairing(
@@ -449,6 +456,7 @@ class WhatsAppClient:
         if creds_path is None:
             raise ValueError("QR pairing currently requires AuthState backed by JsonCredentialStore")
 
+        self.logger.info("connecting for QR pairing", extra={"event": "connection.connecting", "pairing": "qr"})
         await self.ev.emit("connection.update", {"connection": "connecting", "pairing": "qr"})
         ephemeral = generate_noise_key_pair()
         static_noise = generate_noise_key_pair()
@@ -477,6 +485,7 @@ class WhatsAppClient:
             noise.finish_init()
         except Exception as exc:
             await websocket.close()
+            self.logger.warning("QR pairing connect failed", extra={"event": "connection.close", "pairing": "qr", "error": exception_log_summary(exc)})
             await self.ev.emit("connection.update", {"connection": "close", "last_disconnect": exc})
             raise
 
@@ -558,6 +567,10 @@ class WhatsAppClient:
     async def close(self, error: DisconnectError | None = None) -> None:
         self._closing = True
         self._last_disconnect_error = error
+        log_payload: dict[str, Any] = {"event": "connection.close"}
+        if error is not None:
+            log_payload["error"] = exception_log_summary(error)
+        self.logger.info("closing", extra=log_payload)
         current_task = asyncio.current_task()
         if self._reconnect_task is not None and self._reconnect_task is not current_task:
             if not self._reconnect_task.done():
@@ -594,6 +607,7 @@ class WhatsAppClient:
     async def send_node(self, node: BinaryNode) -> None:
         if self._web is None:
             raise RuntimeError("client is not connected")
+        self.logger.debug("send node", extra={"event": "node.send", "node": node_log_summary(node)})
         await self._web.send_node(node)
 
     async def send_wam_buffer(self, wam_buffer: bytes, *, timeout: float = 30) -> BinaryNode:
@@ -616,6 +630,7 @@ class WhatsAppClient:
             node.attrs["id"] = tag_id
 
         waiter = self.queries.create_waiter(tag_id)
+        self.logger.debug("query start", extra={"event": "query.start", "tag_id": tag_id, "node": node_log_summary(node)})
         try:
             await self.send_node(node)
             if drive_receive:
@@ -625,8 +640,11 @@ class WhatsAppClient:
                     if remaining <= 0:
                         raise asyncio.TimeoutError()
                     await self.receive_nodes(timeout=min(5, remaining))
-            return await self.queries.wait_for(tag_id, timeout=timeout)
-        except Exception:
+            result = await self.queries.wait_for(tag_id, timeout=timeout)
+            self.logger.debug("query resolved", extra={"event": "query.resolve", "tag_id": tag_id, "node": node_log_summary(result)})
+            return result
+        except Exception as exc:
+            self.logger.warning("query failed", extra={"event": "query.error", "tag_id": tag_id, "error": exception_log_summary(exc)})
             if not waiter.done():
                 waiter.cancel()
             self.queries.discard(tag_id)
@@ -641,12 +659,14 @@ class WhatsAppClient:
         if self._web is None:
             raise RuntimeError("client is not connected")
         nodes = await self._web.receive_nodes(timeout=timeout)
+        self.logger.debug("received nodes", extra={"event": "node.receive_batch", "count": len(nodes)})
         for node in nodes:
             await self.dispatch_node(node)
         return nodes
 
     async def dispatch_node(self, node: BinaryNode) -> SocketNodeKind:
         kind = classify_node(node)
+        self.logger.debug("dispatch node", extra={"event": "node.dispatch", "kind": kind.value, "node": node_log_summary(node)})
         if kind == SocketNodeKind.SERVER_PING:
             await self.send_node(server_ping_reply(node))
         elif kind == SocketNodeKind.OFFLINE_PREVIEW:

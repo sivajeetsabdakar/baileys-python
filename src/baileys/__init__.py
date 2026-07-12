@@ -118,6 +118,7 @@ from .jid import (
     transferDevice,
     transfer_device,
 )
+from .logging_utils import configureLogging, configure_logging, get_logger, node_log_summary, redact_mapping, redact_value
 from .media import MediaPayload, MediaRetryEvent, MediaUploadResult, download_external_blob, media_message, read_media_payload
 from .message_send import (
     MessageOptions,
@@ -222,6 +223,8 @@ __all__ = [
     "BusinessProfile",
     "CatalogResult",
     "Contact",
+    "configure_logging",
+    "configureLogging",
     "DirectorySignalKeyStore",
     "DisconnectError",
     "DisconnectReason",
@@ -352,6 +355,7 @@ __all__ = [
     "extract_app_state_snapshot_info",
     "generate_pairing_code",
     "get_history_sync_notification",
+    "get_logger",
     "getMessageReportingToken",
     "get_message_reporting_token",
     "hkdf",
@@ -378,6 +382,9 @@ __all__ = [
     "is_newsletter",
     "is_pn",
     "lt_hash_subtract_then_add",
+    "node_log_summary",
+    "redact_mapping",
+    "redact_value",
     "load_wam_specs",
     "jidDecode",
     "jidEncode",
