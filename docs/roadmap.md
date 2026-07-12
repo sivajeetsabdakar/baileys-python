@@ -367,14 +367,16 @@ tests are stable.
   temporary product create/delete using a freshly generated raw-upload image.
   Fresh catalog image uploads use the Node-compatible direct-path media URL and
   recover by unique catalog name if the server applies the create but does not
-  return the mutation IQ before timeout. Message-capping MEX currently returns
-  a server GraphQL bad request for this account/request shape. WAM stats upload
-  is wired but currently times out waiting for a server IQ response on this
-  account.
-- Remaining Phase 7 parity gaps are collections/order/cover-photo live proof,
-  enabled-account newsletter/community live mutations, WAM upload live ACK
-  proof, and broader live proof for low-level peer-data, bot, privacy-token,
-  USync, and media retry edge surfaces.
+  return the mutation IQ before timeout. Cover-photo update/remove, newsletter
+  create/delete, bot-list fetch, trusted-contact privacy-token issuance, and a
+  self peer-data operation with ACK are also live-proven. Message-capping MEX
+  currently returns a server GraphQL bad request for this account/request shape.
+  Collections and WAM stats upload are wired but time out waiting for server IQ
+  responses on this account.
+- Remaining Phase 7 parity gaps are collections/order live proof, community
+  live proof, WAM upload live ACK proof, enabled-account newsletter metadata and
+  event proof, and broader live proof for account-gated WAUSync and media retry
+  edge surfaces.
 
 ## Live Harness
 
@@ -406,13 +408,17 @@ tests are stable.
   upload checks, explicit temporary catalog create checks, and reversible
   existing-product update checks where the account has the required
   capabilities.
+- `scripts/phase7_remaining_probe.py` covers remaining Phase 7 live checks for
+  collections, order details, cover-photo update/remove, bot list,
+  privacy-token issuance, peer-data operation sends, newsletter create/delete,
+  community metadata, and WAM stats.
 - `scripts/media_retry_probe.py` covers live media retry request, ACK, and
   optional post-retry download checks when WhatsApp returns a media update.
 
 ## Current Verification
 
 - Offline compile check passes for `src`, `scripts`, and `examples`.
-- Offline test suite passes with 158 tests.
+- Offline test suite passes with 160 tests.
 - WABinary token, WAM constants, and WAProto generated artifact checks pass.
 - Product QR pairing and saved reconnect pass against the dedicated test
   account.
@@ -432,10 +438,13 @@ tests are stable.
 - Latest Phase 7 probe confirms WhatsApp Business QR pairing, saved reconnect,
   business profile fetch, catalog read, temporary product create/delete using an
   existing catalog image, temporary product create/delete using a freshly
-  generated raw-upload image, reversible product update, and account reachout
-  timelock MEX access.
-  Message-capping checks are server-gated on the current account, and optional
-  WAM stats upload is wired but timed out waiting for a server response.
+  generated raw-upload image, reversible product update, cover-photo
+  update/remove, newsletter create/delete, bot-list fetch, trusted-contact
+  privacy-token issuance, self peer-data operation with ACK, and account
+  reachout timelock MEX access. Collections and WAM stats timed out waiting for
+  server responses on the current account. Order-details proof needs a real
+  order id/token, and community proof needs a community JID or a safe
+  enabled-account mutation flow.
 - Latest media retry probe captures inbound peer image media and receives a
   server ACK for the retry receipt. The final encrypted media-update response
   still depends on WhatsApp returning a reupload for unavailable media.

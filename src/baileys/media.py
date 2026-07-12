@@ -248,7 +248,15 @@ async def upload_media(
             media_url = payload.get("url") or ""
             direct_path = payload.get("direct_path") or ""
             if media_url and direct_path:
-                return MediaUploadResult(media_url=media_url, direct_path=direct_path, host=host.hostname, raw=payload)
+                return MediaUploadResult(
+                    media_url=media_url,
+                    direct_path=direct_path,
+                    host=host.hostname,
+                    fbid=str(payload["fbid"]) if payload.get("fbid") is not None else None,
+                    meta_hmac=str(payload.get("meta_hmac") or payload.get("hmac")) if payload.get("meta_hmac") or payload.get("hmac") else None,
+                    timestamp=str(payload.get("ts") or payload.get("timestamp") or "") if payload.get("ts") or payload.get("timestamp") else None,
+                    raw=payload,
+                )
             if payload.get("fbid") and (payload.get("meta_hmac") or payload.get("hmac")):
                 return MediaUploadResult(
                     host=host.hostname,

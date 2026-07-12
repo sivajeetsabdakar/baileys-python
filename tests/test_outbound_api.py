@@ -7,6 +7,8 @@ from baileys.auth_state import AuthState, JsonCredentialStore
 from baileys.generated import WAProto_pb2 as proto
 from baileys.media import (
     EncryptedMedia,
+    MediaConn,
+    MediaHost,
     MediaPayload,
     MediaRetryEvent,
     MediaUploadResult,
@@ -16,6 +18,7 @@ from baileys.media import (
     encrypt_media_retry_response,
     media_message,
     read_media_payload,
+    upload_media,
 )
 import baileys.message_send as message_send_module
 from baileys.message_send import (
@@ -31,6 +34,57 @@ from baileys.wabinary import BinaryNode
 
 def _minimal_creds() -> dict:
     return {"me": {"id": "me@s.whatsapp.net", "name": "Me"}}
+
+
+def test_upload_media_preserves_cover_photo_metadata(monkeypatch):
+    class FakeResponse:
+        status = 200
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return None
+
+        async def text(self):
+            return ""
+
+        async def json(self, content_type=None):
+            return {
+                "url": "https://mmg.whatsapp.net/v/t61.43035-24/file.enc",
+                "direct_path": "/v/t61.43035-24/file.enc",
+                "fbid": 4667119746855531,
+                "meta_hmac": "token",
+                "ts": 1783880920,
+            }
+
+    class FakeSession:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return None
+
+        def post(self, *args, **kwargs):
+            return FakeResponse()
+
+    monkeypatch.setattr("baileys.media.aiohttp.ClientSession", FakeSession)
+    result = asyncio.run(
+        upload_media(
+            b"encrypted",
+            MediaConn(auth="auth", ttl=60, hosts=[MediaHost("mmg.whatsapp.net")]),
+            b"hash",
+            "biz-cover-photo",
+        )
+    )
+    assert result.media_url == "https://mmg.whatsapp.net/v/t61.43035-24/file.enc"
+    assert result.direct_path == "/v/t61.43035-24/file.enc"
+    assert result.fbid == "4667119746855531"
+    assert result.meta_hmac == "token"
+    assert result.timestamp == "1783880920"
 
 
 def test_message_content_builders_cover_common_shapes():
