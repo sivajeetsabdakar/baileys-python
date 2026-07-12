@@ -27,6 +27,8 @@ def test_public_api_exports_core_building_blocks():
     assert callable(bpt.make_socket)
     assert callable(bpt.makeWASocket)
     assert callable(bpt.build_pairing_qr_data)
+    assert callable(bpt.use_sqlite_auth_state)
+    assert callable(bpt.useSqliteAuthState)
     assert callable(bpt.configure_successful_pairing)
     assert callable(bpt.pairing_code_request_node)
     assert bpt.QRPairingRequest
@@ -39,6 +41,9 @@ def test_public_api_exports_core_building_blocks():
     assert bpt.QueryTimeoutError
     assert bpt.SessionAssertionError
     assert bpt.SocketNotConnectedError
+    assert bpt.SQLiteCredentialStore
+    assert bpt.SQLiteReplayStore
+    assert bpt.SQLiteSignalKeyStore
     assert bpt.DisconnectError
     assert bpt.DisconnectReason.loggedOut == 401
     assert bpt.NotificationInfo

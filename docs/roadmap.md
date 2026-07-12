@@ -402,13 +402,14 @@ tests are stable.
 - Added a public replay-store interface, default in-memory replay store, and
   BinaryNode JSON conversion helpers. Retry replay now uses the replay store
   instead of being hard-wired to the socket instance cache.
+- Added a local SQLite storage prototype for credentials, signal keys, and
+  recent outbound replay.
 - Added `scripts/soak_suite.py` to wrap timed saved-auth socket soak runs and
   write redacted JSON summaries for release evidence.
 - Phase 8 now treats the deferred Phase 7 live-proof items as Todo evidence
   gaps, not core-beta blockers, as long as gated cases report cleanly and the
   compatibility matrix stays explicit.
-- Next Phase 8 targets are an optional SQLite auth/store prototype and running
-  the long release soak when ready.
+- Next Phase 8 target is running the long release soak when ready.
 
 ## Live Harness
 

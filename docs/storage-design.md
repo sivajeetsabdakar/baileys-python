@@ -1,20 +1,25 @@
 # Storage Design
 
 The package currently ships with JSON credential storage, directory-backed
-signal keys, and an in-memory event store. The target design is to keep these
-simple defaults while adding durable adapters behind stable interfaces.
+signal keys, SQLite-backed credential/signal/replay stores, and an in-memory
+event store. The target design is to keep these simple defaults while adding
+durable adapters behind stable interfaces.
 
 ## Current Built-In Guarantees
 
 - `JsonCredentialStore` writes credentials atomically.
 - `DirectorySignalKeyStore` writes key files atomically.
 - `MemorySignalKeyStore` isolates mutable values with deep copies.
+- `SQLiteCredentialStore` persists credentials in a local SQLite database.
+- `SQLiteSignalKeyStore` persists signal-key namespaces in the same SQLite
+  database shape.
 - `AuthState.transaction()` persists credential mutations only when the block
   completes successfully.
 - `InMemoryStore` is bindable to socket events and idempotent for duplicate
   message ids.
 - `ReplayStore` defines recent outbound replay persistence, with
-  `InMemoryReplayStore` as the default implementation.
+  `InMemoryReplayStore` as the default implementation and `SQLiteReplayStore`
+  as the local durable adapter.
 - `binary_node_to_json` and `binary_node_from_json` preserve BinaryNode attrs,
   byte content, string content, and child nodes for durable replay adapters.
 
@@ -75,24 +80,32 @@ treated as unavailable messages, not socket errors.
 
 ## SQLite Adapter
 
-SQLite should be the first durable adapter because it is local, easy to test,
-and good enough for single-process bots.
+SQLite is the first durable adapter because it is local, easy to test, and
+good enough for single-process bots. The current adapter covers credentials,
+signal keys, and recent outbound replay. Message history, app-state, and LID/PN
+mapping tables remain Phase 9 work.
 
 ### Tables
 
 `credentials`
 
-- `id text primary key`
-- `data_json text not null`
-- `updated_at integer not null`
+- `name text primary key`
+- `value text not null`
 
 `signal_keys`
 
 - `namespace text not null`
 - `key text not null`
-- `data_json text not null`
-- `updated_at integer not null`
+- `value text not null`
 - primary key: `(namespace, key)`
+
+`recent_outbound`
+
+- `message_id text primary key`
+- `node_json text not null`
+- `expires_at real not null`
+
+Planned Phase 9 tables:
 
 `messages`
 
@@ -225,15 +238,15 @@ Risky Redis uses:
 
 1. Define public storage protocols for credentials, signal keys, app-state
    state, LID/PN mappings, recent outbound replay, and event store operations.
-   Recent outbound replay is now covered by `ReplayStore`; the other storage
+   Recent outbound replay is covered by `ReplayStore`; the other storage
    protocols remain future work.
 2. Refactor socket code to depend on protocols where concrete file stores are
    still assumed.
-3. Add SQLite credential and signal-key store.
+3. Add SQLite credential and signal-key store. This is done for the public
+   prototype.
 4. Add SQLite event store.
 5. Add replay cache integration for retry receipts. This is done for the
-   public interface and in-memory default; SQLite persistence remains with the
-   SQLite adapter.
+   public interface, in-memory default, and SQLite adapter.
 6. Add LID/PN mapping store integration for USync, group metadata, and history.
 7. Add migration and backup helpers.
 8. Add Postgres adapter after SQLite semantics are stable.

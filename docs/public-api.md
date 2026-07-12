@@ -32,15 +32,20 @@ The lower-level auth surfaces are:
 - `AuthState`
 - `JsonCredentialStore`
 - `DirectorySignalKeyStore`
+- `SQLiteCredentialStore`
+- `SQLiteSignalKeyStore`
 - `use_multi_file_auth_state`
 - `useMultiFileAuthState`
+- `use_sqlite_auth_state`
+- `useSqliteAuthState`
 
 QR pairing, pairing-code linking, saved reconnect, logout, prekey maintenance,
 and disconnect reason mapping are exposed on `WhatsAppClient`.
 
 `JsonCredentialStore` and `DirectorySignalKeyStore` write files atomically.
-Use `AuthState.transaction()` when several credential fields should be updated
-and persisted together:
+`SQLiteCredentialStore` and `SQLiteSignalKeyStore` provide a local durable
+adapter for single-process bots. Use `AuthState.transaction()` when several
+credential fields should be updated and persisted together:
 
 ```python
 with auth_state.transaction() as creds:
@@ -136,6 +141,7 @@ Useful helpers:
 
 - `ReplayStore`
 - `InMemoryReplayStore`
+- `SQLiteReplayStore`
 - `binary_node_to_json`
 - `binary_node_from_json`
 - `client.save_recent_outbound`

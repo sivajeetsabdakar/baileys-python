@@ -202,6 +202,7 @@ from .receipts import (
 from .replay import InMemoryReplayStore, ReplayEntry, ReplayStore, binary_node_from_json, binary_node_to_json
 from .reporting import getMessageReportingToken, get_message_reporting_token, shouldIncludeReportingToken, should_include_reporting_token
 from .socket import MediaSendResult, ReconnectPolicy, SendMessageResult, SocketConfig, WhatsAppClient, make_socket, makeWASocket
+from .sqlite_store import SQLiteCredentialStore, SQLiteReplayStore, SQLiteSignalKeyStore, use_sqlite_auth_state, useSqliteAuthState
 from .store import Chat, Contact, InMemoryStore, makeInMemoryStore, make_in_memory_store
 from .usync import (
     DeviceInfo,
@@ -318,6 +319,9 @@ __all__ = [
     "SignedPreKeyRotation",
     "SocketConfig",
     "SocketNotConnectedError",
+    "SQLiteCredentialStore",
+    "SQLiteReplayStore",
+    "SQLiteSignalKeyStore",
     "TagGenerator",
     "USyncBotProfile",
     "USyncBotProfileCommand",
@@ -477,7 +481,9 @@ __all__ = [
     "transferDevice",
     "transfer_device",
     "useMultiFileAuthState",
+    "useSqliteAuthState",
     "use_multi_file_auth_state",
+    "use_sqlite_auth_state",
     "usync_devices_query_node",
     "usync_query_node",
     "newsletter_metadata_query",
