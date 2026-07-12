@@ -384,12 +384,13 @@ tests are stable.
 - Added `scripts/release_gate.py` as the local core-beta release gate runner.
   It runs compile, pytest, generated WABinary/WAProto/WAM checks, public-docs
   hygiene, import smoke, package build, and clean wheel install smoke.
+- Added `scripts/live_suite.py` to run selected read-only and explicit write
+  probes with redacted JSON summaries.
 - Phase 8 now treats the deferred Phase 7 live-proof items as Todo evidence
   gaps, not core-beta blockers, as long as gated cases report cleanly and the
   compatibility matrix stays explicit.
-- Next Phase 8 targets are a JSON live-suite summary wrapper, refreshed
-  examples for bot-style usage, structured logging, and clean install/package
-  verification in a fresh environment.
+- Next Phase 8 targets are refreshed examples for bot-style usage, structured
+  logging, and release-candidate checklist cleanup.
 
 ## Live Harness
 
@@ -430,6 +431,8 @@ tests are stable.
 - `scripts/release_gate.py` runs the core beta release gates for compile,
   tests, generated artifacts, docs hygiene, package build, clean install, and
   import smoke.
+- `scripts/live_suite.py` runs selected live probes and writes a redacted JSON
+  summary for release evidence.
 
 ## Current Verification
 

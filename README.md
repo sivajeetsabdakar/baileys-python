@@ -42,6 +42,8 @@ hardening is in progress:
 - `scripts/phase7_live_probe.py` and `scripts/phase7_remaining_probe.py` for
   Phase 7 business, newsletter, community, WAM, privacy-token, bot-list, and
   peer-data proof tracking
+- `scripts/live_suite.py` for JSON summaries of selected read-only and explicit
+  write live probes
 - `scripts/release_gate.py` for compile, test, generated artifact, docs,
   package build, clean install, and import smoke checks
 
@@ -65,6 +67,18 @@ python -m pytest -q
 
 ```powershell
 python scripts/release_gate.py
+```
+
+## Run Live Suite Summary
+
+```powershell
+python scripts/live_suite.py --include-remaining --skip-collections
+```
+
+Write probes are opt-in:
+
+```powershell
+python scripts/live_suite.py --include-write --to 120363000000000000@g.us
 ```
 
 ## Minimal Saved-Auth Login
