@@ -32,6 +32,13 @@ def test_public_api_exports_core_building_blocks():
     assert bpt.QRPairingRequest
     assert bpt.WhatsAppClient
     assert bpt.EventEmitter
+    assert bpt.AuthStateError
+    assert bpt.ContactResolutionError
+    assert bpt.GroupInviteError
+    assert bpt.ProtocolError
+    assert bpt.QueryTimeoutError
+    assert bpt.SessionAssertionError
+    assert bpt.SocketNotConnectedError
     assert bpt.DisconnectError
     assert bpt.DisconnectReason.loggedOut == 401
     assert bpt.NotificationInfo

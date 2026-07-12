@@ -98,9 +98,12 @@ records.
 
 Package-raised public exceptions inherit from `BaileysError`. Existing
 standard exception compatibility is preserved, so validation errors such as
-`UnsupportedMessageContent` and `WAMEncodeError` remain `ValueError`
-instances, while `IQError`, `MexError`, and `MissingAppStateKey` remain
-`RuntimeError` instances.
+`UnsupportedMessageContent`, `WAMEncodeError`, `MediaError`, `PairingError`,
+and `SessionAssertionError` remain `ValueError` instances. Runtime failures
+such as `IQError`, `MexError`, `MissingAppStateKey`, `ProtocolError`, and
+`SocketNotConnectedError` remain `RuntimeError` instances. Timeout failures
+such as `QueryTimeoutError` remain `TimeoutError` instances and expose
+operation metadata.
 
 Useful catch surfaces:
 
@@ -109,9 +112,18 @@ Useful catch surfaces:
 - `BaileysRuntimeError`
 - `BaileysTimeoutError`
 - `AccountCapabilityError`
+- `AuthStateError`
+- `ContactResolutionError`
 - `DisconnectError`
+- `GroupInviteError`
 - `IQError`
+- `MediaError`
 - `MexError`
+- `PairingError`
+- `ProtocolError`
+- `QueryTimeoutError`
+- `SessionAssertionError`
+- `SocketNotConnectedError`
 
 ## Replay Store
 

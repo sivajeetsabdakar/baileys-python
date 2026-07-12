@@ -15,6 +15,7 @@ from baileys.defaults import (
     WA_ADV_DEVICE_SIG_PREFIX,
     WA_ADV_HOSTED_ACCOUNT_SIG_PREFIX,
 )
+from baileys.errors import PairingError
 from baileys.generated import WAProto_pb2 as proto
 from baileys.signal_crypto import SignalKeyPair, shared_key, sign, verify
 from baileys.socket_nodes import find_child, node_content_bytes
@@ -81,7 +82,7 @@ def bytes_to_crockford(data: bytes) -> str:
 def generate_pairing_code(custom_pairing_code: str | None = None) -> str:
     if custom_pairing_code is not None:
         if len(custom_pairing_code) != 8:
-            raise ValueError("custom pairing code must be exactly 8 chars")
+            raise PairingError("custom pairing code must be exactly 8 chars")
         return custom_pairing_code
     return bytes_to_crockford(os.urandom(5))
 
@@ -89,7 +90,7 @@ def generate_pairing_code(custom_pairing_code: str | None = None) -> str:
 def normalize_phone_number(phone_number: str) -> str:
     digits = re.sub(r"\D", "", phone_number.split("@", 1)[0].split(":", 1)[0])
     if not digits:
-        raise ValueError("phone number must contain digits")
+        raise PairingError("phone number must contain digits")
     return digits
 
 
@@ -156,7 +157,7 @@ def configure_successful_pairing(
     device_node = find_child(pair_success_node, "device")
     business_node = find_child(pair_success_node, "biz")
     if pair_success_node is None or device_identity_node is None or device_node is None:
-        raise ValueError(f"missing pair-success/device-identity/device in {stanza!r}")
+        raise PairingError(f"missing pair-success/device-identity/device in {stanza!r}")
 
     signed_hmac = proto.ADVSignedDeviceIdentityHMAC()
     signed_hmac.ParseFromString(_required_node_bytes(device_identity_node))
@@ -166,7 +167,7 @@ def configure_successful_pairing(
 
     expected_hmac = hmac_sign(hmac_prefix + signed_hmac.details, base64.b64decode(str(meta["adv_secret_key"])))
     if not hmac.compare_digest(signed_hmac.hmac, expected_hmac):
-        raise ValueError("invalid pair-success ADV HMAC")
+        raise PairingError("invalid pair-success ADV HMAC")
 
     account = proto.ADVSignedDeviceIdentity()
     account.ParseFromString(signed_hmac.details)
@@ -182,7 +183,7 @@ def configure_successful_pairing(
     identity_public = bytes(meta["identity_public"])
     account_message = account_prefix + account.details + identity_public
     if not verify(account.accountSignatureKey, account_message, account.accountSignature):
-        raise ValueError("invalid pair-success account signature")
+        raise PairingError("invalid pair-success account signature")
 
     identity_private = bytes(meta["identity_private"])
     device_message = WA_ADV_DEVICE_SIG_PREFIX + account.details + identity_public + account.accountSignatureKey
@@ -251,7 +252,7 @@ def credentials_from_pair_success(
 def _required_node_bytes(node: BinaryNode | None) -> bytes:
     content = node_content_bytes(node)
     if content is None:
-        raise ValueError("missing node bytes")
+        raise PairingError("missing node bytes")
     return content
 
 
@@ -265,16 +266,16 @@ def generate_pairing_key(
     salt = salt or os.urandom(32)
     iv = iv or os.urandom(16)
     if len(salt) != 32:
-        raise ValueError("pairing-code salt must be 32 bytes")
+        raise PairingError("pairing-code salt must be 32 bytes")
     if len(iv) != 16:
-        raise ValueError("pairing-code IV must be 16 bytes")
+        raise PairingError("pairing-code IV must be 16 bytes")
     key = derive_pairing_code_key(pairing_code, salt)
     return salt + iv + aes_encrypt_ctr(companion_ephemeral_public, key, iv)
 
 
 def decrypt_link_public_key(pairing_code: str, wrapped_public_key: bytes) -> bytes:
     if len(wrapped_public_key) < 80:
-        raise ValueError("wrapped public key must contain salt, IV, and 32-byte payload")
+        raise PairingError("wrapped public key must contain salt, IV, and 32-byte payload")
     salt = wrapped_public_key[:32]
     iv = wrapped_public_key[32:48]
     payload = wrapped_public_key[48:80]
@@ -371,11 +372,11 @@ def pairing_code_finish_node(
     encrypt_iv = encrypt_iv or os.urandom(12)
     random = random or os.urandom(32)
     if len(link_code_salt) != 32:
-        raise ValueError("link code salt must be 32 bytes")
+        raise PairingError("link code salt must be 32 bytes")
     if len(encrypt_iv) != 12:
-        raise ValueError("AES-GCM IV must be 12 bytes")
+        raise PairingError("AES-GCM IV must be 12 bytes")
     if len(random) != 32:
-        raise ValueError("identity random must be 32 bytes")
+        raise PairingError("identity random must be 32 bytes")
 
     expanded_key = hkdf(companion_shared_key, 32, salt=link_code_salt, info=LINK_CODE_KEY_BUNDLE_INFO)
     encrypted_payload = aes_encrypt_gcm(

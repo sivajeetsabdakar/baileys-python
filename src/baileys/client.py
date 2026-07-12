@@ -9,6 +9,7 @@ import websockets
 from baileys.auth_store import load_creds, save_creds, unb64
 from baileys.crypto import decompress_if_required
 from baileys.defaults import DEFAULT_ORIGIN, DEFAULT_USER_AGENT, WA_WEBSOCKET_URL
+from baileys.errors import AuthStateError, ProtocolError, QueryTimeoutError, SocketNotConnectedError
 from baileys.generated import WAProto_pb2 as proto
 from baileys.noise import NoiseHandshake, generate_noise_key_pair
 from baileys.registration import build_login_payload
@@ -48,7 +49,7 @@ class WhatsAppWebClient:
         creds = load_creds(self.creds_path)
         me = (creds.get("me") or {}).get("id")
         if not me:
-            raise ValueError("creds file has no me.id")
+            raise AuthStateError("creds file has no me.id")
 
         routing_info = unb64(creds["routing_info"]) if self.use_routing_info and creds.get("routing_info") else None
         ephemeral = generate_noise_key_pair()
@@ -91,12 +92,12 @@ class WhatsAppWebClient:
 
     async def send_node(self, node: BinaryNode) -> None:
         if self.websocket is None or self.noise is None:
-            raise RuntimeError("client is not connected")
+            raise SocketNotConnectedError("client is not connected")
         await self.websocket.send(self.noise.encode_frame(encode_binary_node(node)))
 
     async def receive_nodes(self, timeout: float = 30) -> list[BinaryNode]:
         if self.websocket is None or self.noise is None:
-            raise RuntimeError("client is not connected")
+            raise SocketNotConnectedError("client is not connected")
         raw = await asyncio.wait_for(self.websocket.recv(), timeout=timeout)
         if isinstance(raw, str):
             raw = raw.encode("latin1")
@@ -110,7 +111,7 @@ class WhatsAppWebClient:
         while True:
             remaining = deadline - asyncio.get_running_loop().time()
             if remaining <= 0:
-                raise TimeoutError("timed out waiting for login success")
+                raise QueryTimeoutError("timed out waiting for login success", operation="login", timeout=timeout)
             for node in await self.receive_nodes(min(30, remaining)):
                 kind = classify_node(node)
                 if kind == SocketNodeKind.LOGIN_SUCCESS:
@@ -122,11 +123,11 @@ class WhatsAppWebClient:
                     self.persist_edge_routing_if_present(node)
                     continue
                 if kind in {SocketNodeKind.FAILURE, SocketNodeKind.STREAM_ERROR, SocketNodeKind.IQ_ERROR}:
-                    raise ValueError(f"socket failed before success: {node!r}")
+                    raise ProtocolError(f"socket failed before success: {node!r}")
 
     def persist_edge_routing_if_present(self, node: BinaryNode) -> bool:
         if self.creds is None:
-            raise RuntimeError("client has no loaded credentials")
+            raise AuthStateError("client has no loaded credentials")
         routing_info = find_child(find_child(node, "edge_routing"), "routing_info")
         content = node_content_bytes(routing_info)
         if not content:

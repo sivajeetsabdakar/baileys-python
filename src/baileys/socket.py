@@ -36,6 +36,17 @@ from .disconnect import (
     stream_error_to_disconnect,
 )
 from .generated import WAProto_pb2 as proto
+from .errors import (
+    AuthStateError,
+    BaileysValueError,
+    ContactResolutionError,
+    GroupInviteError,
+    MediaError,
+    ProtocolError,
+    QueryTimeoutError,
+    SessionAssertionError,
+    SocketNotConnectedError,
+)
 from .history import download_and_process_history_sync_notification, get_history_sync_notification
 from .noise import NoiseHandshake
 from .registration import build_registration_payload
@@ -422,7 +433,7 @@ class WhatsAppClient:
     async def connect(self, *, open_timeout: float = 20, close_timeout: float = 5) -> None:
         creds_path = _credential_path(self.auth_state)
         if creds_path is None:
-            raise ValueError("connect currently requires AuthState backed by JsonCredentialStore")
+            raise AuthStateError("connect currently requires AuthState backed by JsonCredentialStore")
 
         self.logger.info("connecting", extra={"event": "connection.connecting"})
         await self.ev.emit("connection.update", {"connection": "connecting"})
@@ -460,7 +471,7 @@ class WhatsAppClient:
     ) -> QRPairingRequest:
         creds_path = _credential_path(self.auth_state)
         if creds_path is None:
-            raise ValueError("QR pairing currently requires AuthState backed by JsonCredentialStore")
+            raise AuthStateError("QR pairing currently requires AuthState backed by JsonCredentialStore")
 
         self.logger.info("connecting for QR pairing", extra={"event": "connection.connecting", "pairing": "qr"})
         await self.ev.emit("connection.update", {"connection": "connecting", "pairing": "qr"})
@@ -514,7 +525,7 @@ class WhatsAppClient:
         while True:
             remaining = deadline - asyncio.get_running_loop().time()
             if remaining <= 0:
-                raise TimeoutError("timed out waiting for pair-device refs")
+                raise QueryTimeoutError("timed out waiting for pair-device refs", operation="qr_pairing", timeout=qr_timeout)
             nodes = await self.receive_nodes(timeout=min(30, remaining))
             for node in nodes:
                 refs = extract_pair_device_refs(node)
@@ -612,7 +623,7 @@ class WhatsAppClient:
 
     async def send_node(self, node: BinaryNode) -> None:
         if self._web is None:
-            raise RuntimeError("client is not connected")
+            raise SocketNotConnectedError("client is not connected")
         self.logger.debug("send node", extra={"event": "node.send", "node": node_log_summary(node)})
         await self._web.send_node(node)
 
@@ -644,7 +655,7 @@ class WhatsAppClient:
                 while not waiter.done():
                     remaining = deadline - asyncio.get_running_loop().time()
                     if remaining <= 0:
-                        raise asyncio.TimeoutError()
+                        raise QueryTimeoutError("query timed out", operation="query", timeout=timeout, tag_id=tag_id)
                     await self.receive_nodes(timeout=min(5, remaining))
             result = await self.queries.wait_for(tag_id, timeout=timeout)
             self.logger.debug("query resolved", extra={"event": "query.resolve", "tag_id": tag_id, "node": node_log_summary(result)})
@@ -663,7 +674,7 @@ class WhatsAppClient:
 
     async def receive_nodes(self, timeout: float = 30) -> list[BinaryNode]:
         if self._web is None:
-            raise RuntimeError("client is not connected")
+            raise SocketNotConnectedError("client is not connected")
         nodes = await self._web.receive_nodes(timeout=timeout)
         self.logger.debug("received nodes", extra={"event": "node.receive_batch", "count": len(nodes)})
         for node in nodes:
@@ -936,12 +947,12 @@ class WhatsAppClient:
         media_key = bytes(getattr(content, "mediaKey", b""))
         message_id = _message_key_id(key)
         if not media_key:
-            raise ValueError("media message is missing mediaKey")
+            raise MediaError("media message is missing mediaKey")
         if not message_id:
-            raise ValueError("media message is missing key id")
+            raise MediaError("media message is missing key id")
         me = self.auth_state.credentials.get("me", {}).get("id")
         if not me:
-            raise RuntimeError("cannot update media message before login")
+            raise SocketNotConnectedError("cannot update media message before login")
 
         future: asyncio.Future[MediaRetryEvent] = asyncio.get_running_loop().create_future()
 
@@ -962,7 +973,7 @@ class WhatsAppClient:
             while not future.done():
                 remaining = deadline - asyncio.get_running_loop().time()
                 if remaining <= 0:
-                    raise asyncio.TimeoutError()
+                    raise QueryTimeoutError("media retry update timed out", operation="media_retry", timeout=timeout, tag_id=message_id)
                 try:
                     await self.receive_nodes(timeout=min(5, remaining))
                 except (TimeoutError, asyncio.TimeoutError):
@@ -974,14 +985,14 @@ class WhatsAppClient:
         if update.error is not None:
             raise update.error
         if update.media is None:
-            raise ValueError("media retry update missing media payload")
+            raise MediaError("media retry update missing media payload")
         retry = decrypt_media_retry_data(update.media, media_key, message_id)
         if retry.result != proto.MediaRetryNotification.ResultType.SUCCESS:
             status = media_retry_status_code(retry.result) or 404
             result_name = proto.MediaRetryNotification.ResultType.Name(retry.result)
-            raise ValueError(f"media re-upload failed by device ({result_name}, status={status})")
+            raise MediaError(f"media re-upload failed by device ({result_name}, status={status})")
         if not retry.directPath:
-            raise ValueError("media retry update missing direct path")
+            raise MediaError("media retry update missing direct path")
 
         content.directPath = retry.directPath
         content.url = media_url_from_direct_path(retry.directPath, self.get_media_host())
@@ -1092,7 +1103,7 @@ class WhatsAppClient:
             inject_sessions_from_encrypt_result(working, result, allow_partial=True)
             unresolved = self._missing_session_jids_from_credentials(working, own_fanout_jids + recipient_device_jids, force=force_sessions)
             if unresolved:
-                raise ValueError(f"session assertion incomplete for {unresolved}")
+                raise SessionAssertionError(f"session assertion incomplete for {unresolved}")
             await self._commit_credentials(working)
         return own_fanout_jids, recipient_device_jids
 
@@ -1120,7 +1131,7 @@ class WhatsAppClient:
         inject_sessions_from_encrypt_result(working, result, allow_partial=True)
         unresolved = self._missing_session_jids_from_credentials(working, missing, force=force_sessions)
         if unresolved:
-            raise ValueError(f"session assertion incomplete for {unresolved}")
+            raise SessionAssertionError(f"session assertion incomplete for {unresolved}")
         await self._commit_credentials(working)
 
     def _missing_session_jids_from_credentials(
@@ -1307,7 +1318,7 @@ class WhatsAppClient:
         metadata = await self.group_metadata(group_jid, timeout=timeout)
         invite_code = await self.group_invite_code(group_jid, timeout=timeout)
         if not invite_code:
-            raise ValueError(f"group invite code unavailable for {group_jid}")
+            raise GroupInviteError(f"group invite code unavailable for {group_jid}")
         content = {
             "group_invite": {
                 "jid": metadata.id or group_jid,
@@ -1397,25 +1408,25 @@ class WhatsAppClient:
 
     async def _resolve_blocklist_jids(self, jid: str, action: str, *, timeout: float) -> tuple[str, str | None]:
         if action not in {"block", "unblock"}:
-            raise ValueError(f"unsupported block action: {action}")
+            raise ContactResolutionError(f"unsupported block action: {action}")
 
         normalized = self._normalize_user_jid(jid)
         if is_lid(normalized):
             lid_jid = normalized
             pn_jid = self._pn_for_lid(lid_jid)
             if action == "block" and pn_jid is None:
-                raise ValueError(f"unable to resolve PN JID for LID: {jid}")
+                raise ContactResolutionError(f"unable to resolve PN JID for LID: {jid}")
             return lid_jid, pn_jid if action == "block" else None
 
         if not is_pn(normalized):
-            raise ValueError(f"invalid blocklist jid: {jid}")
+            raise ContactResolutionError(f"invalid blocklist jid: {jid}")
 
         lid_jid = self._lid_for_pn(normalized)
         if lid_jid is None:
             await self._refresh_lid_mapping(normalized, timeout=timeout)
             lid_jid = self._lid_for_pn(normalized)
         if lid_jid is None:
-            raise ValueError(f"unable to resolve LID for PN JID: {jid}")
+            raise ContactResolutionError(f"unable to resolve LID for PN JID: {jid}")
         return lid_jid, normalized if action == "block" else None
 
     @staticmethod
@@ -1502,14 +1513,14 @@ class WhatsAppClient:
     ) -> CatalogResult:
         target = jid or self.auth_state.credentials.get("me", {}).get("id")
         if not target:
-            raise RuntimeError("cannot fetch catalog before login")
+            raise SocketNotConnectedError("cannot fetch catalog before login")
         result = await self._query_checked(catalog_node(target, self.queries.next_tag(), limit=limit, cursor=cursor), timeout=timeout)
         return parse_catalog(result)
 
     async def get_collections(self, jid: str | None = None, *, limit: int = 51, timeout: float = 30) -> BinaryNode:
         target = jid or self.auth_state.credentials.get("me", {}).get("id")
         if not target:
-            raise RuntimeError("cannot fetch collections before login")
+            raise SocketNotConnectedError("cannot fetch collections before login")
         return await self._query_checked(collections_node(target, self.queries.next_tag(), limit=limit), timeout=timeout)
 
     async def get_order_details(self, order_id: str, token_base64: str, *, timeout: float = 30) -> BinaryNode:
@@ -1521,7 +1532,7 @@ class WhatsAppClient:
         encrypted = encrypt_media(payload.data, payload.media_type)
         upload = await upload_media(encrypted.encrypted, media_conn, encrypted.file_enc_sha256, payload.media_type, timeout=int(timeout))
         if not upload.fbid or not upload.meta_hmac:
-            raise ValueError(f"cover photo upload response missing fbid/meta_hmac: {upload.raw!r}")
+            raise MediaError(f"cover photo upload response missing fbid/meta_hmac: {upload.raw!r}")
         await self._query_checked(cover_photo_update_node(upload.fbid, upload.meta_hmac, upload.timestamp, self.queries.next_tag()), timeout=timeout)
         return upload.fbid
 
@@ -1694,7 +1705,7 @@ class WhatsAppClient:
         inject_sessions_from_encrypt_result(working, result, allow_partial=True)
         unresolved = self._missing_session_jids_from_credentials(working, missing, force=force)
         if unresolved:
-            raise ValueError(f"session assertion incomplete for {unresolved}")
+            raise SessionAssertionError(f"session assertion incomplete for {unresolved}")
         await self._commit_credentials(working)
         return True
 
@@ -1711,7 +1722,7 @@ class WhatsAppClient:
             result = await self._query_checked(users, timeout=timeout)
             return {"raw": result, "list": parse_usync_result(result)}
         if protocols is None:
-            raise ValueError("execute_usync_query requires protocols when users are passed")
+            raise BaileysValueError("execute_usync_query requires protocols when users are passed")
 
         tag_id = self.queries.next_tag()
         node = usync_query_node(
@@ -1741,7 +1752,7 @@ class WhatsAppClient:
     ) -> BinaryNode:
         normalized = _dedupe_jids([jid_normalized_user(jid) for jid in jids if jid])
         if not normalized:
-            raise ValueError("issue_privacy_tokens requires at least one jid")
+            raise BaileysValueError("issue_privacy_tokens requires at least one jid")
         token_timestamp = str(timestamp if timestamp is not None else int(time.time()))
         node = BinaryNode(
             "iq",
@@ -1789,7 +1800,7 @@ class WhatsAppClient:
     ) -> SendMessageResult:
         me = self.auth_state.credentials.get("me", {}).get("id")
         if not me:
-            raise RuntimeError("cannot send peer data operation before login")
+            raise SocketNotConnectedError("cannot send peer data operation before login")
         message = proto.Message()
         message.protocolMessage.type = proto.Message.ProtocolMessage.Type.PEER_DATA_OPERATION_REQUEST_MESSAGE
         if operation is not None:
@@ -1937,7 +1948,7 @@ class WhatsAppClient:
     async def reject_call(self, call_id: str, call_from: str) -> None:
         me = self.auth_state.credentials.get("me", {}).get("id")
         if not me:
-            raise RuntimeError("cannot reject call before login")
+            raise SocketNotConnectedError("cannot reject call before login")
         await self.send_node(
             BinaryNode(
                 "call",
@@ -2054,7 +2065,7 @@ class WhatsAppClient:
             node = available_presence_node(me.get("name") or "~", presence_type)
         else:
             if not to_jid:
-                raise ValueError("chatstate presence requires to_jid")
+                raise BaileysValueError("chatstate presence requires to_jid")
             me = self.auth_state.credentials.get("me") or {}
             node = chatstate_presence_node(me.get("id") or "", to_jid, presence_type)
         await self.send_node(node)
@@ -2116,7 +2127,7 @@ class WhatsAppClient:
     ) -> SendMessageResult:
         me = self.auth_state.credentials.get("me", {}).get("id")
         if not me:
-            raise RuntimeError("cannot request app-state sync key before login")
+            raise SocketNotConnectedError("cannot request app-state sync key before login")
         message = app_state_sync_key_request_message(key_ids)
         return await self.send_message(
             jid_normalized_user(me),
@@ -2565,7 +2576,7 @@ class WhatsAppClient:
         initialize: bool = True,
     ) -> BinaryNode:
         if self._web is None:
-            raise RuntimeError("client is not connected")
+            raise SocketNotConnectedError("client is not connected")
         node = await self._web.wait_for_success(timeout=timeout, reply_to_pings=reply_to_pings)
         if self._web.creds is not None:
             self.auth_state.credentials = self._web.creds
@@ -2632,7 +2643,7 @@ class WhatsAppClient:
         response = await self.query(digest_key_bundle_node(self.queries.next_tag()), timeout=timeout)
         digest = _first_child(response, "digest")
         if digest is None:
-            raise ValueError("encrypt/get digest response missing digest child")
+            raise ProtocolError("encrypt/get digest response missing digest child")
         return digest
 
     async def count_pre_keys(self, *, timeout: float = 30, drive_receive: bool = False) -> int:
@@ -2972,11 +2983,11 @@ def _parse_bot_list_v2(node: BinaryNode) -> list[dict[str, str]]:
 def _media_retry_message_parts(message: WAMessage | proto.WebMessageInfo) -> tuple[Any, proto.Message]:
     if isinstance(message, WAMessage):
         if message.message is None:
-            raise ValueError("media retry requires message content")
+            raise MediaError("media retry requires message content")
         return message.key, message.message
     if isinstance(message, proto.WebMessageInfo):
         if not message.HasField("message"):
-            raise ValueError("media retry requires message content")
+            raise MediaError("media retry requires message content")
         return message.key, message.message
     raise TypeError(f"unsupported media retry message type: {type(message).__name__}")
 
@@ -2985,7 +2996,7 @@ def _media_content_from_message(message: proto.Message) -> Any:
     for field_name in ("imageMessage", "videoMessage", "audioMessage", "documentMessage", "stickerMessage"):
         if message.HasField(field_name):
             return getattr(message, field_name)
-    raise ValueError("message does not contain supported media content")
+    raise MediaError("message does not contain supported media content")
 
 
 def _message_key_id(key: Any) -> str | None:

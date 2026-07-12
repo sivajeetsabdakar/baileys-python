@@ -11,6 +11,7 @@ import aiohttp
 
 from baileys.crypto import aes_decrypt_cbc, aes_decrypt_gcm, aes_encrypt_cbc, aes_encrypt_gcm, hkdf, hmac_sign, random_bytes, sha256
 from baileys.defaults import DEFAULT_ORIGIN, MEDIA_PATH_MAP, S_WHATSAPP_NET
+from baileys.errors import MediaError
 from baileys.generated import WAProto_pb2 as proto
 from baileys.jid import jid_normalized_user
 from baileys.socket_nodes import find_child
@@ -83,7 +84,7 @@ def media_conn_node(tag_id: str) -> BinaryNode:
 def parse_media_conn(node: BinaryNode) -> MediaConn:
     media_conn = find_child(node, "media_conn")
     if media_conn is None:
-        raise ValueError(f"media_conn response missing child: {node!r}")
+        raise MediaError(f"media_conn response missing child: {node!r}")
     hosts: list[MediaHost] = []
     if isinstance(media_conn.content, list):
         for child in media_conn.content:
@@ -98,7 +99,7 @@ def parse_media_conn(node: BinaryNode) -> MediaConn:
                 )
             )
     if not hosts:
-        raise ValueError(f"media_conn response has no hosts: {node!r}")
+        raise MediaError(f"media_conn response has no hosts: {node!r}")
     return MediaConn(auth=media_conn.attrs["auth"], ttl=int(media_conn.attrs["ttl"]), hosts=hosts)
 
 
@@ -120,13 +121,13 @@ def encrypt_media(data: bytes, media_type: str, *, media_key: bytes | None = Non
 
 def decrypt_media(encrypted: bytes, media_key: bytes, media_type: str) -> bytes:
     if len(encrypted) < 11:
-        raise ValueError("encrypted media too short")
+        raise MediaError("encrypted media too short")
     keys = derive_media_keys(media_key, media_type)
     ciphertext = encrypted[:-10]
     mac = encrypted[-10:]
     expected = hmac_sign(keys.iv + ciphertext, keys.mac_key)[:10]
     if mac != expected:
-        raise ValueError("invalid media mac")
+        raise MediaError("invalid media mac")
     return aes_decrypt_cbc(ciphertext, keys.cipher_key, keys.iv)
 
 
@@ -138,9 +139,9 @@ def encrypt_media_retry_request(key: Any, media_key: bytes, me_id: str) -> Binar
     message_id = _message_key_value(key, "id")
     remote_jid = _message_key_value(key, "remote_jid", "remoteJid")
     if not message_id:
-        raise ValueError("media retry request requires message key id")
+        raise MediaError("media retry request requires message key id")
     if not remote_jid:
-        raise ValueError("media retry request requires remote jid")
+        raise MediaError("media retry request requires remote jid")
 
     receipt = proto.ServerErrorReceipt()
     receipt.stanzaId = message_id
@@ -243,7 +244,7 @@ async def upload_media(
                 async with session.post(url, data=encrypted, headers=headers) as response:
                     text = await response.text()
                     if response.status >= 400:
-                        raise ValueError(f"upload failed status={response.status} body={text[:200]}")
+                        raise MediaError(f"upload failed status={response.status} body={text[:200]}")
                     payload = await response.json(content_type=None)
             media_url = payload.get("url") or ""
             direct_path = payload.get("direct_path") or ""
@@ -265,10 +266,10 @@ async def upload_media(
                     timestamp=str(payload.get("ts") or payload.get("timestamp") or ""),
                     raw=payload,
                 )
-            raise ValueError(f"upload response missing media identifiers: {payload!r}")
+            raise MediaError(f"upload response missing media identifiers: {payload!r}")
         except Exception as exc:
             last_error = exc
-    raise ValueError(f"media upload failed on all hosts: {last_error}") from last_error
+    raise MediaError(f"media upload failed on all hosts: {last_error}") from last_error
 
 
 async def upload_raw_media(
@@ -291,16 +292,16 @@ async def upload_raw_media(
                 async with session.post(url, data=data, headers=headers) as response:
                     text = await response.text()
                     if response.status >= 400:
-                        raise ValueError(f"upload failed status={response.status} body={text[:200]}")
+                        raise MediaError(f"upload failed status={response.status} body={text[:200]}")
                     payload = await response.json(content_type=None)
             media_url = payload.get("url") or ""
             direct_path = payload.get("direct_path") or ""
             if media_url or direct_path:
                 return MediaUploadResult(media_url=media_url, direct_path=direct_path, host=host.hostname, raw=payload)
-            raise ValueError(f"upload response missing media identifiers: {payload!r}")
+            raise MediaError(f"upload response missing media identifiers: {payload!r}")
         except Exception as exc:
             last_error = exc
-    raise ValueError(f"raw media upload failed on all hosts: {last_error}") from last_error
+    raise MediaError(f"raw media upload failed on all hosts: {last_error}") from last_error
 
 
 def media_url_from_direct_path(direct_path: str, host: str = "mmg.whatsapp.net") -> str:
@@ -313,18 +314,18 @@ async def download_media(upload: MediaUploadResult, *, timeout: int = 45) -> byt
         async with session.get(url, headers={"Origin": DEFAULT_ORIGIN}) as response:
             data = await response.read()
             if response.status >= 400:
-                raise ValueError(f"download failed status={response.status} body={data[:200]!r}")
+                raise MediaError(f"download failed status={response.status} body={data[:200]!r}")
             return data
 
 
 async def download_external_blob(blob: proto.ExternalBlobReference, media_type: str = "md-app-state", *, timeout: int = 45) -> bytes:
     if not blob.mediaKey:
-        raise ValueError("external blob missing media key")
+        raise MediaError("external blob missing media key")
     if not blob.directPath:
-        raise ValueError("external blob missing direct path")
+        raise MediaError("external blob missing direct path")
     encrypted = await download_direct_path(blob.directPath, timeout=timeout)
     if blob.fileEncSha256 and sha256(encrypted) != blob.fileEncSha256:
-        raise ValueError("external blob encrypted hash mismatch")
+        raise MediaError("external blob encrypted hash mismatch")
     return decrypt_media(encrypted, blob.mediaKey, media_type)
 
 
@@ -334,7 +335,7 @@ async def download_direct_path(direct_path: str, *, timeout: int = 45) -> bytes:
         async with session.get(url, headers={"Origin": DEFAULT_ORIGIN}) as response:
             data = await response.read()
             if response.status >= 400:
-                raise ValueError(f"download failed status={response.status} body={data[:200]!r}")
+                raise MediaError(f"download failed status={response.status} body={data[:200]!r}")
             return data
 
 
@@ -376,7 +377,7 @@ def read_media_payload(
     ptt: bool = False,
 ) -> MediaPayload:
     if media_type not in MEDIA_PATH_MAP:
-        raise ValueError(f"unsupported media type: {media_type}")
+        raise MediaError(f"unsupported media type: {media_type}")
     if isinstance(source, (bytes, bytearray)):
         data = bytes(source)
         guessed_name = filename

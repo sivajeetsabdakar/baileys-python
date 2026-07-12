@@ -396,6 +396,9 @@ tests are stable.
 - Added `docs/release-checklist.md` for core-beta candidate review.
 - Added shared public error bases, preserving existing `ValueError` and
   `RuntimeError` compatibility for current public exceptions.
+- Added API-specific typed errors for auth-state, socket connection, protocol,
+  query timeout, media, pairing, session assertion, contact resolution, and
+  group-invite failures.
 - Added a public replay-store interface, default in-memory replay store, and
   BinaryNode JSON conversion helpers. Retry replay now uses the replay store
   instead of being hard-wired to the socket instance cache.
@@ -404,8 +407,8 @@ tests are stable.
 - Phase 8 now treats the deferred Phase 7 live-proof items as Todo evidence
   gaps, not core-beta blockers, as long as gated cases report cleanly and the
   compatibility matrix stays explicit.
-- Next Phase 8 targets are deeper API-specific typed errors, optional SQLite
-  auth/store prototype, and running the long release soak when ready.
+- Next Phase 8 targets are an optional SQLite auth/store prototype and running
+  the long release soak when ready.
 
 ## Live Harness
 
