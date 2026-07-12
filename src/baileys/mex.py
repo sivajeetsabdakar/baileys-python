@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from .defaults import S_WHATSAPP_NET
+from .errors import BaileysRuntimeError
 from .socket_nodes import find_child, node_content_bytes
 from .wabinary import BinaryNode
 
@@ -44,7 +45,7 @@ QUERY_IDS = {
 
 
 @dataclass(frozen=True)
-class MexError(RuntimeError):
+class MexError(BaileysRuntimeError):
     message: str
     data: dict[str, Any] | None = None
 

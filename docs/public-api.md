@@ -94,6 +94,25 @@ tags, retry stages, and close reasons. Node payload bytes, keys, tokens,
 signatures, and long opaque values are redacted before they are attached to log
 records.
 
+## Errors
+
+Package-raised public exceptions inherit from `BaileysError`. Existing
+standard exception compatibility is preserved, so validation errors such as
+`UnsupportedMessageContent` and `WAMEncodeError` remain `ValueError`
+instances, while `IQError`, `MexError`, and `MissingAppStateKey` remain
+`RuntimeError` instances.
+
+Useful catch surfaces:
+
+- `BaileysError`
+- `BaileysValueError`
+- `BaileysRuntimeError`
+- `BaileysTimeoutError`
+- `AccountCapabilityError`
+- `DisconnectError`
+- `IQError`
+- `MexError`
+
 ## Sending Messages
 
 Pythonic methods and Baileys aliases both work:

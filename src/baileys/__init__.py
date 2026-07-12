@@ -64,6 +64,15 @@ from .crypto import (
     sha256,
 )
 from .disconnect import DisconnectError, DisconnectReason, failure_to_disconnect, stream_error_to_disconnect
+from .errors import (
+    AccountCapabilityError,
+    BaileysError,
+    BaileysRuntimeError,
+    BaileysTimeoutError,
+    BaileysValueError,
+    MediaError,
+    PairingError,
+)
 from .events import EventEmitter, ListenerRef
 from .chat_groups import (
     GroupMetadata,
@@ -210,8 +219,13 @@ from .whatsapp_keys import AppStateKeys, MediaKeys, derive_media_keys, expand_ap
 
 __all__ = [
     "BinaryNode",
+    "BaileysError",
+    "BaileysRuntimeError",
+    "BaileysTimeoutError",
+    "BaileysValueError",
     "AuthCredentials",
     "AuthState",
+    "AccountCapabilityError",
     "AppStateKeys",
     "AppliedAppStateSync",
     "AppStateCollectionSync",
@@ -256,6 +270,7 @@ __all__ = [
     "MediaRetryEvent",
     "MediaSendResult",
     "MediaUploadResult",
+    "MediaError",
     "MexError",
     "MultiFileAuthState",
     "NewsletterMetadata",
@@ -269,6 +284,7 @@ __all__ = [
     "PairDeviceRefs",
     "PairSuccess",
     "PairingCodeRequest",
+    "PairingError",
     "PreKeyMaintenanceResult",
     "PreKeyNodeResult",
     "ParticipantUpdateResult",

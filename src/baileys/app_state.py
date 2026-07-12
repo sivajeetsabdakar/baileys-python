@@ -16,6 +16,7 @@ from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from .auth_store import b64, unb64
 from .crypto import hkdf, hmac_sign
 from .defaults import S_WHATSAPP_NET
+from .errors import BaileysRuntimeError
 from .generated import WAProto_pb2 as proto
 from .wabinary import BinaryNode
 from .whatsapp_keys import expand_app_state_keys
@@ -787,5 +788,5 @@ def _mix_lthash_mutation(state: LTHashState, index_mac: bytes, value_mac: bytes,
     state.index_value_map[index_key] = value_mac
 
 
-class MissingAppStateKey(RuntimeError):
+class MissingAppStateKey(BaileysRuntimeError):
     pass

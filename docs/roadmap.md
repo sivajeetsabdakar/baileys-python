@@ -394,11 +394,14 @@ tests are stable.
   construction, and a small inbound echo bot. The release gate now runs the
   no-network example smoke test.
 - Added `docs/release-checklist.md` for core-beta candidate review.
+- Added shared public error bases, preserving existing `ValueError` and
+  `RuntimeError` compatibility for current public exceptions.
 - Phase 8 now treats the deferred Phase 7 live-proof items as Todo evidence
   gaps, not core-beta blockers, as long as gated cases report cleanly and the
   compatibility matrix stays explicit.
-- Next Phase 8 targets are stricter typed errors, durable replay interface
-  design, optional SQLite auth/store prototype, and release soak planning.
+- Next Phase 8 targets are deeper API-specific typed errors, durable replay
+  interface design, optional SQLite auth/store prototype, and release soak
+  planning.
 
 ## Live Harness
 

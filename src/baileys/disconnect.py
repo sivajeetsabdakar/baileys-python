@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from enum import IntEnum
 from typing import Any
 
+from .errors import BaileysError
 from .wabinary import BinaryNode
 
 
@@ -21,7 +22,7 @@ class DisconnectReason(IntEnum):
 
 
 @dataclass
-class DisconnectError(Exception):
+class DisconnectError(BaileysError):
     message: str
     status_code: int
     reason: str | None = None

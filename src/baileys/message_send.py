@@ -9,6 +9,7 @@ from typing import Any, Iterable
 from signal_protocol import address, session_cipher
 
 from baileys.auth_store import build_signal_store, export_session, unb64
+from baileys.errors import BaileysValueError
 from baileys.generated import WAProto_pb2 as proto
 from baileys.jid import jid_decode_tuple
 from baileys.wabinary import BinaryNode
@@ -32,7 +33,7 @@ class MessageOptions:
     is_forwarded: bool = False
 
 
-class UnsupportedMessageContent(ValueError):
+class UnsupportedMessageContent(BaileysValueError):
     pass
 
 

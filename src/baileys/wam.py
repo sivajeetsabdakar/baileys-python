@@ -6,6 +6,8 @@ from importlib import resources
 from struct import pack
 from typing import Any
 
+from .errors import BaileysValueError
+
 
 FLAG_GLOBAL = 0
 FLAG_EVENT = 1
@@ -37,7 +39,7 @@ class WAMBinaryInfo:
     events: list[WAMEvent] = field(default_factory=list)
 
 
-class WAMEncodeError(ValueError):
+class WAMEncodeError(BaileysValueError):
     pass
 
 

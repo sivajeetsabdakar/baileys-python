@@ -3,6 +3,7 @@ from __future__ import annotations
 from enum import Enum
 import time
 
+from baileys.errors import BaileysRuntimeError
 from baileys.wabinary import BinaryNode
 
 
@@ -31,7 +32,7 @@ class SocketNodeKind(str, Enum):
     UNKNOWN = "unknown"
 
 
-class IQError(RuntimeError):
+class IQError(BaileysRuntimeError):
     def __init__(self, code: str | None, text: str | None, node: BinaryNode):
         self.code = code
         self.text = text
