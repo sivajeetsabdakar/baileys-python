@@ -74,9 +74,11 @@ async def main() -> int:
     parser.add_argument("--newsletter-key")
     parser.add_argument("--order-id")
     parser.add_argument("--order-token")
+    parser.add_argument("--skip-collections", action="store_true")
     parser.add_argument("--apply-cover-photo", action="store_true")
     parser.add_argument("--force-cover-overwrite", action="store_true")
     parser.add_argument("--apply-newsletter-create", action="store_true")
+    parser.add_argument("--apply-community-create", action="store_true")
     parser.add_argument("--send-peer-data", action="store_true")
     parser.add_argument("--send-wam", action="store_true")
     parser.add_argument("--allow-limits", action="store_true")
@@ -97,12 +99,15 @@ async def main() -> int:
         own_jid = client.auth_state.credentials.get("me", {}).get("id")
         business_jid = args.business_jid or own_jid
 
-        async def collections_step() -> object:
-            node = await client.get_collections(business_jid, timeout=args.timeout)
-            collections = find_child(node, "collections")
-            return {"summary": node_summary(collections), "collections": count_children(collections, "collection")}
+        if not args.skip_collections:
+            async def collections_step() -> object:
+                node = await client.get_collections(business_jid, timeout=args.timeout)
+                collections = find_child(node, "collections")
+                return {"summary": node_summary(collections), "collections": count_children(collections, "collection")}
 
-        ok = await run_step("COLLECTIONS", collections_step, allow_limits=args.allow_limits) and ok
+            ok = await run_step("COLLECTIONS", collections_step, allow_limits=args.allow_limits) and ok
+        else:
+            print("COLLECTIONS_SKIPPED", flush=True)
 
         if args.order_id and args.order_token:
             async def order_step() -> object:
@@ -170,10 +175,16 @@ async def main() -> int:
             async def newsletter_create_step() -> object:
                 newsletter = await client.newsletter_create(f"Baileys Python Probe {client.queries.next_tag()}", "Temporary probe", timeout=args.timeout)
                 jid = getattr(newsletter, "id", None)
+                metadata = await client.newsletter_metadata("jid", jid, timeout=args.timeout) if jid else None
                 deleted = None
                 if jid:
                     deleted = await client.newsletter_delete(jid, timeout=args.timeout)
-                return {"jid": jid, "deleted": deleted}
+                return {
+                    "jid": jid,
+                    "metadata_id": getattr(metadata, "id", None),
+                    "metadata_name": getattr(metadata, "name", None),
+                    "deleted": deleted,
+                }
 
             ok = await run_step("NEWSLETTER_CREATE_DELETE", newsletter_create_step, allow_limits=args.allow_limits) and ok
         else:
@@ -187,6 +198,40 @@ async def main() -> int:
             ok = await run_step("COMMUNITY_METADATA", community_step, allow_limits=args.allow_limits) and ok
         else:
             print("COMMUNITY_METADATA_SKIPPED missing --community-jid", flush=True)
+
+        if args.apply_community_create:
+            async def community_create_step() -> object:
+                community = None
+                jid = None
+                try:
+                    community = await client.community_create(
+                        f"Baileys Python Probe {client.queries.next_tag()}",
+                        "Temporary community for protocol verification.",
+                        timeout=args.timeout,
+                    )
+                    jid = community.id
+                    metadata = await client.community_metadata(jid, timeout=args.timeout) if jid else None
+                    left = False
+                    if jid:
+                        await client.community_leave(jid, timeout=args.timeout)
+                        left = True
+                    return {
+                        "jid": jid,
+                        "subject": community.subject,
+                        "metadata_subject": getattr(metadata, "subject", None),
+                        "participants": len(community.participants),
+                        "left": left,
+                    }
+                finally:
+                    if jid:
+                        try:
+                            await client.community_leave(jid, timeout=args.timeout)
+                        except Exception:
+                            pass
+
+            ok = await run_step("COMMUNITY_CREATE_LEAVE", community_create_step, allow_limits=args.allow_limits) and ok
+        else:
+            print("COMMUNITY_CREATE_LEAVE_SKIPPED pass --apply-community-create to run create/leave", flush=True)
 
         if args.send_wam:
             ok = await run_step(

@@ -368,15 +368,16 @@ tests are stable.
   Fresh catalog image uploads use the Node-compatible direct-path media URL and
   recover by unique catalog name if the server applies the create but does not
   return the mutation IQ before timeout. Cover-photo update/remove, newsletter
-  create/delete, bot-list fetch, trusted-contact privacy-token issuance, and a
-  self peer-data operation with ACK are also live-proven. Message-capping MEX
-  currently returns a server GraphQL bad request for this account/request shape.
-  Collections and WAM stats upload are wired but time out waiting for server IQ
-  responses on this account.
+  create/metadata/delete, bot-list fetch, trusted-contact privacy-token
+  issuance, and a self peer-data operation with ACK are also live-proven.
+  Message-capping MEX currently returns a server GraphQL bad request for this
+  account/request shape. Collections, community create, and WAM stats upload are
+  wired but time out waiting for server IQ responses on this account; the
+  community create attempt did not leave a participating community behind.
 - Remaining Phase 7 parity gaps are collections/order live proof, community
-  live proof, WAM upload live ACK proof, enabled-account newsletter metadata and
-  event proof, and broader live proof for account-gated WAUSync and media retry
-  edge surfaces.
+  live proof, WAM upload live ACK proof, enabled-account newsletter event proof,
+  and broader live proof for account-gated WAUSync and media retry edge
+  surfaces.
 
 ## Live Harness
 
@@ -439,12 +440,13 @@ tests are stable.
   business profile fetch, catalog read, temporary product create/delete using an
   existing catalog image, temporary product create/delete using a freshly
   generated raw-upload image, reversible product update, cover-photo
-  update/remove, newsletter create/delete, bot-list fetch, trusted-contact
+  update/remove, newsletter create/metadata/delete, bot-list fetch, trusted-contact
   privacy-token issuance, self peer-data operation with ACK, and account
-  reachout timelock MEX access. Collections and WAM stats timed out waiting for
-  server responses on the current account. Order-details proof needs a real
-  order id/token, and community proof needs a community JID or a safe
-  enabled-account mutation flow.
+  reachout timelock MEX access. Collections, community create, and WAM stats
+  timed out waiting for server responses on the current account; the community
+  create attempt did not leave a participating community behind. Order-details
+  proof needs a real order id/token, and community metadata proof needs a
+  community JID or a safe enabled-account mutation flow.
 - Latest media retry probe captures inbound peer image media and receives a
   server ACK for the retry receipt. The final encrypted media-update response
   still depends on WhatsApp returning a reupload for unavailable media.
