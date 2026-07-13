@@ -426,7 +426,10 @@ tests are stable.
 - Wired socket LID/PN reads and writes through durable event stores where
   available, covering USync device lookup, blocklist resolution, group metadata
   participant mappings, and history imports.
-- Next Phase 9 targets are Postgres adapter design, broader Phase 7
+- Added the `postgres` optional dependency group and
+  `docs/postgres-adapter-design.md` for the Postgres adapter boundary, schema,
+  transaction rules, migrations, and acceptance checks.
+- Next Phase 9 targets are Postgres adapter implementation, broader Phase 7
   enabled-account live proof, and the 24-hour reconnect soak.
 
 ## Live Harness

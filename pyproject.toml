@@ -23,6 +23,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest", "build", "twine"]
+postgres = ["psycopg[binary,pool]>=3.2"]
 proto = ["grpcio-tools"]
 
 [tool.pytest.ini_options]

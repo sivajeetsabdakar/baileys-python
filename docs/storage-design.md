@@ -198,6 +198,10 @@ Postgres should use the same logical schema as SQLite and add:
 - connection-pool integration supplied by the application.
 - explicit migration files.
 
+See `docs/postgres-adapter-design.md` for the adapter boundary, optional
+dependency, schema mapping, transaction rules, migration order, and acceptance
+checks.
+
 ## Redis Adapter
 
 Redis should be treated as an optional cache/replay store, not the only durable
