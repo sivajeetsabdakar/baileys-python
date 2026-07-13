@@ -119,7 +119,8 @@ Secrets to avoid logging:
 
 Phase 8:
 
-- long release soak run.
+- code hardening complete; keep release evidence current while preparing beta
+  candidates.
 
 Phase 9:
 

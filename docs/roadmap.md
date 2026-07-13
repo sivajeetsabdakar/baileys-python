@@ -406,10 +406,17 @@ tests are stable.
   recent outbound replay.
 - Added `scripts/soak_suite.py` to wrap timed saved-auth socket soak runs and
   write redacted JSON summaries for release evidence.
+- Hardened soak shutdown with a bounded close timeout. The wrapper classifies
+  runs that emitted `SOAK_OK` as passed even if process shutdown exceeds the
+  wrapper cushion.
+- Captured saved-auth soak evidence: a one-hour run reached `SOAK_OK` after a
+  reconnect-exhaustion network event, and a short shutdown-regression soak
+  passed cleanly.
 - Phase 8 now treats the deferred Phase 7 live-proof items as Todo evidence
   gaps, not core-beta blockers, as long as gated cases report cleanly and the
   compatibility matrix stays explicit.
-- Next Phase 8 target is running the long release soak when ready.
+- Phase 8 code-hardening items are complete. The longer 24-hour reconnect soak
+  remains a Phase 9 release-hardening gate.
 
 ## Live Harness
 

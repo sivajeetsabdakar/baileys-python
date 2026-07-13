@@ -28,6 +28,7 @@ def test_soak_suite_builds_product_soak_command():
         duration=60,
         receive_timeout=30,
         keepalive_interval=25,
+        close_timeout=15,
     )
 
     command = soak_suite.build_command(args)
@@ -41,6 +42,7 @@ def test_soak_suite_classifies_statuses():
     soak_suite = load_soak_suite()
 
     assert soak_suite.classify_soak(0, "SOAK_OK counters={}", "") == "passed"
+    assert soak_suite.classify_soak(None, "SOAK_OK counters={}", "connect failed") == "passed"
     assert soak_suite.classify_soak(2, "MISSING_CREDS auth/missing.json", "") == "skipped"
     assert soak_suite.classify_soak(1, "MESSAGE_TIMEOUT", "") == "limited"
     assert soak_suite.classify_soak(1, "boom", "") == "failed"

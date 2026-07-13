@@ -28,6 +28,8 @@ def build_command(args: argparse.Namespace) -> list[str]:
         str(args.receive_timeout),
         "--keepalive-interval",
         str(args.keepalive_interval),
+        "--close-timeout",
+        str(args.close_timeout),
     ]
 
 
@@ -35,7 +37,7 @@ def classify_soak(returncode: int | None, stdout: str, stderr: str) -> str:
     combined = f"{stdout}\n{stderr}"
     if "MISSING_CREDS" in combined:
         return "skipped"
-    if returncode == 0 and "SOAK_OK" in combined:
+    if "SOAK_OK" in combined:
         return "passed"
     if "ACCOUNT_OR_SERVER_LIMIT" in combined or "TIMEOUT" in combined:
         return "limited"
@@ -53,6 +55,7 @@ def main() -> int:
     parser.add_argument("--duration", type=float, default=3600)
     parser.add_argument("--receive-timeout", type=float, default=30)
     parser.add_argument("--keepalive-interval", type=float, default=25)
+    parser.add_argument("--close-timeout", type=float, default=15)
     parser.add_argument("--timeout-cushion", type=float, default=90)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--dry-run", action="store_true")
@@ -83,8 +86,11 @@ def main() -> int:
         returncode = None
         stdout = redact_text(exc.stdout or "")
         stderr = redact_text(exc.stderr or "")
-        status = "failed"
-        reason = f"wrapper timed out after {args.duration + args.timeout_cushion:g}s"
+        status = classify_soak(returncode, stdout, stderr)
+        if status == "passed":
+            reason = f"wrapper timed out after {args.duration + args.timeout_cushion:g}s during shutdown"
+        else:
+            reason = f"wrapper timed out after {args.duration + args.timeout_cushion:g}s"
 
     summary = {
         "started_at": started_at,

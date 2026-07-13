@@ -20,6 +20,7 @@ async def main() -> int:
     parser.add_argument("--duration", type=float, default=3600)
     parser.add_argument("--receive-timeout", type=float, default=30)
     parser.add_argument("--keepalive-interval", type=float, default=25)
+    parser.add_argument("--close-timeout", type=float, default=15)
     args = parser.parse_args()
 
     creds_path = Path(args.creds_path).resolve()
@@ -67,7 +68,10 @@ async def main() -> int:
         print(f"SOAK_OK counters={counters}", flush=True)
         return 0
     finally:
-        await client.close()
+        try:
+            await asyncio.wait_for(client.close(), timeout=args.close_timeout)
+        except asyncio.TimeoutError:
+            print(f"SOAK_CLOSE_TIMEOUT seconds={args.close_timeout}", flush=True)
 
 
 if __name__ == "__main__":
