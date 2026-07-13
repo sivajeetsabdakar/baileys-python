@@ -659,7 +659,7 @@ class WhatsAppClient:
         self.logger.debug("query start", extra={"event": "query.start", "tag_id": tag_id, "node": node_log_summary(node)})
         try:
             await self.send_node(node)
-            if drive_receive:
+            if drive_receive and not self._receive_loop_is_running_elsewhere():
                 deadline = asyncio.get_running_loop().time() + timeout
                 while not waiter.done():
                     remaining = deadline - asyncio.get_running_loop().time()
@@ -675,6 +675,10 @@ class WhatsAppClient:
                 waiter.cancel()
             self.queries.discard(tag_id)
             raise
+
+    def _receive_loop_is_running_elsewhere(self) -> bool:
+        task = self._receive_task
+        return task is not None and not task.done() and task is not asyncio.current_task()
 
     async def _query_checked(self, node: BinaryNode, *, timeout: float = 30, drive_receive: bool = True) -> BinaryNode:
         result = await self.query(node, timeout=timeout, drive_receive=drive_receive)
@@ -1175,6 +1179,23 @@ class WhatsAppClient:
         return missing
 
     async def _wait_for_message_ack(self, message_id: str, timeout: float) -> bool:
+        if self._receive_loop_is_running_elsewhere():
+            loop = asyncio.get_running_loop()
+            future: asyncio.Future[bool] = loop.create_future()
+
+            def on_node(node: BinaryNode) -> None:
+                if node.tag == "ack" and node.attrs.get("id") == message_id and not future.done():
+                    future.set_result(True)
+
+            listener = self.ev.on("node", on_node)
+            try:
+                try:
+                    return await asyncio.wait_for(future, timeout=timeout)
+                except asyncio.TimeoutError:
+                    return False
+            finally:
+                self.ev.off("node", listener)
+
         deadline = asyncio.get_running_loop().time() + timeout
         while True:
             remaining = deadline - asyncio.get_running_loop().time()

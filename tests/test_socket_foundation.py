@@ -80,6 +80,45 @@ def test_make_socket_allows_missing_creds_for_qr_first_login(tmp_path):
     assert client.auth_state.credential_store.path == creds_path
 
 
+def test_query_does_not_drive_receive_when_receive_loop_is_active(tmp_path):
+    class FakeWeb:
+        def __init__(self) -> None:
+            self.sent: list[BinaryNode] = []
+            self.receive_called = False
+
+        async def send_node(self, node: BinaryNode) -> None:
+            self.sent.append(node)
+
+        async def receive_nodes(self, timeout: float = 30) -> list[BinaryNode]:
+            self.receive_called = True
+            return []
+
+    async def run() -> None:
+        client = make_socket(tmp_path / "creds.json")
+        fake_web = FakeWeb()
+        client._web = fake_web
+        active_receive_task = asyncio.create_task(asyncio.sleep(60))
+        client._receive_task = active_receive_task
+        node = BinaryNode("iq", {"id": "query-1", "type": "get"})
+        query_task = asyncio.create_task(client.query(node, timeout=1, drive_receive=True))
+        await asyncio.sleep(0)
+
+        assert fake_web.sent == [node]
+        assert not fake_web.receive_called
+
+        client.queries.resolve(BinaryNode("iq", {"id": "query-1", "type": "result"}))
+        result = await query_task
+        assert result.attrs["type"] == "result"
+
+        active_receive_task.cancel()
+        try:
+            await active_receive_task
+        except asyncio.CancelledError:
+            pass
+
+    asyncio.run(run())
+
+
 def test_make_socket_accepts_auth_state(tmp_path):
     store = JsonCredentialStore(tmp_path / "creds.json")
     store.save_credentials(_minimal_creds())
