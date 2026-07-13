@@ -9,8 +9,8 @@ python scripts/release_gate.py
 ```
 
 The release gate covers compile checks, pytest, generated artifact checks,
-public-docs hygiene, import smoke, package build, clean wheel install, and the
-no-network example smoke test.
+public-docs hygiene, release-status consistency, import smoke, package build,
+clean wheel install, and the no-network example smoke test.
 
 Check the local Node parity audit when the Node checkout or public manifest
 changes:
@@ -32,6 +32,12 @@ Run the read-only live summary when saved credentials are available:
 
 ```powershell
 python scripts/live_suite.py --include-remaining --skip-collections
+```
+
+Write the scheduled read-only command plan for nightly automation:
+
+```powershell
+python scripts/live_suite.py --write-nightly-plan --include-remaining --skip-collections
 ```
 
 Run write checks only after confirming the target account or group:

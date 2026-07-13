@@ -45,9 +45,13 @@ hardening gates are in place:
   peer-data proof tracking
 - `scripts/live_suite.py` for JSON summaries of selected read-only and explicit
   write live probes
+- `scripts/live_suite.py --write-nightly-plan` for scheduled read-only probe
+  command planning
 - `scripts/soak_suite.py` for timed reconnect/receive-loop soak summaries
 - `scripts/release_gate.py` for compile, test, generated artifact, docs,
   package build, clean install, and import smoke checks
+- `scripts/release_status.py` for roadmap, matrix, and deferred-proof
+  consistency checks
 - optional Postgres stores with versioned migration and live database
   integration proof
 

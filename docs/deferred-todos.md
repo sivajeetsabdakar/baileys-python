@@ -5,14 +5,14 @@ capability, a live server response that did not occur during current probes, or
 a longer release-hardening run. They should stay visible until proven or
 retired with a clear reason.
 
-## Release Hardening
+## Long-Run Release Evidence
 
 - Run the 24-hour reconnect soak before marking the core beta ready.
-- Add a nightly live read-only suite once dedicated account scheduling is in
-  place.
 
 ## Live Proof
 
+- Run the nightly live read-only suite when saved credentials and account
+  scheduling are available.
 - Re-run broader account-gated USync protocol proof on an account that returns
   the relevant protocol payloads.
 - Prove media retry through a server/device response that includes the final

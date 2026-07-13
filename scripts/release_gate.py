@@ -85,6 +85,7 @@ def main() -> int:
     run_step("WAProto generated check", [sys.executable, "scripts/generate_proto.py", "--check"])
     run_step("WAM generated check", [sys.executable, "scripts/generate_wam_constants.py", "--check"])
     docs_hygiene()
+    run_step("release status check", [sys.executable, "scripts/release_status.py", "--check"])
     import_smoke(sys.executable)
     run_step("example pairing-code request", [sys.executable, "examples/pairing_code_request.py"])
 

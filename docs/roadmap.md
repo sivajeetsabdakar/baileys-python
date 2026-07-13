@@ -22,7 +22,7 @@ Baileys names such as `sendMessage`, `relayMessage`, `groupMetadata`,
 | 6 | History and app-state completeness | Done |
 | 7 | Business, newsletters, communities, edge surfaces | Done with deferred live-proof Todos |
 | 8 | Core beta release hardening | Done |
-| 9 | Full parity hardening | In progress with deferred live-proof Todos |
+| 9 | Full parity hardening | Done with deferred live-proof Todos |
 
 ## Release Strategy
 
@@ -418,7 +418,7 @@ tests are stable.
 - Phase 8 code-hardening items are complete. The longer 24-hour reconnect soak
   remains a Phase 9 release-hardening gate.
 
-## Phase 9 In Progress
+## Phase 9 Delivered
 
 - Added `SQLiteEventStore` for durable local messages, chats, contacts, message
   updates, receipts, reactions, LID/PN mappings, and app-state state. The store
@@ -448,11 +448,15 @@ tests are stable.
   suite. Phase 5 read-only passed; Phase 7 read-only re-proved business
   profile, catalog, reachout timelock, and bot-list surfaces while preserving
   account/data-gated skips and limits.
-- Remaining Phase 9 targets are broader enabled-account live proof, media retry
-  success proof, WAM stats ACK proof, newsletter inbound event proof, nightly
-  live-suite scheduling, and the 24-hour reconnect soak. Business commerce,
-  catalog collection, order-detail, and community proof stay as explicit
-  account/data-gated Todos.
+- Added `scripts/release_status.py` and wired it into the release gate so Phase
+  9 closure is checked from the roadmap, compatibility matrix, and deferred
+  TODO list.
+- Added a nightly live-suite plan path to keep account-gated probes schedulable
+  without requiring credentials in the default release gate.
+- Phase 9 implementation hardening is complete. Broader enabled-account live
+  proof, media retry success proof, WAM stats ACK proof, newsletter inbound
+  event proof, the 24-hour reconnect soak, and business/community proof remain
+  explicit deferred evidence items.
 
 ## Live Harness
 
@@ -495,13 +499,17 @@ tests are stable.
   import smoke.
 - `scripts/live_suite.py` runs selected live probes and writes a redacted JSON
   summary for release evidence.
+- `scripts/live_suite.py --write-nightly-plan` writes a redacted JSON command
+  plan for scheduled live read-only probes.
 - `scripts/soak_suite.py` wraps timed saved-auth soak runs and writes a
   redacted JSON summary.
+- `scripts/release_status.py --check` verifies that completed phases and
+  deferred live-proof items stay aligned in docs.
 
 ## Current Verification
 
 - Offline compile check passes for `src`, `scripts`, and `examples`.
-- Offline test suite passes with 160 tests.
+- Offline test suite passes through `scripts/release_gate.py`.
 - WABinary token, WAM constants, and WAProto generated artifact checks pass.
 - Product QR pairing and saved reconnect pass against the dedicated test
   account.
@@ -532,5 +540,6 @@ tests are stable.
 - Latest media retry probe captures inbound peer image media and receives a
   server ACK for the retry receipt. The final encrypted media-update response
   still depends on WhatsApp returning a reupload for unavailable media.
+- Release status check reports `ready_with_deferred_live_proof`.
 - Public docs are kept to relative repository paths and avoid local machine
   setup details.

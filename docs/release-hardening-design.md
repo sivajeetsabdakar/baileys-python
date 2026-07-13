@@ -124,16 +124,13 @@ Phase 8:
 
 Phase 9:
 
-- broader Phase 7 enabled-account live proof.
-- media retry success proof when eligible media is available.
-- full peer-data operation live coverage.
-- expanded WAM live ACK proof.
-- nightly live read-only suite.
-- 24-hour reconnect soak.
+- implementation hardening complete; keep `scripts/release_status.py --check`
+  green.
 - keep the Node-reference audit current when the local Node checkout changes.
-- keep business commerce, catalog collection, order-detail, and community
-  proof tracked as explicit account/data-gated Todos until suitable accounts
-  and data are available.
+- keep broader enabled-account proof, media retry success proof, WAM ACK proof,
+  newsletter inbound proof, 24-hour reconnect soak, business commerce, catalog
+  collection, order-detail, and community proof tracked as explicit deferred
+  evidence until suitable accounts, data, and run windows are available.
 
 ## Acceptance
 

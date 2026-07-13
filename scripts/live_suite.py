@@ -15,6 +15,7 @@ from typing import Iterable
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CREDS = ROOT / "auth" / "product_qr_creds.json"
 DEFAULT_OUTPUT = ROOT / ".tmp" / "live_suite_summary.json"
+DEFAULT_NIGHTLY_PLAN = ROOT / ".tmp" / "nightly_live_suite_plan.json"
 
 LONG_BLOB_RE = re.compile(r"(?<![A-Za-z0-9+/=])[A-Za-z0-9+/=]{48,}(?![A-Za-z0-9+/=])")
 PHONE_JID_RE = re.compile(r"\b\d{8,}(?=[:@])")
@@ -197,10 +198,28 @@ def write_summary(output_path: Path, summary: dict[str, object]) -> None:
     output_path.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
+def write_nightly_plan(output_path: Path, steps: list[SuiteStep]) -> dict[str, object]:
+    plan = {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "kind": "nightly-live-readonly",
+        "steps": [
+            {
+                "name": step.name,
+                "command": redacted_command(step.command),
+                "required": list(step.required),
+            }
+            for step in steps
+        ],
+    }
+    write_summary(output_path, plan)
+    return plan
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run selected live probes and write a JSON summary.")
     parser.add_argument("--creds-path", default=str(DEFAULT_CREDS))
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    parser.add_argument("--nightly-plan-output", type=Path, default=DEFAULT_NIGHTLY_PLAN)
     parser.add_argument("--probe-timeout", type=float, default=45)
     parser.add_argument("--step-timeout", type=float, default=120)
     parser.add_argument("--watch-timeout", type=int, default=30)
@@ -224,10 +243,17 @@ def main() -> int:
     parser.add_argument("--apply-cover-photo", action="store_true")
     parser.add_argument("--send-peer-data", action="store_true")
     parser.add_argument("--send-wam", action="store_true")
+    parser.add_argument("--write-nightly-plan", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
 
     steps = build_steps(args)
+    if args.write_nightly_plan:
+        plan = write_nightly_plan(args.nightly_plan_output, steps)
+        print(f"NIGHTLY_PLAN {relative_path(args.nightly_plan_output)}", flush=True)
+        print(f"NIGHTLY_PLAN_STEPS {len(plan['steps'])}", flush=True)
+        return 0
+
     if args.dry_run:
         for step in steps:
             print(" ".join(redacted_command(step.command)), flush=True)

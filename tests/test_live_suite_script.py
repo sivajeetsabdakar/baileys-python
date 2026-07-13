@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import importlib.util
+import json
 import sys
 from pathlib import Path
 
@@ -81,3 +82,42 @@ def test_live_suite_write_steps_are_skipped_without_destination():
     assert write_steps["send-image"].required == ("--to is required for write probes",)
     assert "45" in steps[0].command
     assert "45.0" not in steps[0].command
+
+
+def test_live_suite_writes_redacted_nightly_plan(tmp_path):
+    live_suite = load_live_suite()
+    args = argparse.Namespace(
+        creds_path=str(ROOT / "auth" / "product_qr_creds.json"),
+        probe_timeout=45.0,
+        watch_timeout=30,
+        group_jid="120363123456789012@g.us",
+        profile_jid=None,
+        on_whatsapp_jid=[],
+        business_jid=None,
+        peer_jid=None,
+        community_jid=None,
+        newsletter_kind="jid",
+        newsletter_key=None,
+        order_id=None,
+        order_token=None,
+        to=None,
+        text="text",
+        caption="caption",
+        include_remaining=True,
+        include_write=False,
+        skip_collections=True,
+        apply_newsletter_create=False,
+        apply_cover_photo=False,
+        send_peer_data=False,
+        send_wam=False,
+    )
+    output = tmp_path / "nightly.json"
+
+    plan = live_suite.write_nightly_plan(output, live_suite.build_steps(args))
+    data = json.loads(output.read_text(encoding="utf-8"))
+
+    assert plan["kind"] == "nightly-live-readonly"
+    assert data["kind"] == "nightly-live-readonly"
+    assert {step["name"] for step in data["steps"]} == {"phase5-readonly", "phase7-readonly", "phase7-remaining"}
+    assert str(ROOT) not in output.read_text(encoding="utf-8")
+    assert "120363123456789012" not in output.read_text(encoding="utf-8")
