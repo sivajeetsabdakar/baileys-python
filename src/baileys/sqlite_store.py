@@ -11,6 +11,7 @@ from .auth_state import AuthState
 from .events import EventEmitter
 from .generated import WAProto_pb2 as proto
 from .history import HistorySyncResult
+from .jid import jid_normalized_user
 from .messages import MessageKey, MessageUpsert, WAMessage
 from .replay import binary_node_from_json, binary_node_to_json
 from .store import Chat, Contact, StoreUpdate
@@ -391,12 +392,12 @@ class SQLiteEventStore:
 
     def get_pn_for_lid(self, lid_jid: str) -> str | None:
         with _connect(self.path) as db:
-            row = db.execute("select pn_jid from lid_pn_mappings where lid_jid = ?", (lid_jid,)).fetchone()
+            row = db.execute("select pn_jid from lid_pn_mappings where lid_jid = ?", (jid_normalized_user(lid_jid),)).fetchone()
         return str(row["pn_jid"]) if row is not None else None
 
     def get_lid_for_pn(self, pn_jid: str) -> str | None:
         with _connect(self.path) as db:
-            row = db.execute("select lid_jid from lid_pn_mappings where pn_jid = ?", (pn_jid,)).fetchone()
+            row = db.execute("select lid_jid from lid_pn_mappings where pn_jid = ?", (jid_normalized_user(pn_jid),)).fetchone()
         return str(row["lid_jid"]) if row is not None else None
 
     def save_app_state(self, collection: str, state: dict[str, Any]) -> None:
@@ -541,6 +542,8 @@ class SQLiteEventStore:
         )
 
     def _save_lid_pn_mapping(self, db: sqlite3.Connection, lid_jid: str, pn_jid: str, source: str = "") -> None:
+        lid = jid_normalized_user(lid_jid)
+        pn = jid_normalized_user(pn_jid)
         db.execute(
             """
             insert into lid_pn_mappings(lid_jid, pn_jid, source, updated_at)
@@ -550,7 +553,7 @@ class SQLiteEventStore:
                 source = excluded.source,
                 updated_at = excluded.updated_at
             """,
-            (lid_jid, pn_jid, source, int(time.time())),
+            (lid, pn, source, int(time.time())),
         )
 
 

@@ -370,6 +370,7 @@ class WhatsAppClient:
         max_msg_retry_count: int = 5,
         logger: logging.Logger | None = None,
         replay_store: ReplayStore | None = None,
+        event_store: Any | None = None,
         replay_ttl_seconds: float = 300,
     ) -> None:
         self.auth_state = _coerce_auth_state(auth)
@@ -392,8 +393,10 @@ class WhatsAppClient:
         )
         self.ev = EventEmitter()
         self.events = self.ev
-        self.store = InMemoryStore()
-        self.store.bind(self.ev)
+        self.store = event_store or InMemoryStore()
+        bind_store = getattr(self.store, "bind", None)
+        if callable(bind_store):
+            bind_store(self.ev)
         self.queries = QueryManager()
         self._web: WhatsAppWebClient | None = None
         self._receive_task: Any = None
@@ -1236,6 +1239,7 @@ class WhatsAppClient:
     async def group_metadata(self, jid: str, *, timeout: float = 30) -> GroupMetadata:
         result = await self._query_checked(group_metadata_node(jid, self.queries.next_tag()), timeout=timeout)
         metadata = parse_group_metadata(result)
+        self._store_group_lid_pn_mappings(metadata)
         await self.ev.emit("groups.update", [metadata])
         return metadata
 
@@ -1437,12 +1441,24 @@ class WhatsAppClient:
         return jid_normalized_user(value)
 
     def _lid_for_pn(self, pn_jid: str) -> str | None:
+        normalized = jid_normalized_user(pn_jid)
+        getter = getattr(self.store, "get_lid_for_pn", None)
+        if callable(getter):
+            lid = getter(normalized)
+            if lid:
+                return jid_normalized_user(lid)
         mappings = self.auth_state.credentials.get("pn_lid_mappings") or {}
-        return mappings.get(jid_normalized_user(pn_jid))
+        return mappings.get(normalized)
 
     def _pn_for_lid(self, lid_jid: str) -> str | None:
+        normalized = jid_normalized_user(lid_jid)
+        getter = getattr(self.store, "get_pn_for_lid", None)
+        if callable(getter):
+            pn = getter(normalized)
+            if pn:
+                return jid_normalized_user(pn)
         mappings = self.auth_state.credentials.get("lid_pn_mappings") or {}
-        return mappings.get(jid_normalized_user(lid_jid))
+        return mappings.get(normalized)
 
     async def _refresh_lid_mapping(self, jid: str, *, timeout: float) -> None:
         result = await self.query(
@@ -1455,8 +1471,7 @@ class WhatsAppClient:
         if changed:
             await self._commit_credentials(working)
 
-    @staticmethod
-    def _store_lid_pn_mappings(credentials: dict[str, Any], entries: list[dict[str, object]]) -> bool:
+    def _store_lid_pn_mappings(self, credentials: dict[str, Any], entries: list[dict[str, object]], source: str = "usync") -> bool:
         pn_lid = dict(credentials.get("pn_lid_mappings") or {})
         lid_pn = dict(credentials.get("lid_pn_mappings") or {})
         changed = False
@@ -1475,10 +1490,26 @@ class WhatsAppClient:
             if lid_pn.get(lid) != pn:
                 lid_pn[lid] = pn
                 changed = True
+            self._save_lid_pn_mapping(lid, pn, source=source)
         if changed:
             credentials["pn_lid_mappings"] = pn_lid
             credentials["lid_pn_mappings"] = lid_pn
         return changed
+
+    def _store_group_lid_pn_mappings(self, metadata: GroupMetadata) -> None:
+        entries: list[dict[str, object]] = []
+        for participant in metadata.participants:
+            if not participant.phone_number:
+                continue
+            pn = participant.phone_number if "@" in participant.phone_number else phone_number_to_jid(participant.phone_number)
+            entries.append({"id": pn, "lid": participant.jid})
+        if entries:
+            self._store_lid_pn_mappings(self.auth_state.credentials, entries, source="group")
+
+    def _save_lid_pn_mapping(self, lid_jid: str, pn_jid: str, source: str = "") -> None:
+        save = getattr(self.store, "save_lid_pn_mapping", None)
+        if callable(save):
+            save(lid_jid, pn_jid, source=source)
 
     async def profile_picture_url(self, jid: str, picture_type: str = "preview", *, timeout: float = 30) -> str | None:
         result = await self._query_checked(profile_picture_url_node(jid, self.queries.next_tag(), picture_type), timeout=timeout)

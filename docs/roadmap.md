@@ -423,9 +423,11 @@ tests are stable.
 - Added `SQLiteEventStore` for durable local messages, chats, contacts, message
   updates, receipts, reactions, LID/PN mappings, and app-state state. The store
   can bind to the same socket events as `InMemoryStore`.
-- Next Phase 9 targets are broader LID/PN integration in socket flows, Postgres
-  adapter design, broader Phase 7 enabled-account live proof, and the 24-hour
-  reconnect soak.
+- Wired socket LID/PN reads and writes through durable event stores where
+  available, covering USync device lookup, blocklist resolution, group metadata
+  participant mappings, and history imports.
+- Next Phase 9 targets are Postgres adapter design, broader Phase 7
+  enabled-account live proof, and the 24-hour reconnect soak.
 
 ## Live Harness
 

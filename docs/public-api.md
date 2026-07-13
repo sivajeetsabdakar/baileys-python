@@ -241,7 +241,8 @@ event store that can bind to socket events.
 Use `make_in_memory_store` / `makeInMemoryStore` for the default event-backed
 store. Use `SQLiteEventStore` or `make_sqlite_event_store` when message,
 chat, contact, receipt, reaction, LID/PN mapping, and app-state state should
-survive process restarts.
+survive process restarts. Pass it to `make_socket(..., event_store=store)` to
+bind it to socket events and LID/PN mapping resolution.
 
 ## Business, Newsletters, Communities, And Edge APIs
 

@@ -125,7 +125,6 @@ Phase 8:
 Phase 9:
 
 - Postgres adapter.
-- broader LID/PN store integration in socket flows.
 - broader Phase 7 enabled-account live proof.
 - media retry success proof when eligible media is available.
 - full peer-data operation live coverage.

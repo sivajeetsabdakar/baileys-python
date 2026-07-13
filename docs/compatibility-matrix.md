@@ -27,7 +27,7 @@ Legend:
 | Auth | Signal key store and transactions | Partial | JSON hydration/export exists, memory and directory signal-key stores isolate mutable values, and built-in file writes are atomic. A production database-backed store API is still needed. |
 | Auth | Prekey upload/digest/rotation | Done | Product socket methods `digest_key_bundle`, `count_pre_keys`, `maintain_pre_keys`, `upload_pre_keys`, and `rotate_signed_pre_key` are wired and tested; login lifecycle runs non-fatal low-count maintenance with bounded upload backoff. |
 | Auth | Routing info | Seeded | WebSocket `ED` and Noise intro supported. |
-| Auth | LID/PN mapping | Partial | USync and history mapping need production store integration. |
+| Auth | LID/PN mapping | Partial | USync device lookups, blocklist resolution, group metadata participant mappings, and history mappings can use credential-backed mappings plus durable `SQLiteEventStore` LID/PN persistence. Broader live proof across account-gated mapping surfaces remains. |
 | Socket | Noise handshake | Seeded | Live server hello/login proven. |
 | Socket | Query/response correlation | Done | Query manager resolves by node id, cancels timed-out waiters, and can drive receive while awaiting responses. |
 | Socket | Event emitter | Done | Async event emitter supports `on`, `once`, `off`, `emit`, and `wait_for`; Phase 3 event taxonomy now covers message, receipt, notification, dirty, offline, call, reconnect, and auth surfaces. |

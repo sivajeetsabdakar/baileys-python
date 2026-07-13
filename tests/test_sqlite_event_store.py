@@ -3,11 +3,14 @@ from __future__ import annotations
 import asyncio
 
 import baileys as b
+from baileys.auth_state import AuthState, JsonCredentialStore
 from baileys.events import EventEmitter
 from baileys.generated import WAProto_pb2 as proto
 from baileys.history import HistoryChat, HistoryContact, HistorySyncResult, LidPnMapping
 from baileys.messages import MessageKey, MessageUpsert, WAMessage
 from baileys.sqlite_store import SQLiteEventStore, makeSqliteEventStore
+from baileys.socket import make_socket
+from baileys.wabinary import BinaryNode
 
 
 def _text_message(text: str) -> proto.Message:
@@ -126,7 +129,7 @@ def test_sqlite_event_store_persists_updates_receipts_reactions_lid_and_app_stat
         "read_timestamp": 789
     }
     assert reopened.get_pn_for_lid("123:1@lid") == "123@s.whatsapp.net"
-    assert reopened.get_lid_for_pn("123@s.whatsapp.net") == "123:1@lid"
+    assert reopened.get_lid_for_pn("123@s.whatsapp.net") == "123@lid"
     assert reopened.load_app_state("regular_low") == {"version": {"hash": "abc", "indexValueMap": []}}
 
 
@@ -153,3 +156,53 @@ def test_sqlite_event_store_applies_history_sync(tmp_path):
     assert reopened.load_contact("contact@s.whatsapp.net").notify == "Notify"
     assert reopened.load_messages("history@s.whatsapp.net")[0].message.conversation == "from history"
     assert reopened.get_pn_for_lid("999:1@lid") == "999@s.whatsapp.net"
+
+
+def test_socket_uses_sqlite_event_store_for_lid_pn_resolution(tmp_path):
+    creds = JsonCredentialStore(tmp_path / "creds.json")
+    creds.save_credentials({"me": {"id": "me@s.whatsapp.net"}})
+    event_store = SQLiteEventStore(tmp_path / "events.db")
+    event_store.save_lid_pn_mapping("999:1@lid", "123@s.whatsapp.net", source="test")
+
+    client = make_socket(AuthState.from_store(creds), event_store=event_store)
+
+    assert client.store is event_store
+    assert client._lid_for_pn("123@s.whatsapp.net") == "999@lid"
+    assert client._pn_for_lid("999:1@lid") == "123@s.whatsapp.net"
+
+
+def test_group_metadata_persists_lid_pn_mapping_to_sqlite_event_store(tmp_path):
+    async def scenario():
+        creds = JsonCredentialStore(tmp_path / "creds.json")
+        creds.save_credentials({"me": {"id": "me@s.whatsapp.net"}})
+        event_store = SQLiteEventStore(tmp_path / "events.db")
+        client = make_socket(AuthState.from_store(creds), event_store=event_store)
+
+        async def fake_query_checked(node, *, timeout=30, drive_receive=True):
+            return BinaryNode(
+                "iq",
+                {"id": "1", "type": "result"},
+                [
+                    BinaryNode(
+                        "group",
+                        {"jid": "group@g.us", "subject": "Group"},
+                        [
+                            BinaryNode(
+                                "participant",
+                                {"jid": "999:1@lid", "phone_number": "123@s.whatsapp.net"},
+                            )
+                        ],
+                    )
+                ],
+            )
+
+        client._query_checked = fake_query_checked  # type: ignore[method-assign]
+
+        metadata = await client.group_metadata("group@g.us")
+
+        assert metadata.participants[0].jid == "999:1@lid"
+        assert event_store.get_pn_for_lid("999:1@lid") == "123@s.whatsapp.net"
+        assert event_store.get_lid_for_pn("123@s.whatsapp.net") == "999@lid"
+        assert client.auth_state.credentials["lid_pn_mappings"]["999@lid"] == "123@s.whatsapp.net"
+
+    asyncio.run(scenario())

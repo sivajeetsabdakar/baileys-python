@@ -240,6 +240,8 @@ Risky Redis uses:
 5. Add replay cache integration for retry receipts. This is done for the
    public interface, in-memory default, and SQLite adapter.
 6. Add broader LID/PN mapping store integration for USync and group metadata.
+   This is done for socket device lookup, blocklist resolution, group metadata
+   participant mappings, and history imports.
 7. Add migration and backup helpers.
 8. Add Postgres adapter after SQLite semantics are stable.
 
