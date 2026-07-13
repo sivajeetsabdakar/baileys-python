@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import xeddsa
+from signal_protocol import curve
 
 
 SIGNAL_PUBLIC_KEY_PREFIX = b"\x05"
@@ -37,15 +38,16 @@ def shared_key(private_key: bytes, public_key: bytes) -> bytes:
 
 
 def sign(private_key: bytes, message: bytes) -> bytes:
-    # libsignal's Curve25519 public keys do not carry the Ed25519 sign bit.
-    # Baileys/libsignal verifies with sign bit false for the public key form it
-    # stores, so force that bit before signing.
-    forced_private = xeddsa.priv_force_sign(private_key, False)
-    return bytes(xeddsa.ed25519_priv_sign(forced_private, message))
+    return bytes(curve.PrivateKey.deserialize(private_key).calculate_signature(message))
 
 
 def verify(public_key: bytes, message: bytes, signature: bytes) -> bool:
     curve_public = _strip_signal_prefix(public_key)
+    try:
+        if curve.PublicKey.deserialize(SIGNAL_PUBLIC_KEY_PREFIX + curve_public).verify_signature(message, signature):
+            return True
+    except Exception:
+        pass
     for sign_bit in (False, True):
         ed_public = xeddsa.curve25519_pub_to_ed25519_pub(curve_public, sign_bit)
         if xeddsa.ed25519_verify(signature, ed_public, message):
