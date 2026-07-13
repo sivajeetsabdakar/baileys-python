@@ -45,6 +45,21 @@ def group_metadata_node(jid: str, tag_id: str) -> BinaryNode:
     return group_query_node(jid, "get", [BinaryNode("query", {"request": "interactive"})], tag_id)
 
 
+def group_fetch_all_participating_node(tag_id: str) -> BinaryNode:
+    return group_query_node(
+        f"@{GROUP_SERVER}",
+        "get",
+        [
+            BinaryNode(
+                "participating",
+                {},
+                [BinaryNode("participants", {}), BinaryNode("description", {})],
+            )
+        ],
+        tag_id,
+    )
+
+
 def group_create_node(subject: str, participants: Iterable[str], tag_id: str) -> BinaryNode:
     return group_query_node(
         f"@{GROUP_SERVER}",
@@ -83,6 +98,27 @@ def group_participants_update_node(jid: str, participants: Iterable[str], action
         jid,
         "set",
         [BinaryNode(action, {}, [BinaryNode("participant", {"jid": participant}) for participant in participants])],
+        tag_id,
+    )
+
+
+def group_membership_requests_node(jid: str, tag_id: str) -> BinaryNode:
+    return group_query_node(jid, "get", [BinaryNode("membership_approval_requests", {})], tag_id)
+
+
+def group_membership_requests_update_node(jid: str, participants: Iterable[str], action: str, tag_id: str) -> BinaryNode:
+    if action not in {"approve", "reject"}:
+        raise ValueError(f"unsupported membership request action: {action}")
+    return group_query_node(
+        jid,
+        "set",
+        [
+            BinaryNode(
+                "membership_requests_action",
+                {},
+                [BinaryNode(action, {}, [BinaryNode("participant", {"jid": participant}) for participant in participants])],
+            )
+        ],
         tag_id,
     )
 
@@ -174,6 +210,19 @@ def parse_group_metadata(node: BinaryNode) -> GroupMetadata:
         addressing_mode=group.attrs.get("addressing_mode"),
         participants=participants,
     )
+
+
+def parse_group_participating(node: BinaryNode) -> dict[str, GroupMetadata]:
+    groups_node = find_child(node, "groups")
+    if groups_node is None or not isinstance(groups_node.content, list):
+        return {}
+    groups: dict[str, GroupMetadata] = {}
+    for child in groups_node.content:
+        if child.tag != "group":
+            continue
+        metadata = parse_group_metadata(BinaryNode("iq", node.attrs, [child]))
+        groups[metadata.id] = metadata
+    return groups
 
 
 def parse_participant_update(node: BinaryNode, action: str) -> list[ParticipantUpdateResult]:

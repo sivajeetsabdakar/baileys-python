@@ -20,12 +20,14 @@ from baileys.business import (
 from baileys.communities import (
     community_accept_invite_node,
     community_ephemeral_node,
+    community_fetch_all_participating_node,
     community_link_group_node,
     community_membership_requests_update_node,
     community_metadata_node,
     community_create_node,
     parse_community_linked_groups,
     parse_community_metadata,
+    parse_community_participating,
     parse_membership_request_update,
 )
 from baileys.app_state import chat_modification_to_app_patch
@@ -305,6 +307,10 @@ def test_community_nodes_and_parser():
     metadata = community_metadata_node("123@g.us", "c2")
     assert metadata.content[0].attrs["request"] == "interactive"
 
+    participating = community_fetch_all_participating_node("c-all")
+    assert participating.attrs == {"id": "c-all", "type": "get", "xmlns": "w:g2", "to": "@g.us"}
+    assert [child.tag for child in participating.content[0].content] == ["participants", "description"]
+
     parsed = parse_community_metadata(
         BinaryNode(
             "iq",
@@ -320,6 +326,21 @@ def test_community_nodes_and_parser():
     )
     assert parsed.id == "123@g.us"
     assert parsed.participants[0].phone_number == "a@s.whatsapp.net"
+
+    participating_parsed = parse_community_participating(
+        BinaryNode(
+            "iq",
+            {},
+            [
+                BinaryNode(
+                    "communities",
+                    {},
+                    [BinaryNode("community", {"id": "321", "subject": "Community"}, [BinaryNode("participant", {"jid": "a@s.whatsapp.net"})])],
+                )
+            ],
+        )
+    )
+    assert participating_parsed["321@g.us"].subject == "Community"
 
     link = community_link_group_node("456@g.us", "123@g.us", "c3")
     assert link.content[0].tag == "links"
@@ -476,6 +497,8 @@ def test_phase7_client_methods_call_expected_queries(tmp_path, monkeypatch):
             if node.attrs.get("xmlns") == "w:biz:catalog" and node.content[0].tag == "product_catalog_delete":
                 return BinaryNode("iq", {}, [BinaryNode("product_catalog_delete", {"deleted_count": "1"})])
             if node.attrs.get("xmlns") == "w:g2":
+                if node.content[0].tag == "participating":
+                    return BinaryNode("iq", {}, [BinaryNode("communities", {}, [BinaryNode("community", {"id": "123", "subject": "Community"})])])
                 return BinaryNode("iq", {}, [BinaryNode("group", {"id": "123", "subject": "Group"})])
             return BinaryNode("iq", {"type": "result"})
 
@@ -546,6 +569,8 @@ def test_phase7_client_methods_call_expected_queries(tmp_path, monkeypatch):
         assert await client.product_delete(["p1"]) == {"deleted": 1}
         assert (await client.newsletter_metadata("jid", "n@newsletter")).id == "n@newsletter"
         assert (await client.community_metadata("123@g.us")).id == "123@g.us"
+        participating = await client.community_fetch_all_participating()
+        assert participating["123@g.us"].subject == "Community"
         assert await client.create_call_link("audio") == "abc"
         await client.send_wam_buffer(b"WAM\x05")
         await client.reject_call("call-1", "user@s.whatsapp.net")
@@ -589,6 +614,7 @@ def test_phase7_client_methods_call_expected_queries(tmp_path, monkeypatch):
         assert any(node.tag == "call" for node in sent)
         assert client.newsletterMetadata.__func__ is client.newsletter_metadata.__func__
         assert client.communityMetadata.__func__ is client.community_metadata.__func__
+        assert client.communityFetchAllParticipating.__func__ is client.community_fetch_all_participating.__func__
         assert client.communityAcceptInvite.__func__ is client.community_accept_invite.__func__
         assert client.newsletterUpdatePicture.__func__ is client.newsletter_update_picture.__func__
         assert client.productDelete.__func__ is client.product_delete.__func__

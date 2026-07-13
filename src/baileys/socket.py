@@ -63,11 +63,14 @@ from .chat_groups import (
     dirty_clean_node,
     group_accept_invite_node,
     group_create_node,
+    group_fetch_all_participating_node,
     group_get_invite_info_node,
     group_invite_code_node,
     group_join_approval_mode_node,
     group_leave_node,
     group_member_add_mode_node,
+    group_membership_requests_node,
+    group_membership_requests_update_node,
     group_metadata_node,
     group_participants_update_node,
     group_revoke_invite_node,
@@ -79,6 +82,7 @@ from .chat_groups import (
     parse_accept_invite,
     parse_blocklist,
     parse_usync_disappearing_mode,
+    parse_group_participating,
     parse_group_metadata,
     parse_invite_code,
     parse_on_whatsapp,
@@ -120,6 +124,7 @@ from .communities import (
     community_create_group_node,
     community_create_node,
     community_ephemeral_node,
+    community_fetch_all_participating_node,
     community_invite_code_node,
     community_invite_info_node,
     community_join_approval_mode_node,
@@ -141,6 +146,7 @@ from .communities import (
     parse_community_invite_code,
     parse_community_linked_groups,
     parse_community_metadata,
+    parse_community_participating,
     parse_community_participant_update,
     parse_membership_request_update,
     parse_membership_requests,
@@ -1243,6 +1249,15 @@ class WhatsAppClient:
         await self.ev.emit("groups.update", [metadata])
         return metadata
 
+    async def group_fetch_all_participating(self, *, timeout: float = 30) -> dict[str, GroupMetadata]:
+        result = await self._query_checked(group_fetch_all_participating_node(self.queries.next_tag()), timeout=timeout)
+        groups = parse_group_participating(result)
+        for metadata in groups.values():
+            self._store_group_lid_pn_mappings(metadata)
+        if groups:
+            await self.ev.emit("groups.update", list(groups.values()))
+        return groups
+
     async def group_create(self, subject: str, participants: list[str], *, timeout: float = 30) -> GroupMetadata:
         result = await self._query_checked(group_create_node(subject, participants, self.queries.next_tag()), timeout=timeout)
         metadata = parse_group_metadata(result)
@@ -1272,6 +1287,23 @@ class WhatsAppClient:
     ) -> list[ParticipantUpdateResult]:
         result = await self._query_checked(group_participants_update_node(jid, participants, action, self.queries.next_tag()), timeout=timeout)
         updates = parse_participant_update(result, action)
+        await self.ev.emit("group-participants.update", {"id": jid, "participants": participants, "action": action, "results": updates})
+        return updates
+
+    async def group_request_participants_list(self, jid: str, *, timeout: float = 30) -> list[dict[str, str]]:
+        result = await self._query_checked(group_membership_requests_node(jid, self.queries.next_tag()), timeout=timeout)
+        return parse_membership_requests(result)
+
+    async def group_request_participants_update(
+        self,
+        jid: str,
+        participants: list[str],
+        action: str,
+        *,
+        timeout: float = 30,
+    ) -> list[ParticipantUpdateResult]:
+        result = await self._query_checked(group_membership_requests_update_node(jid, participants, action, self.queries.next_tag()), timeout=timeout)
+        updates = parse_membership_request_update(result, action)
         await self.ev.emit("group-participants.update", {"id": jid, "participants": participants, "action": action, "results": updates})
         return updates
 
@@ -1852,6 +1884,13 @@ class WhatsAppClient:
         metadata = parse_community_metadata(result)
         await self.ev.emit("groups.update", [metadata])
         return metadata
+
+    async def community_fetch_all_participating(self, *, timeout: float = 30) -> dict[str, GroupMetadata]:
+        result = await self._query_checked(community_fetch_all_participating_node(self.queries.next_tag()), timeout=timeout)
+        communities = parse_community_participating(result)
+        if communities:
+            await self.ev.emit("groups.update", list(communities.values()))
+        return communities
 
     async def community_create(self, subject: str, description: str = "", *, timeout: float = 30) -> GroupMetadata:
         result = await self._query_checked(community_create_node(subject, description, self.queries.next_tag()), timeout=timeout)
@@ -2803,11 +2842,14 @@ class WhatsAppClient:
     pruneRecentOutbound = prune_recent_outbound
     waitForSuccess = wait_for_success
     groupMetadata = group_metadata
+    groupFetchAllParticipating = group_fetch_all_participating
     groupCreate = group_create
     groupLeave = group_leave
     groupUpdateSubject = group_update_subject
     groupUpdateDescription = group_update_description
     groupParticipantsUpdate = group_participants_update
+    groupRequestParticipantsList = group_request_participants_list
+    groupRequestParticipantsUpdate = group_request_participants_update
     groupParticipantsUpdateOrInvite = group_participants_update_or_invite
     groupInviteCode = group_invite_code
     sendGroupInvite = send_group_invite
@@ -2878,6 +2920,7 @@ class WhatsAppClient:
     fetchStatus = fetch_status
     fetchDisappearingDuration = fetch_disappearing_duration
     communityMetadata = community_metadata
+    communityFetchAllParticipating = community_fetch_all_participating
     communityCreate = community_create
     communityCreateGroup = community_create_group
     communityLeave = community_leave

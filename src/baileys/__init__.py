@@ -48,7 +48,14 @@ from .business import (
     parse_business_profile,
     parse_catalog,
 )
-from .communities import community_create_node, community_link_group_node, community_metadata_node, parse_community_metadata
+from .communities import (
+    community_create_node,
+    community_fetch_all_participating_node,
+    community_link_group_node,
+    community_metadata_node,
+    parse_community_metadata,
+    parse_community_participating,
+)
 from .crypto import (
     aes_decrypt_cbc,
     aes_decrypt_ctr,
@@ -85,9 +92,13 @@ from .chat_groups import (
     GroupMetadata,
     GroupParticipant,
     ParticipantUpdateResult,
+    group_fetch_all_participating_node,
     group_get_invite_info_node,
     group_join_approval_mode_node,
     group_member_add_mode_node,
+    group_membership_requests_node,
+    group_membership_requests_update_node,
+    parse_group_participating,
     group_toggle_ephemeral_node,
 )
 from .history import (
@@ -391,8 +402,11 @@ __all__ = [
     "binary_node_from_json",
     "binary_node_to_json",
     "group_invite_message",
+    "group_fetch_all_participating_node",
     "group_get_invite_info_node",
     "group_join_approval_mode_node",
+    "group_membership_requests_node",
+    "group_membership_requests_update_node",
     "group_member_add_mode_node",
     "group_toggle_ephemeral_node",
     "build_tc_token_from_jid",
@@ -400,6 +414,7 @@ __all__ = [
     "catalog_node",
     "chat_modification_to_app_patch",
     "community_create_node",
+    "community_fetch_all_participating_node",
     "community_link_group_node",
     "community_metadata_node",
     "cover_photo_remove_node",
@@ -482,6 +497,8 @@ __all__ = [
     "parse_business_profile",
     "parse_catalog",
     "parse_community_metadata",
+    "parse_community_participating",
+    "parse_group_participating",
     "parse_usync_bot_profiles",
     "parse_usync_contacts",
     "parse_usync_disappearing_modes",

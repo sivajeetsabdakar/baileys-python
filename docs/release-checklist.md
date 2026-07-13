@@ -12,6 +12,13 @@ The release gate covers compile checks, pytest, generated artifact checks,
 public-docs hygiene, import smoke, package build, clean wheel install, and the
 no-network example smoke test.
 
+Check the local Node parity audit when the Node checkout or public manifest
+changes:
+
+```powershell
+python scripts/audit_node_public_api.py --node-root ../Baileys-master/Baileys-master
+```
+
 ## Live Evidence
 
 Run the read-only live summary when saved credentials are available:

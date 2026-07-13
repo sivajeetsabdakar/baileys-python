@@ -10,12 +10,16 @@ from baileys.chat_groups import (
     default_disappearing_mode_node,
     dirty_clean_node,
     on_whatsapp_node,
+    group_fetch_all_participating_node,
     group_get_invite_info_node,
     group_join_approval_mode_node,
     group_member_add_mode_node,
+    group_membership_requests_node,
+    group_membership_requests_update_node,
     group_metadata_node,
     group_participants_update_node,
     group_toggle_ephemeral_node,
+    parse_group_participating,
     parse_group_metadata,
     parse_on_whatsapp,
     parse_privacy_settings,
@@ -52,9 +56,18 @@ def test_group_nodes_and_parsers_match_common_shapes():
     assert node.attrs == {"id": "tag-1", "type": "get", "xmlns": "w:g2", "to": "123@g.us"}
     assert node.content[0].tag == "query"
 
+    participating = group_fetch_all_participating_node("tag-all")
+    assert participating.attrs == {"id": "tag-all", "type": "get", "xmlns": "w:g2", "to": "@g.us"}
+    assert [child.tag for child in participating.content[0].content] == ["participants", "description"]
+
     update = group_participants_update_node("123@g.us", ["a@s.whatsapp.net"], "promote", "tag-2")
     assert update.content[0].tag == "promote"
     assert update.content[0].content[0].attrs["jid"] == "a@s.whatsapp.net"
+
+    requests = group_membership_requests_node("123@g.us", "tag-r")
+    assert requests.content[0].tag == "membership_approval_requests"
+    requests_update = group_membership_requests_update_node("123@g.us", ["a@s.whatsapp.net"], "approve", "tag-ru")
+    assert requests_update.content[0].content[0].tag == "approve"
 
     invite = group_get_invite_info_node("invite-code", "tag-3")
     assert invite.attrs["to"] == "@g.us"
@@ -97,6 +110,21 @@ def test_group_nodes_and_parsers_match_common_shapes():
     assert parsed.desc == "hello"
     assert parsed.participants[0].admin == "admin"
     assert parsed.participants[0].phone_number == "a@s.whatsapp.net"
+
+    participating_parsed = parse_group_participating(
+        BinaryNode(
+            "iq",
+            {},
+            [
+                BinaryNode(
+                    "groups",
+                    {},
+                    [BinaryNode("group", {"id": "456", "subject": "Participating"}, [BinaryNode("participant", {"jid": "a@s.whatsapp.net"})])],
+                )
+            ],
+        )
+    )
+    assert participating_parsed["456@g.us"].subject == "Participating"
 
 
 def test_iq_error_parser_exposes_server_code_and_text():
@@ -289,6 +317,14 @@ def test_client_phase5_methods_call_query_and_emit_events(tmp_path):
         async def fake_query(node, **kwargs):
             queries.append(node)
             if node.attrs.get("xmlns") == "w:g2":
+                first = node.content[0]
+                if first.tag == "participating":
+                    return BinaryNode("iq", {}, [BinaryNode("groups", {}, [BinaryNode("group", {"id": "123", "subject": "Group"})])])
+                if first.tag == "membership_approval_requests":
+                    return BinaryNode("iq", {}, [BinaryNode("membership_approval_requests", {}, [BinaryNode("membership_approval_request", {"jid": "a@s.whatsapp.net"})])])
+                if first.tag == "membership_requests_action":
+                    action = first.content[0].tag
+                    return BinaryNode("iq", {}, [BinaryNode("membership_requests_action", {}, [BinaryNode(action, {}, [BinaryNode("participant", {"jid": "a@s.whatsapp.net"})])])])
                 return BinaryNode("iq", {}, [BinaryNode("group", {"id": "123", "subject": "Group"})])
             if node.attrs.get("xmlns") == "privacy":
                 return BinaryNode("iq", {}, [BinaryNode("privacy", {}, [BinaryNode("category", {"name": "last", "value": "all"})])])
@@ -297,6 +333,9 @@ def test_client_phase5_methods_call_query_and_emit_events(tmp_path):
         client.query = fake_query  # type: ignore[method-assign]
 
         metadata = await client.group_metadata("123@g.us")
+        participating = await client.group_fetch_all_participating()
+        requests = await client.group_request_participants_list("123@g.us")
+        request_updates = await client.group_request_participants_update("123@g.us", ["a@s.whatsapp.net"], "approve")
         privacy = await client.fetch_privacy_settings()
         await client.chat_modify({"archive": True}, "chat@s.whatsapp.net")
         await client.group_toggle_ephemeral("123@g.us", 0)
@@ -312,14 +351,20 @@ def test_client_phase5_methods_call_query_and_emit_events(tmp_path):
         await client.update_groups_add_privacy("contacts")
 
         assert metadata.subject == "Group"
+        assert participating["123@g.us"].subject == "Group"
+        assert requests == [{"jid": "a@s.whatsapp.net"}]
+        assert request_updates[0].jid == "a@s.whatsapp.net"
         assert privacy == {"last": "all"}
         assert group_updates[0][0].id == "123@g.us"
         assert chat_updates[0][0]["archive"] is True
         assert queries[0].attrs["xmlns"] == "w:g2"
-        assert queries[2].attrs["xmlns"] == "w:sync:app:state"
-        assert queries[2].content[0].tag == "sync"
-        assert [node.content[0].tag for node in queries[3:6]] == ["not_ephemeral", "member_add_mode", "membership_approval_mode"]
-        assert [node.content[0].content[0].attrs["name"] for node in queries[6:14]] == [
+        assert queries[1].content[0].tag == "participating"
+        assert queries[2].content[0].tag == "membership_approval_requests"
+        assert queries[3].content[0].tag == "membership_requests_action"
+        assert queries[5].attrs["xmlns"] == "w:sync:app:state"
+        assert queries[5].content[0].tag == "sync"
+        assert [node.content[0].tag for node in queries[6:9]] == ["not_ephemeral", "member_add_mode", "membership_approval_mode"]
+        assert [node.content[0].content[0].attrs["name"] for node in queries[9:17]] == [
             "messages",
             "calladd",
             "last",
@@ -330,6 +375,9 @@ def test_client_phase5_methods_call_query_and_emit_events(tmp_path):
             "groupadd",
         ]
         assert client.groupMetadata.__func__ is client.group_metadata.__func__
+        assert client.groupFetchAllParticipating.__func__ is client.group_fetch_all_participating.__func__
+        assert client.groupRequestParticipantsList.__func__ is client.group_request_participants_list.__func__
+        assert client.groupRequestParticipantsUpdate.__func__ is client.group_request_participants_update.__func__
         assert client.groupToggleEphemeral.__func__ is client.group_toggle_ephemeral.__func__
         assert client.groupMemberAddMode.__func__ is client.group_member_add_mode.__func__
         assert client.groupJoinApprovalMode.__func__ is client.group_join_approval_mode.__func__

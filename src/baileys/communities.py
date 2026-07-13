@@ -14,6 +14,21 @@ def community_metadata_node(jid: str, tag_id: str) -> BinaryNode:
     return community_query_node(jid, "get", [BinaryNode("query", {"request": "interactive"})], tag_id)
 
 
+def community_fetch_all_participating_node(tag_id: str) -> BinaryNode:
+    return community_query_node(
+        "@g.us",
+        "get",
+        [
+            BinaryNode(
+                "participating",
+                {},
+                [BinaryNode("participants", {}), BinaryNode("description", {})],
+            )
+        ],
+        tag_id,
+    )
+
+
 def community_create_node(subject: str, description: str, tag_id: str) -> BinaryNode:
     desc_id = generate_message_id()[:12]
     return community_query_node(
@@ -179,6 +194,19 @@ def parse_community_metadata(node: BinaryNode) -> GroupMetadata:
         return parse_group_metadata(node)
     group = BinaryNode("group", community.attrs, community.content)
     return parse_group_metadata(BinaryNode("iq", node.attrs, [group]))
+
+
+def parse_community_participating(node: BinaryNode) -> dict[str, GroupMetadata]:
+    communities = find_child(node, "communities")
+    if communities is None or not isinstance(communities.content, list):
+        return {}
+    results: dict[str, GroupMetadata] = {}
+    for child in communities.content:
+        if child.tag != "community":
+            continue
+        metadata = parse_community_metadata(BinaryNode("iq", node.attrs, [child]))
+        results[metadata.id] = metadata
+    return results
 
 
 def parse_community_participant_update(node: BinaryNode, action: str) -> list[ParticipantUpdateResult]:

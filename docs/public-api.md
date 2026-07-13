@@ -149,6 +149,7 @@ Useful helpers:
 - `ReplayStore`
 - `InMemoryReplayStore`
 - `SQLiteReplayStore`
+- `PostgresReplayStore`
 - `binary_node_to_json`
 - `binary_node_from_json`
 - `client.save_recent_outbound`
@@ -224,11 +225,14 @@ Common chat and account methods:
 Common group methods:
 
 - `group_metadata` / `groupMetadata`
+- `group_fetch_all_participating` / `groupFetchAllParticipating`
 - `group_create` / `groupCreate`
 - `group_leave` / `groupLeave`
 - `group_update_subject`
 - `group_update_description`
 - `group_participants_update` / `groupParticipantsUpdate`
+- `group_request_participants_list` / `groupRequestParticipantsList`
+- `group_request_participants_update` / `groupRequestParticipantsUpdate`
 - `group_participants_update_or_invite`
 - `group_invite_code` / `groupInviteCode`
 - `group_revoke_invite` / `groupRevokeInvite`
@@ -246,10 +250,11 @@ application, LT hash updates, MAC validation, encrypted patch writes, and an
 event store that can bind to socket events.
 
 Use `make_in_memory_store` / `makeInMemoryStore` for the default event-backed
-store. Use `SQLiteEventStore` or `make_sqlite_event_store` when message,
-chat, contact, receipt, reaction, LID/PN mapping, and app-state state should
-survive process restarts. Pass it to `make_socket(..., event_store=store)` to
-bind it to socket events and LID/PN mapping resolution.
+store. Use `SQLiteEventStore` / `make_sqlite_event_store` or
+`PostgresEventStore` / `make_postgres_event_store` when message, chat, contact,
+receipt, reaction, LID/PN mapping, and app-state state should survive process
+restarts. Pass it to `make_socket(..., event_store=store)` to bind it to socket
+events and LID/PN mapping resolution.
 
 ## Business, Newsletters, Communities, And Edge APIs
 

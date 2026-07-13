@@ -431,13 +431,19 @@ tests are stable.
   transaction rules, migrations, and acceptance checks.
 - Added optional Postgres credential, signal-key, replay, and event stores
   with mocked connection coverage for the SQLite-compatible store contract.
+- Added `scripts/audit_node_public_api.py` and refreshed the parity manifest
+  against the local Node Baileys `7.0.0-rc13` socket factories. The audit now
+  reports no missing Python manifest methods; intentional wrappers are listed
+  in `docs/node-reference-audit.md`.
+- Added Node-compatible `groupFetchAllParticipating`,
+  `communityFetchAllParticipating`, `groupRequestParticipantsList`, and
+  `groupRequestParticipantsUpdate` APIs with offline tests.
 - Fixed live-suite numeric timeout formatting and re-ran the read-only live
   suite. Phase 5 read-only passed; Phase 7 read-only re-proved business
   profile, catalog, reachout timelock, and bot-list surfaces while preserving
   account/data-gated skips and limits.
 - Next Phase 9 targets are real Postgres database integration proof, broader
-  Phase 7 enabled-account live proof, the Node reference audit, and the
-  24-hour reconnect soak.
+  Phase 7 enabled-account live proof, and the 24-hour reconnect soak.
 
 ## Live Harness
 

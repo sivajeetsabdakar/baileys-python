@@ -131,7 +131,7 @@ Phase 9:
 - expanded WAM live ACK proof.
 - nightly live read-only suite.
 - 24-hour reconnect soak.
-- compatibility matrix audit against the current Node reference.
+- keep the Node-reference audit current when the local Node checkout changes.
 
 ## Acceptance
 
