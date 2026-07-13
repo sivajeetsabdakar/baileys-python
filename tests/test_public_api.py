@@ -42,6 +42,7 @@ def test_public_api_exports_core_building_blocks():
     assert bpt.SessionAssertionError
     assert bpt.SocketNotConnectedError
     assert bpt.SQLiteCredentialStore
+    assert bpt.SQLiteEventStore
     assert bpt.SQLiteReplayStore
     assert bpt.SQLiteSignalKeyStore
     assert bpt.DisconnectError
@@ -182,6 +183,8 @@ def test_public_api_exports_core_building_blocks():
     assert hasattr(bpt.WhatsAppClient, "getUSyncDevices")
     assert hasattr(bpt.WhatsAppClient, "sendWAM")
     assert hasattr(bpt.WhatsAppClient, "sendWAMBuffer")
+    assert callable(bpt.make_sqlite_event_store)
+    assert callable(bpt.makeSqliteEventStore)
 
 
 def test_client_defaults_and_package_data_are_importable(tmp_path):

@@ -236,10 +236,12 @@ Common group methods:
 
 The app-state surface includes snapshot fetch, sync-key request, patch
 application, LT hash updates, MAC validation, encrypted patch writes, and an
-in-memory store that can bind to socket events.
+event store that can bind to socket events.
 
 Use `make_in_memory_store` / `makeInMemoryStore` for the default event-backed
-store.
+store. Use `SQLiteEventStore` or `make_sqlite_event_store` when message,
+chat, contact, receipt, reaction, LID/PN mapping, and app-state state should
+survive process restarts.
 
 ## Business, Newsletters, Communities, And Edge APIs
 

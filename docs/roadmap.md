@@ -418,6 +418,15 @@ tests are stable.
 - Phase 8 code-hardening items are complete. The longer 24-hour reconnect soak
   remains a Phase 9 release-hardening gate.
 
+## Phase 9 In Progress
+
+- Added `SQLiteEventStore` for durable local messages, chats, contacts, message
+  updates, receipts, reactions, LID/PN mappings, and app-state state. The store
+  can bind to the same socket events as `InMemoryStore`.
+- Next Phase 9 targets are broader LID/PN integration in socket flows, Postgres
+  adapter design, broader Phase 7 enabled-account live proof, and the 24-hour
+  reconnect soak.
+
 ## Live Harness
 
 - `scripts/product_qr_pairing_probe.py` covers QR pairing and saved reconnect.

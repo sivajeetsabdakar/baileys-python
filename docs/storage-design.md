@@ -1,9 +1,9 @@
 # Storage Design
 
 The package currently ships with JSON credential storage, directory-backed
-signal keys, SQLite-backed credential/signal/replay stores, and an in-memory
-event store. The target design is to keep these simple defaults while adding
-durable adapters behind stable interfaces.
+signal keys, SQLite-backed credential/signal/replay/event stores, and an
+in-memory event store. The target design is to keep these simple defaults
+while adding durable adapters behind stable interfaces.
 
 ## Current Built-In Guarantees
 
@@ -17,6 +17,9 @@ durable adapters behind stable interfaces.
   completes successfully.
 - `InMemoryStore` is bindable to socket events and idempotent for duplicate
   message ids.
+- `SQLiteEventStore` is bindable to socket events and persists messages, chats,
+  contacts, message updates, receipts, reactions, LID/PN mappings, and
+  app-state state in a local SQLite database.
 - `ReplayStore` defines recent outbound replay persistence, with
   `InMemoryReplayStore` as the default implementation and `SQLiteReplayStore`
   as the local durable adapter.
@@ -82,8 +85,8 @@ treated as unavailable messages, not socket errors.
 
 SQLite is the first durable adapter because it is local, easy to test, and
 good enough for single-process bots. The current adapter covers credentials,
-signal keys, and recent outbound replay. Message history, app-state, and LID/PN
-mapping tables remain Phase 9 work.
+signal keys, recent outbound replay, event-backed message/chat/contact state,
+LID/PN mappings, and app-state state.
 
 ### Tables
 
@@ -105,8 +108,6 @@ mapping tables remain Phase 9 work.
 - `node_json text not null`
 - `expires_at real not null`
 
-Planned Phase 9 tables:
-
 `messages`
 
 - `remote_jid text not null`
@@ -115,9 +116,8 @@ Planned Phase 9 tables:
 - `from_me integer not null default 0`
 - `timestamp integer`
 - `push_name text`
+- `broadcast integer not null default 0`
 - `message_blob blob`
-- `message_json text`
-- `status integer`
 - `updated_at integer not null`
 - primary key: `(remote_jid, message_id, participant)`
 
@@ -142,42 +142,33 @@ Planned Phase 9 tables:
 
 `chats`
 
-- `jid text primary key`
-- `name text`
+- `id text primary key`
 - `conversation_timestamp integer`
 - `unread_count integer not null default 0`
+- `name text`
 - `updated_at integer not null`
 
 `contacts`
 
-- `jid text primary key`
+- `id text primary key`
 - `name text`
 - `notify text`
-- `phone_number text`
-- `lid text`
 - `updated_at integer not null`
 
 `lid_pn_mappings`
 
 - `lid_jid text primary key`
-- `pn_jid text`
+- `pn_jid text not null`
 - `source text not null`
 - `updated_at integer not null`
 
 `app_state`
 
 - `collection text primary key`
-- `version integer not null`
-- `hash_json text not null`
-- `index_json text not null`
+- `state_json text not null`
 - `updated_at integer not null`
 
-`recent_outbound`
-
-- `message_id text primary key`
-- `node_json text not null`
-- `expires_at integer not null`
-- `updated_at integer not null`
+Additional planned tables:
 
 `media_cache`
 
@@ -244,10 +235,11 @@ Risky Redis uses:
    still assumed.
 3. Add SQLite credential and signal-key store. This is done for the public
    prototype.
-4. Add SQLite event store.
+4. Add SQLite event store. This is done for messages, chats, contacts,
+   updates, receipts, reactions, LID/PN mappings, and app-state state.
 5. Add replay cache integration for retry receipts. This is done for the
    public interface, in-memory default, and SQLite adapter.
-6. Add LID/PN mapping store integration for USync, group metadata, and history.
+6. Add broader LID/PN mapping store integration for USync and group metadata.
 7. Add migration and backup helpers.
 8. Add Postgres adapter after SQLite semantics are stable.
 
