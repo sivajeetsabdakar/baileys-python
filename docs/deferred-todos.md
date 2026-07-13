@@ -7,8 +7,6 @@ retired with a clear reason.
 
 ## Release Hardening
 
-- Add versioned Postgres migrations and explicit multi-writer transaction
-  tests before recommending Postgres for multi-process production bots.
 - Run the 24-hour reconnect soak before marking the core beta ready.
 - Add a nightly live read-only suite once dedicated account scheduling is in
   place.
@@ -23,14 +21,14 @@ retired with a clear reason.
 - Prove WAM stats upload on an account/server path that returns a useful ACK.
 - Prove newsletter inbound event delivery with a newsletter-enabled account and
   a real inbound event.
-- Prove community metadata/mutation flow with a community JID or a safe enabled
-  community account flow.
 - Re-run raw participant add on an account without the current
   `account_reachout_restricted` limit, while keeping the structured invite
   fallback.
 
-## Account-Gated Business Items
+## Deferred Business And Community Proof
 
+- Keep community metadata and mutation live proof as TODO until a community JID
+  or a safe enabled community account flow is available.
 - Keep collections live proof as TODO until a responding business account is
   available.
 - Keep order-details live proof as TODO until there is a real order id and

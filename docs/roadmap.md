@@ -21,8 +21,8 @@ Baileys names such as `sendMessage`, `relayMessage`, `groupMetadata`,
 | 5 | Chats, profile, privacy, groups | Done |
 | 6 | History and app-state completeness | Done |
 | 7 | Business, newsletters, communities, edge surfaces | Done with deferred live-proof Todos |
-| 8 | Core beta release hardening | In progress |
-| 9 | Full parity hardening | Not started |
+| 8 | Core beta release hardening | Done |
+| 9 | Full parity hardening | In progress with deferred live-proof Todos |
 
 ## Release Strategy
 
@@ -381,7 +381,7 @@ tests are stable.
   account-gated WAUSync/media-retry edge surfaces. These are tracked as
   account/data-gated live proof rather than blocking core beta hardening.
 
-## Phase 8 In Progress
+## Phase 8 Delivered
 
 - Added `scripts/release_gate.py` as the local core-beta release gate runner.
   It runs compile, pytest, generated WABinary/WAProto/WAM checks, public-docs
@@ -434,6 +434,9 @@ tests are stable.
 - Added an opt-in live Postgres integration test covering credential,
   signal-key, replay, event-store, LID/PN, and app-state round-trips against a
   real database.
+- Added a versioned Postgres migration runner with a schema migration ledger,
+  transaction-scoped advisory locking, explicit schema selection for pooled
+  database connections, and opt-in live concurrent-writer proof.
 - Added `scripts/audit_node_public_api.py` and refreshed the parity manifest
   against the local Node Baileys `7.0.0-rc13` socket factories. The audit now
   reports no missing Python manifest methods; intentional wrappers are listed
@@ -445,8 +448,11 @@ tests are stable.
   suite. Phase 5 read-only passed; Phase 7 read-only re-proved business
   profile, catalog, reachout timelock, and bot-list surfaces while preserving
   account/data-gated skips and limits.
-- Next Phase 9 targets are Postgres migrations/multi-writer hardening, broader
-  Phase 7 enabled-account live proof, and the 24-hour reconnect soak.
+- Remaining Phase 9 targets are broader enabled-account live proof, media retry
+  success proof, WAM stats ACK proof, newsletter inbound event proof, nightly
+  live-suite scheduling, and the 24-hour reconnect soak. Business commerce,
+  catalog collection, order-detail, and community proof stay as explicit
+  account/data-gated Todos.
 
 ## Live Harness
 

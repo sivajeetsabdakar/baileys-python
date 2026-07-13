@@ -11,7 +11,7 @@ the production implementation target.
 
 The product package has live-proven auth, inbound, outbound, media, app-state,
 business/catalog, newsletter, and Phase 5 API foundations. Phase 8 core-beta
-hardening is in progress:
+hardening gates are in place:
 
 - installable Python package under `src/baileys`
 - generated WAProto and WABinary token package data
@@ -48,6 +48,8 @@ hardening is in progress:
 - `scripts/soak_suite.py` for timed reconnect/receive-loop soak summaries
 - `scripts/release_gate.py` for compile, test, generated artifact, docs,
   package build, clean install, and import smoke checks
+- optional Postgres stores with versioned migration and live database
+  integration proof
 
 This is not full Baileys parity yet. Account-gated live proof items are tracked
 as explicit Todos in the compatibility matrix while core beta hardening

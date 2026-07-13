@@ -36,6 +36,8 @@ The lower-level auth surfaces are:
 - `SQLiteSignalKeyStore`
 - `PostgresCredentialStore`
 - `PostgresSignalKeyStore`
+- `apply_postgres_migrations`
+- `applyPostgresMigrations`
 - `use_multi_file_auth_state`
 - `useMultiFileAuthState`
 - `use_sqlite_auth_state`

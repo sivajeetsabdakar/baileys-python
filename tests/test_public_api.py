@@ -52,6 +52,8 @@ def test_public_api_exports_core_building_blocks():
     assert bpt.PostgresReplayStore
     assert bpt.PostgresSignalKeyStore
     assert bpt.PostgresConnectionFactory
+    assert callable(bpt.apply_postgres_migrations)
+    assert callable(bpt.applyPostgresMigrations)
     assert bpt.DisconnectError
     assert bpt.DisconnectReason.loggedOut == 401
     assert bpt.NotificationInfo

@@ -60,9 +60,9 @@ connection pool, or an application-supplied connection object.
 Current coverage validates the store contract with a mocked local connection so
 core installs do not require `psycopg` or a database. An opt-in live Postgres
 integration test also proves credential, signal-key, replay, event-store,
-LID/PN, and app-state round-trips against a disposable database. Versioned
-migrations and explicit multi-writer transaction tests remain release-hardening
-items.
+LID/PN, and app-state round-trips against a disposable database. The migration
+runner records applied versions in `baileys_schema_migrations`, uses a
+transaction-scoped advisory lock, and has opt-in live concurrent-writer proof.
 
 Application-supplied connections should use dict-like rows, such as
 `psycopg.rows.dict_row`, matching the adapter-created connection path.
@@ -76,8 +76,8 @@ Signal state behind.
 Recommended rules:
 
 - Use a transaction per public store method by default.
-- Add explicit transaction context support before using Postgres for live auth
-  sessions in multi-process bots.
+- Keep account-level auth mutations owned by one process or add application
+  locks around higher-level credential and Signal-session workflows.
 - Use row-level locks for the credential row when rotating signed prekeys,
   uploading prekeys, or injecting sessions.
 - Use advisory locks for account-wide operations that span credentials, signal
@@ -85,8 +85,9 @@ Recommended rules:
 
 ## Migrations
 
-Ship SQL migration files before shipping the adapter as stable. Migrations
-should be idempotent in test setup but versioned for production use.
+Migrations are versioned and idempotent. `apply_postgres_migrations` /
+`applyPostgresMigrations` can run directly when an application wants to prepare
+the schema before constructing store objects.
 
 Recommended order:
 
@@ -101,6 +102,6 @@ Recommended order:
 - SQLite and Postgres stores pass the same store contract tests.
 - Package import works without `psycopg` installed.
 - Postgres extra installs cleanly in a fresh environment.
-- Concurrent auth transactions do not corrupt credentials or Signal sessions.
+- Concurrent migration runners do not corrupt the schema ledger.
 - Recent outbound replay, LID/PN mapping, and app-state state survive process
   restarts.

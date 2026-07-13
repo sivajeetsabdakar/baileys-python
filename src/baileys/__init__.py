@@ -197,7 +197,10 @@ from .pairing_code import (
 from .prekeys import PreKeyMaintenanceResult, PreKeyNodeResult, SignedPreKeyRotation
 from .privacy_tokens import build_tc_token_from_jid, store_tc_tokens_from_iq_result
 from .postgres_store import (
+    POSTGRES_MIGRATIONS,
     POSTGRES_SCHEMA_SQL,
+    applyPostgresMigrations,
+    apply_postgres_migrations,
     PostgresConnectionFactory,
     PostgresCredentialStore,
     PostgresEventStore,
@@ -330,6 +333,7 @@ __all__ = [
     "PairSuccess",
     "PairingCodeRequest",
     "PairingError",
+    "POSTGRES_MIGRATIONS",
     "POSTGRES_SCHEMA_SQL",
     "PostgresConnectionFactory",
     "PostgresCredentialStore",
@@ -384,7 +388,9 @@ __all__ = [
     "aes_encrypt_gcm",
     "areJidsSameUser",
     "are_jids_same_user",
+    "applyPostgresMigrations",
     "apply_app_state_sync",
+    "apply_postgres_migrations",
     "app_state_patch_node",
     "app_state_sync_request_node",
     "app_state_sync_key_request_message",

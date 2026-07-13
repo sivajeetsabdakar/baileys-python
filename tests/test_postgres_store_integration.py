@@ -3,6 +3,8 @@ from __future__ import annotations
 import os
 import time
 import uuid
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass, field
 
 import pytest
 
@@ -13,12 +15,19 @@ from baileys.postgres_store import (
     PostgresEventStore,
     PostgresReplayStore,
     PostgresSignalKeyStore,
+    apply_postgres_migrations,
     use_postgres_auth_state,
 )
 from baileys.wabinary import BinaryNode
 
 
 pytestmark = pytest.mark.integration
+
+
+@dataclass(frozen=True)
+class PostgresSchema:
+    conninfo: str = field(repr=False)
+    schema: str
 
 
 def _text_message(text: str) -> proto.Message:
@@ -28,33 +37,68 @@ def _text_message(text: str) -> proto.Message:
 
 
 @pytest.fixture()
-def postgres_connection():
+def postgres_schema():
     conninfo = os.getenv("BAILEYS_POSTGRES_TEST_DSN")
     if not conninfo:
         pytest.skip("set BAILEYS_POSTGRES_TEST_DSN to run Postgres integration tests")
     psycopg = pytest.importorskip("psycopg")
     from psycopg import sql
-    from psycopg.rows import dict_row
 
     schema = f"baileys_test_{uuid.uuid4().hex}"
     with psycopg.connect(conninfo, autocommit=True) as connection:
         connection.execute(sql.SQL("create schema {}").format(sql.Identifier(schema)))
+    try:
+        yield PostgresSchema(conninfo, schema)
+    finally:
+        with psycopg.connect(conninfo, autocommit=True) as connection:
+            connection.execute(sql.SQL("drop schema if exists {} cascade").format(sql.Identifier(schema)))
+
+
+def _connect_to_schema(conninfo: str, schema: str):
+    import psycopg
+    from psycopg import sql
+    from psycopg.rows import dict_row
+
     connection = psycopg.connect(conninfo, autocommit=True, row_factory=dict_row)
     connection.execute(sql.SQL("set search_path to {}").format(sql.Identifier(schema)))
+    return connection
+
+
+@pytest.fixture()
+def postgres_connection(postgres_schema):
+    connection = _connect_to_schema(postgres_schema.conninfo, postgres_schema.schema)
+    apply_postgres_migrations(connection=connection, schema=postgres_schema.schema)
     try:
         yield connection
     finally:
         connection.close()
-        with psycopg.connect(conninfo, autocommit=True) as connection:
-            connection.execute(sql.SQL("drop schema if exists {} cascade").format(sql.Identifier(schema)))
+
+
+def test_postgres_migrations_are_safe_for_concurrent_writers(postgres_schema):
+    first = _connect_to_schema(postgres_schema.conninfo, postgres_schema.schema)
+    second = _connect_to_schema(postgres_schema.conninfo, postgres_schema.schema)
+    try:
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            results = list(
+                executor.map(
+                    lambda connection: apply_postgres_migrations(connection=connection, schema=postgres_schema.schema),
+                    [first, second],
+                )
+            )
+    finally:
+        first.close()
+        second.close()
+
+    assert sorted(version for result in results for version in result) == [1]
+    assert sorted(results, key=len) == [[], [1]]
 
 
 def test_postgres_stores_round_trip_against_real_database(postgres_connection):
     credentials = {"me": {"id": "me@s.whatsapp.net"}, "next_pre_key_id": 10}
     node = BinaryNode("message", {"id": "m1"}, [BinaryNode("enc", {"type": "msg"}, b"cipher")])
 
-    PostgresCredentialStore(connection=postgres_connection).save_credentials(credentials)
-    auth_state = use_postgres_auth_state(connection=postgres_connection)
+    PostgresCredentialStore(connection=postgres_connection, init_schema=False).save_credentials(credentials)
+    auth_state = use_postgres_auth_state(connection=postgres_connection, init_schema=False)
     signal = PostgresSignalKeyStore(connection=postgres_connection, init_schema=False)
     replay = PostgresReplayStore(connection=postgres_connection, init_schema=False)
 
@@ -70,7 +114,7 @@ def test_postgres_stores_round_trip_against_real_database(postgres_connection):
     assert replay.load_recent_outbound("expired") is None
     assert replay.prune_expired(time.time() + 120) == 1
 
-    event_store = PostgresEventStore(connection=postgres_connection)
+    event_store = PostgresEventStore(connection=postgres_connection, init_schema=False)
     message = WAMessage(
         key=MessageKey("user@s.whatsapp.net", "m1"),
         message=_text_message("hello from postgres"),
@@ -98,7 +142,7 @@ def test_postgres_stores_round_trip_against_real_database(postgres_connection):
     event_store.save_lid_pn_mapping("999:1@lid", "999@s.whatsapp.net", source="integration")
     event_store.save_app_state("regular_low", {"version": {"hash": "abc"}})
 
-    reopened = PostgresEventStore(connection=postgres_connection)
+    reopened = PostgresEventStore(connection=postgres_connection, init_schema=False)
     assert first.chats[0].id == "user@s.whatsapp.net"
     assert second.chats[0].id == "user@s.whatsapp.net"
     assert reopened.load_messages("user@s.whatsapp.net")[0].message.conversation == "hello from postgres"

@@ -124,7 +124,6 @@ Phase 8:
 
 Phase 9:
 
-- versioned Postgres migrations and multi-writer transaction proof.
 - broader Phase 7 enabled-account live proof.
 - media retry success proof when eligible media is available.
 - full peer-data operation live coverage.
@@ -132,6 +131,9 @@ Phase 9:
 - nightly live read-only suite.
 - 24-hour reconnect soak.
 - keep the Node-reference audit current when the local Node checkout changes.
+- keep business commerce, catalog collection, order-detail, and community
+  proof tracked as explicit account/data-gated Todos until suitable accounts
+  and data are available.
 
 ## Acceptance
 

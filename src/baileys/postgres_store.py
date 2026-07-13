@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import time
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from dataclasses import dataclass
 from typing import Any, Iterator
 
@@ -116,6 +116,21 @@ create table if not exists app_state (
 """
 
 
+POSTGRES_SCHEMA_LOCK_ID = 749_319_120
+
+
+@dataclass(frozen=True)
+class PostgresMigration:
+    version: int
+    name: str
+    sql: str
+
+
+POSTGRES_MIGRATIONS = (
+    PostgresMigration(1, "initial_store_schema", POSTGRES_SCHEMA_SQL),
+)
+
+
 @dataclass(frozen=True)
 class PostgresConnectionFactory:
     conninfo: str | None = None
@@ -157,7 +172,7 @@ class _PostgresStoreBase:
 
     def init_schema(self) -> None:
         with self.factory.connection_context() as db:
-            _execute(db, POSTGRES_SCHEMA_SQL)
+            _apply_postgres_migrations(db)
 
 
 class PostgresCredentialStore(_PostgresStoreBase):
@@ -690,7 +705,75 @@ make_postgres_event_store = PostgresEventStore
 makePostgresEventStore = PostgresEventStore
 
 
-def _execute(db: Any, sql: str, params: tuple[Any, ...] = ()) -> Any:
+def apply_postgres_migrations(
+    conninfo: str | None = None,
+    *,
+    pool: Any | None = None,
+    connection: Any | None = None,
+    schema: str | None = None,
+) -> list[int]:
+    factory = PostgresConnectionFactory(conninfo=conninfo, pool=pool, connection=connection)
+    with factory.connection_context() as db:
+        return _apply_postgres_migrations(db, schema=schema)
+
+
+applyPostgresMigrations = apply_postgres_migrations
+
+
+def _apply_postgres_migrations(db: Any, *, schema: str | None = None) -> list[int]:
+    with _transaction(db):
+        if schema:
+            _set_local_search_path(db, schema)
+        _execute(db, "select pg_advisory_xact_lock(%s)", (POSTGRES_SCHEMA_LOCK_ID,))
+        _execute(
+            db,
+            """
+            create table if not exists baileys_schema_migrations (
+                version integer primary key,
+                name text not null,
+                applied_at timestamptz not null default now()
+            )
+            """,
+        )
+        rows = _execute(db, "select version from baileys_schema_migrations").fetchall()
+        applied = {int(_row_get(row, "version")) for row in rows}
+        newly_applied: list[int] = []
+        for migration in POSTGRES_MIGRATIONS:
+            if migration.version in applied:
+                continue
+            _execute(db, migration.sql)
+            cursor = _execute(
+                db,
+                """
+                insert into baileys_schema_migrations(version, name)
+                values(%s, %s)
+                on conflict(version) do nothing
+                """,
+                (migration.version, migration.name),
+            )
+            if int(getattr(cursor, "rowcount", 0) or 0) > 0:
+                newly_applied.append(migration.version)
+    return newly_applied
+
+
+def _set_local_search_path(db: Any, schema: str) -> None:
+    try:
+        from psycopg import sql
+    except ImportError:
+        escaped = schema.replace('"', '""')
+        _execute(db, f'set local search_path to "{escaped}"')
+        return
+    _execute(db, sql.SQL("set local search_path to {}").format(sql.Identifier(schema)))
+
+
+@contextmanager
+def _transaction(db: Any) -> Iterator[None]:
+    transaction = getattr(db, "transaction", None)
+    with (transaction() if callable(transaction) else nullcontext()):
+        yield
+
+
+def _execute(db: Any, sql: Any, params: tuple[Any, ...] = ()) -> Any:
     execute = getattr(db, "execute", None)
     if callable(execute):
         return execute(sql, params)

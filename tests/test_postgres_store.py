@@ -9,7 +9,9 @@ from baileys.auth_state import AuthState
 from baileys.generated import WAProto_pb2 as proto
 from baileys.messages import MessageKey, MessageUpsert, WAMessage
 from baileys.postgres_store import (
+    POSTGRES_MIGRATIONS,
     POSTGRES_SCHEMA_SQL,
+    apply_postgres_migrations,
     PostgresConnectionFactory,
     PostgresCredentialStore,
     PostgresEventStore,
@@ -36,6 +38,9 @@ class FakeCursor:
 
 class FakePostgresConnection:
     def __init__(self) -> None:
+        self.schema_migrations: dict[int, str] = {}
+        self.advisory_locks: list[int] = []
+        self.transaction_entries = 0
         self.credentials: dict[str, Any] = {}
         self.signal_keys: dict[tuple[str, str], Any] = {}
         self.recent_outbound: dict[str, dict[str, Any]] = {}
@@ -48,10 +53,24 @@ class FakePostgresConnection:
         self.lid_pn: dict[str, dict[str, Any]] = {}
         self.app_state: dict[str, Any] = {}
 
+    def transaction(self) -> FakeTransaction:
+        return FakeTransaction(self)
+
     def execute(self, sql: str, params: tuple[Any, ...] = ()) -> FakeCursor:
         normalized = " ".join(sql.lower().split())
         if normalized.startswith("create table") or normalized.startswith("create index"):
             return FakeCursor()
+        if normalized.startswith("select pg_advisory_xact_lock"):
+            self.advisory_locks.append(int(params[0]))
+            return FakeCursor(row={"pg_advisory_xact_lock": ""})
+        if normalized.startswith("select version from baileys_schema_migrations"):
+            rows = [{"version": version} for version in sorted(self.schema_migrations)]
+            return FakeCursor(rows=rows)
+        if normalized.startswith("insert into baileys_schema_migrations"):
+            if int(params[0]) in self.schema_migrations:
+                return FakeCursor(rowcount=0)
+            self.schema_migrations[int(params[0])] = str(params[1])
+            return FakeCursor(rowcount=1)
 
         if normalized.startswith("select value from credentials"):
             return FakeCursor(row={"value": self.credentials.get("default")} if "default" in self.credentials else None)
@@ -169,6 +188,18 @@ class FakePostgresConnection:
         return FakeCursor()
 
 
+class FakeTransaction:
+    def __init__(self, connection: FakePostgresConnection) -> None:
+        self.connection = connection
+
+    def __enter__(self) -> FakeTransaction:
+        self.connection.transaction_entries += 1
+        return self
+
+    def __exit__(self, exc_type: Any, exc: Any, tb: Any) -> bool:
+        return False
+
+
 def _json(value: Any) -> Any:
     if isinstance(value, str):
         return json.loads(value)
@@ -185,12 +216,27 @@ def test_postgres_schema_and_connection_boundary_are_optional():
     assert "create table if not exists credentials" in POSTGRES_SCHEMA_SQL
     assert "create table if not exists app_state" in POSTGRES_SCHEMA_SQL
     assert "create table if not exists recent_outbound" in POSTGRES_SCHEMA_SQL
+    assert POSTGRES_MIGRATIONS[0].version == 1
+    assert POSTGRES_MIGRATIONS[0].sql == POSTGRES_SCHEMA_SQL
 
     try:
         with PostgresConnectionFactory().connection_context():
             raise AssertionError("connection should not open without configuration")
     except RuntimeError as exc:
         assert "conninfo, pool, or connection" in str(exc)
+
+
+def test_postgres_migrations_are_versioned_idempotent_and_locked():
+    db = FakePostgresConnection()
+
+    first = apply_postgres_migrations(connection=db)
+    second = apply_postgres_migrations(connection=db)
+
+    assert first == [1]
+    assert second == []
+    assert db.schema_migrations == {1: "initial_store_schema"}
+    assert len(db.advisory_locks) == 2
+    assert db.transaction_entries == 2
 
 
 def test_postgres_auth_signal_and_replay_store_contract():

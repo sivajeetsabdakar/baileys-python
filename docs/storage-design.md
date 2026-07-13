@@ -27,7 +27,7 @@ adapters behind stable interfaces.
 - `PostgresCredentialStore`, `PostgresSignalKeyStore`, `PostgresReplayStore`,
   and `PostgresEventStore` mirror the SQLite store contract behind the
   `postgres` optional dependency. Current tests use a local mocked connection
-  plus an opt-in live database integration round-trip.
+  plus opt-in live database integration and concurrent migration round-trips.
 - `binary_node_to_json` and `binary_node_from_json` preserve BinaryNode attrs,
   byte content, string content, and child nodes for durable replay adapters.
 
@@ -196,12 +196,13 @@ Additional planned tables:
 
 ## Postgres Adapter
 
-Postgres uses the same logical schema as SQLite and still needs:
+Postgres uses the same logical schema as SQLite. Current support includes a
+versioned migration runner with a schema ledger and transaction-scoped advisory
+lock. It still needs:
 
 - advisory or row locks for auth-state writers.
 - JSONB indexes for selected query surfaces if needed.
 - connection-pool integration supplied by the application.
-- explicit migration files.
 
 See `docs/postgres-adapter-design.md` for the adapter boundary, optional
 dependency, schema mapping, transaction rules, migration order, and acceptance
@@ -251,11 +252,13 @@ Risky Redis uses:
 6. Add broader LID/PN mapping store integration for USync and group metadata.
    This is done for socket device lookup, blocklist resolution, group metadata
    participant mappings, and history imports.
-7. Add migration and backup helpers.
+7. Add migration and backup helpers. Postgres schema migrations are now
+   versioned and idempotent; backup/export helpers remain future work.
 8. Add Postgres adapter after SQLite semantics are stable. The first adapter
    pass is in place for credentials, signal keys, replay, event-backed store
    data, LID/PN mappings, and app-state state with mocked connection tests.
-   Live database integration proof is covered by the opt-in integration test.
+   Live database integration and concurrent migration proof are covered by the
+   opt-in integration tests.
 
 ## Acceptance
 
