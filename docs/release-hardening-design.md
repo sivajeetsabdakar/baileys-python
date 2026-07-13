@@ -124,7 +124,7 @@ Phase 8:
 
 Phase 9:
 
-- real Postgres database integration proof.
+- versioned Postgres migrations and multi-writer transaction proof.
 - broader Phase 7 enabled-account live proof.
 - media retry success proof when eligible media is available.
 - full peer-data operation live coverage.

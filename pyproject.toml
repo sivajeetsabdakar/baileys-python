@@ -29,6 +29,9 @@ proto = ["grpcio-tools"]
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
+markers = [
+    "integration: tests that require an external service",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]

@@ -58,9 +58,14 @@ aliases for common migration paths. The adapter accepts a `conninfo`, a
 connection pool, or an application-supplied connection object.
 
 Current coverage validates the store contract with a mocked local connection so
-core installs do not require `psycopg` or a database. A real Postgres
-integration run, versioned migrations, and explicit multi-writer transaction
-tests remain release-hardening items.
+core installs do not require `psycopg` or a database. An opt-in live Postgres
+integration test also proves credential, signal-key, replay, event-store,
+LID/PN, and app-state round-trips against a disposable database. Versioned
+migrations and explicit multi-writer transaction tests remain release-hardening
+items.
+
+Application-supplied connections should use dict-like rows, such as
+`psycopg.rows.dict_row`, matching the adapter-created connection path.
 
 ## Transactions
 

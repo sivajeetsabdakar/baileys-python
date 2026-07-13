@@ -19,6 +19,13 @@ changes:
 python scripts/audit_node_public_api.py --node-root ../Baileys-master/Baileys-master
 ```
 
+Run the Postgres integration proof when a disposable database URL is configured
+for the test process:
+
+```powershell
+python -m pytest tests/test_postgres_store_integration.py -q
+```
+
 ## Live Evidence
 
 Run the read-only live summary when saved credentials are available:

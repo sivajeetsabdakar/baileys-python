@@ -7,8 +7,6 @@ retired with a clear reason.
 
 ## Release Hardening
 
-- Run a real Postgres database integration proof for credential, signal-key,
-  replay, event-store, LID/PN, and app-state persistence.
 - Add versioned Postgres migrations and explicit multi-writer transaction
   tests before recommending Postgres for multi-process production bots.
 - Run the 24-hour reconnect soak before marking the core beta ready.

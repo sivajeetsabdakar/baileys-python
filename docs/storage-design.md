@@ -26,8 +26,8 @@ adapters behind stable interfaces.
   as the local durable adapter.
 - `PostgresCredentialStore`, `PostgresSignalKeyStore`, `PostgresReplayStore`,
   and `PostgresEventStore` mirror the SQLite store contract behind the
-  `postgres` optional dependency. Current tests use a local mocked connection;
-  a real database integration run remains a release-hardening item.
+  `postgres` optional dependency. Current tests use a local mocked connection
+  plus an opt-in live database integration round-trip.
 - `binary_node_to_json` and `binary_node_from_json` preserve BinaryNode attrs,
   byte content, string content, and child nodes for durable replay adapters.
 
@@ -202,7 +202,6 @@ Postgres uses the same logical schema as SQLite and still needs:
 - JSONB indexes for selected query surfaces if needed.
 - connection-pool integration supplied by the application.
 - explicit migration files.
-- real database integration proof.
 
 See `docs/postgres-adapter-design.md` for the adapter boundary, optional
 dependency, schema mapping, transaction rules, migration order, and acceptance
@@ -256,7 +255,7 @@ Risky Redis uses:
 8. Add Postgres adapter after SQLite semantics are stable. The first adapter
    pass is in place for credentials, signal keys, replay, event-backed store
    data, LID/PN mappings, and app-state state with mocked connection tests.
-   Real database integration proof remains.
+   Live database integration proof is covered by the opt-in integration test.
 
 ## Acceptance
 
