@@ -29,6 +29,8 @@ def test_public_api_exports_core_building_blocks():
     assert callable(bpt.build_pairing_qr_data)
     assert callable(bpt.use_sqlite_auth_state)
     assert callable(bpt.useSqliteAuthState)
+    assert callable(bpt.use_postgres_auth_state)
+    assert callable(bpt.usePostgresAuthState)
     assert callable(bpt.configure_successful_pairing)
     assert callable(bpt.pairing_code_request_node)
     assert bpt.QRPairingRequest
@@ -45,6 +47,11 @@ def test_public_api_exports_core_building_blocks():
     assert bpt.SQLiteEventStore
     assert bpt.SQLiteReplayStore
     assert bpt.SQLiteSignalKeyStore
+    assert bpt.PostgresCredentialStore
+    assert bpt.PostgresEventStore
+    assert bpt.PostgresReplayStore
+    assert bpt.PostgresSignalKeyStore
+    assert bpt.PostgresConnectionFactory
     assert bpt.DisconnectError
     assert bpt.DisconnectReason.loggedOut == 401
     assert bpt.NotificationInfo
@@ -185,6 +192,9 @@ def test_public_api_exports_core_building_blocks():
     assert hasattr(bpt.WhatsAppClient, "sendWAMBuffer")
     assert callable(bpt.make_sqlite_event_store)
     assert callable(bpt.makeSqliteEventStore)
+    assert callable(bpt.make_postgres_event_store)
+    assert callable(bpt.makePostgresEventStore)
+    assert "create table if not exists credentials" in bpt.POSTGRES_SCHEMA_SQL
 
 
 def test_client_defaults_and_package_data_are_importable(tmp_path):

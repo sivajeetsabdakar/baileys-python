@@ -429,12 +429,15 @@ tests are stable.
 - Added the `postgres` optional dependency group and
   `docs/postgres-adapter-design.md` for the Postgres adapter boundary, schema,
   transaction rules, migrations, and acceptance checks.
+- Added optional Postgres credential, signal-key, replay, and event stores
+  with mocked connection coverage for the SQLite-compatible store contract.
 - Fixed live-suite numeric timeout formatting and re-ran the read-only live
   suite. Phase 5 read-only passed; Phase 7 read-only re-proved business
   profile, catalog, reachout timelock, and bot-list surfaces while preserving
   account/data-gated skips and limits.
-- Next Phase 9 targets are Postgres adapter implementation, broader Phase 7
-  enabled-account live proof, and the 24-hour reconnect soak.
+- Next Phase 9 targets are real Postgres database integration proof, broader
+  Phase 7 enabled-account live proof, the Node reference audit, and the
+  24-hour reconnect soak.
 
 ## Live Harness
 

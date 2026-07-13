@@ -1,9 +1,10 @@
 # Storage Design
 
 The package currently ships with JSON credential storage, directory-backed
-signal keys, SQLite-backed credential/signal/replay/event stores, and an
-in-memory event store. The target design is to keep these simple defaults
-while adding durable adapters behind stable interfaces.
+signal keys, SQLite-backed credential/signal/replay/event stores, optional
+Postgres credential/signal/replay/event stores, and an in-memory event store.
+The target design is to keep these simple defaults while adding durable
+adapters behind stable interfaces.
 
 ## Current Built-In Guarantees
 
@@ -23,6 +24,10 @@ while adding durable adapters behind stable interfaces.
 - `ReplayStore` defines recent outbound replay persistence, with
   `InMemoryReplayStore` as the default implementation and `SQLiteReplayStore`
   as the local durable adapter.
+- `PostgresCredentialStore`, `PostgresSignalKeyStore`, `PostgresReplayStore`,
+  and `PostgresEventStore` mirror the SQLite store contract behind the
+  `postgres` optional dependency. Current tests use a local mocked connection;
+  a real database integration run remains a release-hardening item.
 - `binary_node_to_json` and `binary_node_from_json` preserve BinaryNode attrs,
   byte content, string content, and child nodes for durable replay adapters.
 
@@ -191,12 +196,13 @@ Additional planned tables:
 
 ## Postgres Adapter
 
-Postgres should use the same logical schema as SQLite and add:
+Postgres uses the same logical schema as SQLite and still needs:
 
 - advisory or row locks for auth-state writers.
 - JSONB indexes for selected query surfaces if needed.
 - connection-pool integration supplied by the application.
 - explicit migration files.
+- real database integration proof.
 
 See `docs/postgres-adapter-design.md` for the adapter boundary, optional
 dependency, schema mapping, transaction rules, migration order, and acceptance
@@ -247,7 +253,10 @@ Risky Redis uses:
    This is done for socket device lookup, blocklist resolution, group metadata
    participant mappings, and history imports.
 7. Add migration and backup helpers.
-8. Add Postgres adapter after SQLite semantics are stable.
+8. Add Postgres adapter after SQLite semantics are stable. The first adapter
+   pass is in place for credentials, signal keys, replay, event-backed store
+   data, LID/PN mappings, and app-state state with mocked connection tests.
+   Real database integration proof remains.
 
 ## Acceptance
 

@@ -49,6 +49,19 @@ Column differences:
 - Use `timestamptz` or `bigint` consistently for `updated_at`; `bigint`
   seconds keeps parity with SQLite and JSON stores.
 
+## Implementation Status
+
+The first sync adapter pass is available through `PostgresCredentialStore`,
+`PostgresSignalKeyStore`, `PostgresReplayStore`, `PostgresEventStore`,
+`use_postgres_auth_state`, and `make_postgres_event_store`, with camelCase
+aliases for common migration paths. The adapter accepts a `conninfo`, a
+connection pool, or an application-supplied connection object.
+
+Current coverage validates the store contract with a mocked local connection so
+core installs do not require `psycopg` or a database. A real Postgres
+integration run, versioned migrations, and explicit multi-writer transaction
+tests remain release-hardening items.
+
 ## Transactions
 
 Credential, signal-key, session, and prekey changes that belong to a single

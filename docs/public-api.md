@@ -34,17 +34,24 @@ The lower-level auth surfaces are:
 - `DirectorySignalKeyStore`
 - `SQLiteCredentialStore`
 - `SQLiteSignalKeyStore`
+- `PostgresCredentialStore`
+- `PostgresSignalKeyStore`
 - `use_multi_file_auth_state`
 - `useMultiFileAuthState`
 - `use_sqlite_auth_state`
 - `useSqliteAuthState`
+- `use_postgres_auth_state`
+- `usePostgresAuthState`
 
 QR pairing, pairing-code linking, saved reconnect, logout, prekey maintenance,
 and disconnect reason mapping are exposed on `WhatsAppClient`.
 
 `JsonCredentialStore` and `DirectorySignalKeyStore` write files atomically.
 `SQLiteCredentialStore` and `SQLiteSignalKeyStore` provide a local durable
-adapter for single-process bots. Use `AuthState.transaction()` when several
+adapter for single-process bots. `PostgresCredentialStore` and
+`PostgresSignalKeyStore` expose the same sync store contract for applications
+that install the `postgres` optional dependency and supply a connection string,
+pool, or connection object. Use `AuthState.transaction()` when several
 credential fields should be updated and persisted together:
 
 ```python

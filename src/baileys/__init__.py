@@ -185,6 +185,18 @@ from .pairing_code import (
 )
 from .prekeys import PreKeyMaintenanceResult, PreKeyNodeResult, SignedPreKeyRotation
 from .privacy_tokens import build_tc_token_from_jid, store_tc_tokens_from_iq_result
+from .postgres_store import (
+    POSTGRES_SCHEMA_SQL,
+    PostgresConnectionFactory,
+    PostgresCredentialStore,
+    PostgresEventStore,
+    PostgresReplayStore,
+    PostgresSignalKeyStore,
+    make_postgres_event_store,
+    makePostgresEventStore,
+    use_postgres_auth_state,
+    usePostgresAuthState,
+)
 from .query import QueryManager, QueryResult, TagGenerator
 from .receipts import (
     ReceiptInfo,
@@ -307,6 +319,12 @@ __all__ = [
     "PairSuccess",
     "PairingCodeRequest",
     "PairingError",
+    "POSTGRES_SCHEMA_SQL",
+    "PostgresConnectionFactory",
+    "PostgresCredentialStore",
+    "PostgresEventStore",
+    "PostgresReplayStore",
+    "PostgresSignalKeyStore",
     "PreKeyMaintenanceResult",
     "PreKeyNodeResult",
     "ParticipantUpdateResult",
@@ -445,7 +463,9 @@ __all__ = [
     "makeWASocket",
     "makeInMemoryStore",
     "makeSqliteEventStore",
+    "makePostgresEventStore",
     "make_in_memory_store",
+    "make_postgres_event_store",
     "make_socket",
     "make_sqlite_event_store",
     "md5",
@@ -493,8 +513,10 @@ __all__ = [
     "transferDevice",
     "transfer_device",
     "useMultiFileAuthState",
+    "usePostgresAuthState",
     "useSqliteAuthState",
     "use_multi_file_auth_state",
+    "use_postgres_auth_state",
     "use_sqlite_auth_state",
     "usync_devices_query_node",
     "usync_query_node",
