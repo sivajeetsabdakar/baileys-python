@@ -52,6 +52,8 @@ python scripts/soak_suite.py --duration 86400
 ## Manual Review
 
 - Confirm `docs/compatibility-matrix.md` has no stale Done entries.
+- Confirm `docs/deferred-todos.md` matches current account-gated and
+  release-hardening gaps.
 - Confirm account-gated Todos remain explicit.
 - Confirm examples use relative paths.
 - Confirm no auth files, generated QR images, local logs, or probe media are
