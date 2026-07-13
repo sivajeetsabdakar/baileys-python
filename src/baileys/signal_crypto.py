@@ -46,6 +46,8 @@ def sign(private_key: bytes, message: bytes) -> bytes:
 
 def verify(public_key: bytes, message: bytes, signature: bytes) -> bool:
     curve_public = _strip_signal_prefix(public_key)
-    ed_public = xeddsa.curve25519_pub_to_ed25519_pub(curve_public, False)
-    return bool(xeddsa.ed25519_verify(signature, ed_public, message))
-
+    for sign_bit in (False, True):
+        ed_public = xeddsa.curve25519_pub_to_ed25519_pub(curve_public, sign_bit)
+        if xeddsa.ed25519_verify(signature, ed_public, message):
+            return True
+    return False

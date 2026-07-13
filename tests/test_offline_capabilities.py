@@ -142,6 +142,20 @@ def test_signal_curve_matches_libsignal_vectors():
     assert verify(public_a, message, sign(private_a, message))
 
 
+def test_xeddsa_verify_accepts_either_ed25519_sign_bit():
+    import xeddsa
+
+    private_key = bytes.fromhex("303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f")
+    public_key = signal_public_from_private(private_key)
+    message = b"account signature message"
+
+    signature_false = xeddsa.ed25519_priv_sign(xeddsa.priv_force_sign(private_key, False), message)
+    signature_true = xeddsa.ed25519_priv_sign(xeddsa.priv_force_sign(private_key, True), message)
+
+    assert verify(public_key, message, signature_false)
+    assert verify(public_key, message, signature_true)
+
+
 def test_signal_session_prekey_and_reply_round_trip():
     result = run_signal_session_round_trip()
 
