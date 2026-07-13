@@ -355,12 +355,13 @@ def build_encrypted_node(creds: dict, recipient_jid: str, payload: proto.Message
     return BinaryNode("enc", {"v": "2", "type": signal_type}, ciphertext), signal_type, addr
 
 
-def signed_device_identity_node(creds: dict) -> BinaryNode | None:
+def signed_device_identity_node(creds: dict, *, include_signature_key: bool = True) -> BinaryNode | None:
     if not creds.get("account"):
         return None
     account = proto.ADVSignedDeviceIdentity()
     account.ParseFromString(unb64(creds["account"]))
-    account.ClearField("accountSignatureKey")
+    if not include_signature_key or not account.accountSignatureKey:
+        account.ClearField("accountSignatureKey")
     return BinaryNode("device-identity", {}, account.SerializeToString())
 
 

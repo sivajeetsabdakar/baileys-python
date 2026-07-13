@@ -8,7 +8,7 @@ from baileys import AuthState, JsonCredentialStore, makeWASocket, make_socket
 from baileys.app_state import chat_modification_to_app_patch, encode_syncd_patch, generate_snapshot_mac, LTHashState
 from baileys.auth_store import creds_from_generated_signal_material
 from baileys.crypto import hmac_sign
-from baileys.message_send import OutboundMessage
+from baileys.message_send import OutboundMessage, signed_device_identity_node
 from baileys.events import EventEmitter
 from baileys.jid import jid_decode_tuple
 from baileys.generated import WAProto_pb2 as proto
@@ -1188,6 +1188,26 @@ def test_client_finalize_pair_success_sends_reply_and_persists_credentials(tmp_p
     asyncio.run(scenario())
 
 
+def test_outbound_device_identity_keeps_account_signature_key():
+    account = proto.ADVSignedDeviceIdentity()
+    account.details = b"device-details"
+    account.accountSignatureKey = b"signature-key"
+    account.accountSignature = b"account-signature"
+    account.deviceSignature = b"device-signature"
+    creds = {"account": base64.b64encode(account.SerializeToString()).decode("ascii")}
+
+    node = signed_device_identity_node(creds)
+    encoded = proto.ADVSignedDeviceIdentity()
+    encoded.ParseFromString(node.content)
+
+    assert encoded.accountSignatureKey == b"signature-key"
+
+    stripped = signed_device_identity_node(creds, include_signature_key=False)
+    stripped_encoded = proto.ADVSignedDeviceIdentity()
+    stripped_encoded.ParseFromString(stripped.content)
+    assert not stripped_encoded.HasField("accountSignatureKey")
+
+
 def test_build_outbound_message_normalizes_plain_phone_jid(tmp_path):
     async def scenario():
         store = JsonCredentialStore(tmp_path / "creds.json")
@@ -1244,6 +1264,67 @@ def test_build_outbound_message_normalizes_plain_phone_jid(tmp_path):
 
         assert outbound.node.attrs["to"] == "1234567890@s.whatsapp.net"
         assert outbound.participant_jids == ["1234567890:0@s.whatsapp.net"]
+
+    asyncio.run(scenario())
+
+
+def test_build_outbound_message_defaults_to_usync_fanout(tmp_path):
+    async def scenario():
+        store = JsonCredentialStore(tmp_path / "creds.json")
+        store.save_credentials(_generated_creds())
+        client = make_socket(AuthState.from_store(store))
+        original_builder = socket_module.build_message_content_node
+        calls: list[tuple[str, float, bool]] = []
+
+        async def fake_prepare_usync(jid: str, timeout: float, force_sessions: bool) -> tuple[list[str], list[str]]:
+            calls.append((jid, timeout, force_sessions))
+            return ["1111111111:1@s.whatsapp.net"], ["1234567890:0@s.whatsapp.net"]
+
+        def fake_build_message_content_node(
+            creds: dict,
+            recipient_jid: str,
+            content: str | proto.Message | dict[str, object],
+            *,
+            message_id: str | None = None,
+            direct_enc: bool = True,
+            recipient_device_jids: object | None = None,
+            own_fanout_jids: object = (),
+            include_phash: bool = False,
+            additional_attributes: dict[str, str] | None = None,
+            additional_nodes: list[BinaryNode] | None = None,
+        ) -> OutboundMessage:
+            assert direct_enc is False
+            assert recipient_device_jids == ["1234567890:0@s.whatsapp.net"]
+            assert own_fanout_jids == ["1111111111:1@s.whatsapp.net"]
+            return OutboundMessage(
+                node=BinaryNode("message", {"id": message_id or "msg-id", "to": recipient_jid, "type": "text"}, []),
+                message_id=message_id or "msg-id",
+                signal_type="msg",
+                recipient_address=None,  # type: ignore[arg-type]
+                participant_jids=["1234567890:0@s.whatsapp.net", "1111111111:1@s.whatsapp.net"],
+                signal_types={"1234567890:0@s.whatsapp.net": "msg", "1111111111:1@s.whatsapp.net": "msg"},
+            )
+
+        client._prepare_usync_fanout = fake_prepare_usync  # type: ignore[method-assign]
+        socket_module.build_message_content_node = fake_build_message_content_node  # type: ignore[assignment]
+
+        try:
+            outbound = await client._build_outbound_message(
+                "1234567890",
+                "hello",
+                message_id="msg-1",
+                use_usync=None,
+                force_sessions=False,
+                include_phash=False,
+                additional_attributes=None,
+                additional_nodes=[],
+                timeout=5,
+            )
+        finally:
+            socket_module.build_message_content_node = original_builder
+
+        assert calls == [("1234567890@s.whatsapp.net", 5, False)]
+        assert outbound.participant_jids == ["1234567890:0@s.whatsapp.net", "1111111111:1@s.whatsapp.net"]
 
     asyncio.run(scenario())
 

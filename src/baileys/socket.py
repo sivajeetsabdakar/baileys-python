@@ -1069,7 +1069,7 @@ class WhatsAppClient:
         timeout: float,
     ) -> OutboundMessage:
         jid = _coerce_chat_jid(jid)
-        use_usync = is_jid_group(jid) if use_usync is None else use_usync
+        use_usync = True if use_usync is None else use_usync
         own_fanout_jids: list[str] = []
         recipient_device_jids: list[str] | None = None
         if not use_usync and not is_jid_group(jid):
