@@ -131,9 +131,13 @@ def append_if(command: list[str], flag: str, value: str | None) -> None:
         command.extend([flag, value])
 
 
+def format_cli_number(value: float | int) -> str:
+    return f"{value:g}"
+
+
 def build_steps(args: argparse.Namespace) -> list[SuiteStep]:
     creds = str(Path(args.creds_path))
-    timeout = str(args.probe_timeout)
+    timeout = format_cli_number(args.probe_timeout)
     steps: list[SuiteStep] = []
 
     phase5 = script_command("phase5_live_probe.py", "--creds-path", creds, "--timeout", timeout)

@@ -50,7 +50,7 @@ def test_live_suite_write_steps_are_skipped_without_destination():
     live_suite = load_live_suite()
     args = argparse.Namespace(
         creds_path="auth/product_qr_creds.json",
-        probe_timeout=45,
+        probe_timeout=45.0,
         watch_timeout=30,
         group_jid=None,
         profile_jid=None,
@@ -79,3 +79,5 @@ def test_live_suite_write_steps_are_skipped_without_destination():
 
     assert write_steps["send-text"].required == ("--to is required for write probes",)
     assert write_steps["send-image"].required == ("--to is required for write probes",)
+    assert "45" in steps[0].command
+    assert "45.0" not in steps[0].command
