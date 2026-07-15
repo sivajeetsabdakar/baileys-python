@@ -15,6 +15,23 @@ WhiskeySockets/Baileys, so careful testing and clear compatibility notes matter.
 - Reproduce account-gated WhatsApp behavior with clear logs and minimal test
   cases.
 
+## Before You Start
+
+For larger changes, open an issue or discussion first so the intended API shape,
+compatibility target, and test plan are clear before implementation work starts.
+
+Good first contributions are usually small and deterministic:
+
+- documentation corrections
+- focused offline tests
+- typed error improvements
+- small public API examples
+- parser/builder fixes with input and output vectors
+
+Protocol, auth, Signal, socket, and live WhatsApp behavior changes should include
+more context because small mistakes can break saved sessions or make debugging
+hard for users.
+
 ## Ground Rules
 
 - Keep changes scoped to the problem being solved.
@@ -27,6 +44,18 @@ WhiskeySockets/Baileys, so careful testing and clear compatibility notes matter.
   where they help migration.
 - Add typed errors for unsupported or account-gated behavior instead of hiding
   server rejections.
+
+## Workflow
+
+1. Fork the repository.
+2. Create a focused branch from `main`.
+3. Make the smallest change that solves the issue.
+4. Add or update tests and docs.
+5. Run the relevant local checks.
+6. Open a pull request with a concise summary and verification notes.
+
+Keep pull requests reviewable. If a change mixes protocol behavior, docs,
+formatting, and refactors, split it into separate pull requests where possible.
 
 ## Development Setup
 
@@ -47,6 +76,22 @@ Optional Postgres dependencies:
 ```powershell
 python -m pip install -e ".[postgres]"
 ```
+
+## Code Style
+
+- Keep APIs async-first and typed.
+- Prefer small protocol builders/parsers over large ad hoc functions.
+- Preserve existing module boundaries unless the change needs a new public
+  surface.
+- Use dataclasses or typed models for structured results.
+- Keep compatibility aliases close to the Pythonic method they wrap.
+- Raise typed errors for server rejections, unsupported content, account-gated
+  behavior, and malformed inputs.
+- Avoid broad rewrites that make parity review harder.
+
+Generated files should only change when the source generator or source data
+changed. If generated files are updated, mention the generator command in the
+pull request.
 
 ## Local Checks
 
@@ -79,6 +124,21 @@ python -m build
 python -m twine check dist/*
 ```
 
+## Reporting Bugs
+
+When opening a bug report, include:
+
+- installed package version or commit hash
+- Python version and operating system
+- the public method or script used
+- a minimal reproduction
+- expected behavior
+- observed behavior and traceback
+- whether the behavior is offline, live read-only, or live mutating
+
+Redact phone numbers, JIDs, QR payloads, auth state, Signal keys, database URLs,
+API tokens, and message content before posting logs.
+
 ## Tests
 
 Add offline tests for deterministic behavior. Good test targets include:
@@ -100,6 +160,9 @@ ordinary pull requests. If a change depends on live WhatsApp behavior, document:
 - the exact script or example used
 - the observed server response
 - any deferred proof still needed
+
+Live mutating tests should use dedicated test accounts and contacts. Do not run
+tests against personal accounts, production users, or unrelated recipients.
 
 ## Documentation
 
@@ -138,6 +201,13 @@ When porting or matching Node Baileys behavior:
 - Prefer structured parsers and builders over ad hoc string handling.
 - Keep account-gated behavior observable through typed errors and events.
 - Mark live-proof gaps as deferred instead of calling them complete.
+
+## Dependency Policy
+
+New runtime dependencies should be justified in the pull request. Prefer the
+standard library or existing dependencies for narrow tasks. Optional integrations
+should stay behind extras such as `postgres` or `docs` unless they are required
+for the core package.
 
 ## Release Policy
 
