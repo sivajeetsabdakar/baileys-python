@@ -34,7 +34,7 @@ from baileys.wabinary import BinaryNode, decode_binary_node, encode_binary_node 
 
 WA_WEBSOCKET_URL = "wss://web.whatsapp.com/ws/chat"
 DEFAULT_ORIGIN = "https://web.whatsapp.com"
-USER_AGENT = "Mozilla/5.0 baileys-python-test"
+USER_AGENT = "Mozilla/5.0 baileys-python"
 
 
 class TagGenerator:

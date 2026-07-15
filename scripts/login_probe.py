@@ -69,7 +69,7 @@ async def main() -> int:
         open_timeout=20,
         close_timeout=5,
         ping_interval=None,
-        additional_headers={"User-Agent": "Mozilla/5.0 baileys-python-test"},
+        additional_headers={"User-Agent": "Mozilla/5.0 baileys-python"},
     ) as websocket:
         await websocket.send(noise.client_hello_frame())
         response = await asyncio.wait_for(websocket.recv(), timeout=20)

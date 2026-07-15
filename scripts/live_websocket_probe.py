@@ -16,7 +16,7 @@ async def main() -> int:
         open_timeout=20,
         close_timeout=5,
         additional_headers={
-            "User-Agent": "Mozilla/5.0 baileys-python-test",
+            "User-Agent": "Mozilla/5.0 baileys-python",
         },
     ) as websocket:
         print(f"connected {websocket.remote_address}")
@@ -27,4 +27,3 @@ async def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(asyncio.run(main()))
-

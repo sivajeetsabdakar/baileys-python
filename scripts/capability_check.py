@@ -100,7 +100,7 @@ def check_binary_node() -> None:
 def check_crypto() -> None:
     key = b"k" * 32
     iv = b"i" * 12
-    plaintext = b"baileys-python-test"
+    plaintext = b"baileys-python"
     aad = b"wa"
     ciphertext = aes_encrypt_gcm(plaintext, key, iv, aad)
     assert aes_decrypt_gcm(ciphertext, key, iv, aad) == plaintext

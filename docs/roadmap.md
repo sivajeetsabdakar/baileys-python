@@ -3,7 +3,8 @@
 ## Goal
 
 Build `Baileys-python` into a full Python equivalent of local Node Baileys
-`7.0.0-rc13`, using `../baileys-python-test` only as the proven reference lab.
+`7.0.0-rc13`, using the maintained package implementation as the source of
+truth.
 
 The API should be Pythonic async first, with compatibility aliases for common
 Baileys names such as `sendMessage`, `relayMessage`, `groupMetadata`,

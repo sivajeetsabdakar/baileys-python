@@ -40,7 +40,7 @@ async def main() -> int:
         origin=DEFAULT_ORIGIN,
         open_timeout=20,
         close_timeout=5,
-        additional_headers={"User-Agent": "Mozilla/5.0 baileys-python-test"},
+        additional_headers={"User-Agent": "Mozilla/5.0 baileys-python"},
     ) as websocket:
         await websocket.send(noise.client_hello_frame())
         response = await asyncio.wait_for(websocket.recv(), timeout=20)
@@ -77,4 +77,3 @@ async def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(asyncio.run(main()))
-
