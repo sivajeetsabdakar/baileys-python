@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.0a1
+
+Public documentation refresh.
+
+### Changed
+
+- Simplified the public README for the PyPI long description.
+- Linked the hosted documentation site, quickstart, API examples, feature
+  status, and changelog from the README.
+- Kept the package API unchanged from `0.1.0a0`.
+
 ## 0.1.0a0
 
 First public alpha release.

@@ -62,8 +62,8 @@ The default CI path should never require WhatsApp credentials.
 
 Suggested pre-release path:
 
-- `0.1.0a0`: current internal alpha state.
-- `0.1.0a1`: storage design and live-suite wrapper started.
+- `0.1.0a0`: first public alpha.
+- `0.1.0a1`: public README and documentation refresh.
 - `0.1.0b0`: core beta with release gates passing.
 - `0.1.x`: compatibility fixes and additional live proof.
 - `0.2.0`: durable storage adapters and broader Phase 7 proof.

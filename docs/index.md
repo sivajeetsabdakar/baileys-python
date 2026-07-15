@@ -45,7 +45,7 @@ pip install baileys-python
 Current public alpha:
 
 ```text
-0.1.0a0
+0.1.0a1
 ```
 
 The package is useful for controlled development and test-account integrations.
