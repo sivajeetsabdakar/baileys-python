@@ -74,6 +74,10 @@ python scripts/soak_suite.py --duration 86400
 - Confirm public docs avoid local setup details.
 - Confirm the current branch is clean before tagging or publishing.
 
+## Publish
+
+Follow `docs/publishing.md` after the local release gate passes.
+
 ## Core-Beta Notes
 
 Core beta can ship with account-gated Phase 7 proof marked as Todo when the

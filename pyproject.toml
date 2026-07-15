@@ -9,8 +9,20 @@ description = "Async Python implementation of the WhatsApp Web protocol inspired
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
 license = "MIT"
+license-files = ["LICENSE", "NOTICE"]
 authors = [{ name = "Baileys Python contributors" }]
-keywords = ["whatsapp", "baileys", "websocket", "asyncio"]
+keywords = ["whatsapp", "baileys", "websocket", "asyncio", "whatsapp-web"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Framework :: AsyncIO",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Communications :: Chat",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
 dependencies = [
     "aiohttp",
     "cryptography",
@@ -26,6 +38,12 @@ dev = ["pytest", "build", "twine"]
 postgres = ["psycopg[binary,pool]>=3.2"]
 proto = ["grpcio-tools"]
 
+[project.urls]
+Homepage = "https://github.com/sivajeetsabdakar/baileys-python"
+Repository = "https://github.com/sivajeetsabdakar/baileys-python"
+Issues = "https://github.com/sivajeetsabdakar/baileys-python/issues"
+Documentation = "https://github.com/sivajeetsabdakar/baileys-python#readme"
+
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
@@ -37,4 +55,4 @@ markers = [
 where = ["src"]
 
 [tool.setuptools.package-data]
-baileys = ["generated/*.json", "generated/*.proto"]
+baileys = ["generated/*.json", "generated/*.proto", "py.typed"]

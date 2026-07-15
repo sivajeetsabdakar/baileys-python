@@ -3,6 +3,12 @@
 `Baileys-python` is the product package for a native Python implementation of
 the WhatsApp Web protocol surface provided by Node Baileys.
 
+This project is an unofficial Python implementation inspired by
+WhiskeySockets/Baileys. It is not affiliated with, endorsed by, sponsored by, or
+maintained by WhiskeySockets/Baileys, WhatsApp, Meta, or any of their
+subsidiaries or affiliates. WhatsApp and related names, marks, emblems, and
+images are trademarks of their respective owners.
+
 This repository is being built from the proven feasibility work in
 `../baileys-python-test`. The spike remains the lab/reference; this package is
 the production implementation target.
@@ -59,6 +65,12 @@ This is not full Baileys parity yet. Account-gated live proof items are tracked
 as explicit Todos in the compatibility matrix while core beta hardening
 continues.
 
+## Install
+
+```powershell
+python -m pip install baileys-python
+```
+
 ## Install For Development
 
 ```powershell
@@ -95,6 +107,11 @@ python scripts/live_suite.py --include-write --to 120363000000000000@g.us
 python scripts/soak_suite.py --duration 3600
 ```
 
+## License
+
+This package is released under the MIT License. See `LICENSE` and `NOTICE` for
+license text, attribution, and affiliation notices.
+
 ## Minimal Saved-Auth Login
 
 ```python
@@ -115,5 +132,5 @@ asyncio.run(main())
 See `docs/roadmap.md` for the implementation timeline and
 `docs/compatibility-matrix.md` for the public Baileys parity checklist. See
 `docs/public-api.md` for the current Python API and `docs/migration-guide.md`
-for Node Baileys migration notes. See `docs/architecture-design.md` for the
-remaining implementation design.
+for Node Baileys migration notes. See `docs/publishing.md` for the PyPI release
+flow and `docs/architecture-design.md` for the remaining implementation design.
