@@ -35,6 +35,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest", "build", "twine"]
+docs = ["mkdocs-material"]
 postgres = ["psycopg[binary,pool]>=3.2"]
 proto = ["grpcio-tools"]
 

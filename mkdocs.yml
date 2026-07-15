@@ -1,0 +1,35 @@
+site_name: Baileys Python
+site_description: Async Python implementation of WhatsApp Web protocol surfaces inspired by WhiskeySockets/Baileys.
+site_url: https://sivajeetsabdakar.github.io/baileys-python/
+repo_url: https://github.com/sivajeetsabdakar/baileys-python
+repo_name: sivajeetsabdakar/baileys-python
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+  palette:
+    - scheme: default
+      primary: green
+      accent: teal
+
+nav:
+  - Home: index.md
+  - Quickstart: quickstart.md
+  - API Examples: examples.md
+  - Public API: public-api.md
+  - Feature Status: feature-status.md
+  - Compatibility Matrix: compatibility-matrix.md
+  - Migration Guide: migration-guide.md
+  - Deferred Todos: deferred-todos.md
+  - Changelog: changelog.md
+  - Publishing: publishing.md
+
+markdown_extensions:
+  - admonition
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - toc:
+      permalink: true

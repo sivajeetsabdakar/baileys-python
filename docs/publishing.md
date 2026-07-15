@@ -62,5 +62,25 @@ python -c "import baileys; print(baileys.__name__)"
   release commit.
 - Update `docs/compatibility-matrix.md` and `docs/deferred-todos.md` before a
   tagged release.
+- Update `CHANGELOG.md` and `docs/changelog.md` before publishing a new
+  package version.
 - Publish alpha builds while account-gated compatibility items remain marked as
   Todo.
+
+## Documentation Site
+
+The documentation site is built with MkDocs Material and deployed by GitHub
+Pages from the `Docs` workflow.
+
+Build locally:
+
+```powershell
+python -m pip install -e ".[docs]"
+python -m mkdocs build --strict
+```
+
+The expected public URL is:
+
+```text
+https://sivajeetsabdakar.github.io/baileys-python/
+```

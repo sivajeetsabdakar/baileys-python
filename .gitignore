@@ -13,6 +13,7 @@ env/
 
 build/
 dist/
+site/
 *.egg-info/
 
 auth/

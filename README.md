@@ -71,10 +71,25 @@ continues.
 python -m pip install baileys-python
 ```
 
+## Documentation
+
+- Documentation site: <https://sivajeetsabdakar.github.io/baileys-python/>
+- Quickstart: `docs/quickstart.md`
+- API examples: `docs/examples.md`
+- Feature status: `docs/feature-status.md`
+- Changelog: `CHANGELOG.md`
+
 ## Install For Development
 
 ```powershell
 python -m pip install -e ".[dev]"
+```
+
+Build the documentation site locally:
+
+```powershell
+python -m pip install -e ".[docs]"
+python -m mkdocs serve
 ```
 
 ## Run Tests
@@ -132,5 +147,6 @@ asyncio.run(main())
 See `docs/roadmap.md` for the implementation timeline and
 `docs/compatibility-matrix.md` for the public Baileys parity checklist. See
 `docs/public-api.md` for the current Python API and `docs/migration-guide.md`
-for Node Baileys migration notes. See `docs/publishing.md` for the PyPI release
-flow and `docs/architecture-design.md` for the remaining implementation design.
+for Node Baileys migration notes. See `CHANGELOG.md` for release notes,
+`docs/publishing.md` for the PyPI release flow, and
+`docs/architecture-design.md` for the remaining implementation design.
