@@ -24,6 +24,7 @@ python -m pip install baileys-python
 - Quickstart: `docs/quickstart.md`
 - API examples: `docs/examples.md`
 - Feature status: `docs/feature-status.md`
+- Contributing: `CONTRIBUTING.md`
 - Changelog: `CHANGELOG.md`
 
 ## Install For Development

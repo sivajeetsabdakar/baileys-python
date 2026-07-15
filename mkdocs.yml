@@ -24,6 +24,7 @@ nav:
   - Compatibility Matrix: compatibility-matrix.md
   - Migration Guide: migration-guide.md
   - Deferred Todos: deferred-todos.md
+  - Contributing: contributing.md
   - Changelog: changelog.md
   - Publishing: publishing.md
 
