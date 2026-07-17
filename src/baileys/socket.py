@@ -211,7 +211,7 @@ from .prekeys import (
     prekey_count_node,
     rotate_signed_pre_key_node,
 )
-from .privacy_tokens import store_tc_tokens_from_iq_result
+from .privacy_tokens import build_tc_token_from_jid, is_regular_user, store_tc_tokens_from_iq_result
 from .query import QueryManager
 from .receipts import (
     RetryOutcome,
@@ -1564,8 +1564,22 @@ class WhatsAppClient:
         if callable(save):
             save(lid_jid, pn_jid, source=source)
 
+    def _is_own_user_jid(self, jid: str) -> bool:
+        normalized = jid_normalized_user(jid)
+        me = self.auth_state.credentials.get("me") or {}
+        candidates = [me.get("id"), me.get("lid"), self.auth_state.credentials.get("lid")]
+        return any(candidate and normalized == jid_normalized_user(str(candidate)) for candidate in candidates)
+
     async def profile_picture_url(self, jid: str, picture_type: str = "preview", *, timeout: float = 30) -> str | None:
-        result = await self._query_checked(profile_picture_url_node(jid, self.queries.next_tag(), picture_type), timeout=timeout)
+        normalized = jid_normalized_user(jid)
+        tc_token_content: list[BinaryNode] | None = None
+        if self.auth_state.signal_store is not None and is_regular_user(normalized) and not self._is_own_user_jid(normalized):
+            tc_token_content = build_tc_token_from_jid(
+                self.auth_state.signal_store,
+                normalized,
+                get_lid_for_pn=self._lid_for_pn,
+            )
+        result = await self._query_checked(profile_picture_url_node(normalized, self.queries.next_tag(), picture_type, tc_token_content), timeout=timeout)
         return parse_profile_picture_url(result)
 
     async def update_profile_status(self, status: str, *, timeout: float = 30) -> None:

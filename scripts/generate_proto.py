@@ -8,7 +8,7 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = ROOT.parent
-SOURCE_PROTO = REPO_ROOT / "Baileys-master" / "Baileys-master" / "WAProto" / "WAProto.proto"
+SOURCE_PROTO = REPO_ROOT / "Baileys-master" / "WAProto" / "WAProto.proto"
 GENERATED_DIR = ROOT / "src" / "baileys" / "generated"
 
 

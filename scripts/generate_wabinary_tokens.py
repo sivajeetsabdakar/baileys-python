@@ -8,7 +8,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = ROOT.parent
-CONSTANTS_TS = REPO_ROOT / "Baileys-master" / "Baileys-master" / "src" / "WABinary" / "constants.ts"
+CONSTANTS_TS = REPO_ROOT / "Baileys-master" / "src" / "WABinary" / "constants.ts"
 OUTPUT = ROOT / "src" / "baileys" / "generated" / "wabinary_tokens.json"
 
 

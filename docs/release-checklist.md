@@ -16,7 +16,7 @@ Check the local Node parity audit when the Node checkout or public manifest
 changes:
 
 ```powershell
-python scripts/audit_node_public_api.py --node-root ../Baileys-master/Baileys-master
+python scripts/audit_node_public_api.py --node-root ../Baileys-master
 ```
 
 Run the Postgres integration proof when a disposable database URL is configured

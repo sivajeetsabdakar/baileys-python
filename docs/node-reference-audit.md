@@ -4,7 +4,7 @@ The local Node reference is Baileys `7.0.0-rc13`. Public socket parity is
 tracked by `tests/fixtures/public_api_parity.json` and checked with:
 
 ```powershell
-python scripts/audit_node_public_api.py --node-root ../Baileys-master/Baileys-master
+python scripts/audit_node_public_api.py --node-root ../Baileys-master
 ```
 
 The audit parses socket factory return objects from the Node source and compares

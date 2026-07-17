@@ -8,7 +8,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_SOURCE = ROOT.parent / "Baileys-master" / "Baileys-master" / "src" / "WAM" / "constants.ts"
+DEFAULT_SOURCE = ROOT.parent / "Baileys-master" / "src" / "WAM" / "constants.ts"
 DEFAULT_OUTPUT = ROOT / "src" / "baileys" / "generated" / "wam_constants.json"
 
 

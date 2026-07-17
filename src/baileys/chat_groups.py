@@ -296,11 +296,23 @@ def parse_blocklist(node: BinaryNode) -> list[str]:
     return [child.attrs["jid"] for child in list_node.content if child.tag == "item" and child.attrs.get("jid")]
 
 
-def profile_picture_url_node(jid: str, tag_id: str, picture_type: str = "preview") -> BinaryNode:
+def profile_picture_query_content(picture_type: str = "preview", tc_token_content: list[BinaryNode] | None = None) -> list[BinaryNode]:
+    picture = BinaryNode("picture", {"type": picture_type, "query": "url"})
+    if tc_token_content:
+        picture.content = tc_token_content
+    return [picture]
+
+
+def profile_picture_url_node(
+    jid: str,
+    tag_id: str,
+    picture_type: str = "preview",
+    tc_token_content: list[BinaryNode] | None = None,
+) -> BinaryNode:
     return BinaryNode(
         "iq",
         {"id": tag_id, "target": jid_normalized_user(jid), "to": S_WHATSAPP_NET, "type": "get", "xmlns": "w:profile:picture"},
-        [BinaryNode("picture", {"type": picture_type, "query": "url"})],
+        profile_picture_query_content(picture_type, tc_token_content),
     )
 
 

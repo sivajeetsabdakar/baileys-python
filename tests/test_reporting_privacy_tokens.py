@@ -57,6 +57,7 @@ def test_privacy_token_store_and_build_round_trip():
     content = build_tc_token_from_jid(store, "123@s.whatsapp.net")
     assert content is not None
     assert content[0].tag == "tctoken"
+    assert content[0].attrs == {"t": timestamp}
     assert content[0].content == b"secret-token"
 
     index = store.get("tctoken", "__index")

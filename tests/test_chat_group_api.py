@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import time
 
 import baileys as b
-from baileys.auth_state import AuthState, JsonCredentialStore
+from baileys.auth_state import AuthState, JsonCredentialStore, MemorySignalKeyStore
 from baileys.chat_groups import (
     block_status_node,
     default_disappearing_mode_node,
@@ -26,6 +27,7 @@ from baileys.chat_groups import (
     parse_usync_disappearing_mode,
     parse_usync_status,
     presence_subscribe_node,
+    profile_picture_query_content,
     profile_picture_url_node,
     usync_disappearing_mode_node,
     usync_status_node,
@@ -155,6 +157,11 @@ def test_privacy_profile_and_on_whatsapp_nodes_parse():
     assert picture.attrs["xmlns"] == "w:profile:picture"
     assert picture.content[0].attrs == {"type": "image", "query": "url"}
 
+    token = BinaryNode("tctoken", {"t": "1770000000"}, b"token")
+    nested_picture = profile_picture_url_node("123@s.whatsapp.net", "pic-2", "image", [token])
+    assert nested_picture.content == [BinaryNode("picture", {"type": "image", "query": "url"}, [token])]
+    assert profile_picture_query_content("preview") == [BinaryNode("picture", {"type": "preview", "query": "url"})]
+
     block = block_status_node("123@lid", "unblock", "b1")
     assert block.attrs["xmlns"] == "blocklist"
     assert block.content[0].attrs["action"] == "unblock"
@@ -204,6 +211,33 @@ def test_privacy_profile_and_on_whatsapp_nodes_parse():
         )
     )
     assert on_wa_bool == [{"jid": "321@s.whatsapp.net", "exists": True}]
+
+
+def test_profile_picture_url_uses_stored_tc_token(tmp_path):
+    async def scenario():
+        store = JsonCredentialStore(tmp_path / "creds.json")
+        store.save_credentials({"me": {"id": "999@s.whatsapp.net", "lid": "999@lid"}})
+        signal_store = MemorySignalKeyStore()
+        timestamp = str(int(time.time()))
+        signal_store.set("tctoken", "123@s.whatsapp.net", {"token": base64.b64encode(b"trusted").decode("ascii"), "timestamp": timestamp})
+        client = make_socket(AuthState.from_store(store, signal_store=signal_store))
+        queries = []
+
+        async def fake_query(node, **kwargs):
+            queries.append(node)
+            return BinaryNode("iq", {}, [BinaryNode("picture", {"url": "https://example.test/pic.jpg"})])
+
+        client._query_checked = fake_query  # type: ignore[method-assign]
+
+        url = await client.profile_picture_url("123@s.whatsapp.net", "image")
+
+        assert url == "https://example.test/pic.jpg"
+        picture = queries[0].content[0]
+        assert picture.tag == "picture"
+        assert picture.attrs == {"type": "image", "query": "url"}
+        assert picture.content == [BinaryNode("tctoken", {"t": timestamp}, b"trusted")]
+
+    asyncio.run(scenario())
 
 
 def test_on_whatsapp_nodes_and_queries_match_expected_shape():

@@ -84,7 +84,8 @@ def build_tc_token_from_jid(
             sender_timestamp = entry.get("senderTimestamp") if isinstance(entry, dict) else None
             store.set("tctoken", storage_jid, {"token": "", "senderTimestamp": sender_timestamp} if sender_timestamp is not None else None)
         return content or None
-    content.append(BinaryNode("tctoken", {}, token))
+    timestamp = entry.get("timestamp") if isinstance(entry, dict) else None
+    content.append(BinaryNode("tctoken", {"t": str(timestamp)}, token))
     return content
 
 

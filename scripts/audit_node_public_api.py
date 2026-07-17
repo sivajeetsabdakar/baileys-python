@@ -8,7 +8,7 @@ from typing import Any
 
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_NODE_ROOT = ROOT.parent / "Baileys-master" / "Baileys-master"
+DEFAULT_NODE_ROOT = ROOT.parent / "Baileys-master"
 DEFAULT_MANIFEST = ROOT / "tests" / "fixtures" / "public_api_parity.json"
 
 SOCKET_FACTORIES = {
