@@ -73,6 +73,7 @@ from .crypto import (
 from .disconnect import DisconnectError, DisconnectReason, failure_to_disconnect, stream_error_to_disconnect
 from .errors import (
     AccountCapabilityError,
+    AccountReachoutRestricted,
     AuthStateError,
     BaileysError,
     BaileysRuntimeError,
@@ -227,7 +228,7 @@ from .receipts import (
 )
 from .replay import InMemoryReplayStore, ReplayEntry, ReplayStore, binary_node_from_json, binary_node_to_json
 from .reporting import getMessageReportingToken, get_message_reporting_token, shouldIncludeReportingToken, should_include_reporting_token
-from .socket import MediaSendResult, ReconnectPolicy, SendMessageResult, SocketConfig, WhatsAppClient, make_socket, makeWASocket
+from .socket import MediaSendResult, MessageAckResult, ReconnectPolicy, SendMessageResult, SocketConfig, WhatsAppClient, make_socket, makeWASocket
 from .sqlite_store import (
     SQLiteCredentialStore,
     SQLiteEventStore,
@@ -270,6 +271,7 @@ __all__ = [
     "AuthCredentials",
     "AuthState",
     "AccountCapabilityError",
+    "AccountReachoutRestricted",
     "AuthStateError",
     "AppStateKeys",
     "AppliedAppStateSync",
@@ -317,6 +319,7 @@ __all__ = [
     "MediaPayload",
     "MediaRetryEvent",
     "MediaSendResult",
+    "MessageAckResult",
     "MediaUploadResult",
     "MediaError",
     "MexError",

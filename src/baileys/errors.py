@@ -41,6 +41,19 @@ class AccountCapabilityError(BaileysRuntimeError):
         BaileysRuntimeError.__init__(self, self.message)
 
 
+@dataclass
+class AccountReachoutRestricted(BaileysRuntimeError):
+    message: str
+    code: str | None = None
+    text: str | None = None
+    from_jid: str | None = None
+    message_id: str | None = None
+    data: Any = None
+
+    def __post_init__(self) -> None:
+        BaileysRuntimeError.__init__(self, self.message)
+
+
 class PairingError(BaileysValueError):
     """Pairing payload or credential validation failed."""
 

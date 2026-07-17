@@ -358,6 +358,85 @@ def test_relay_message_caches_and_retry_replays(tmp_path):
     asyncio.run(scenario())
 
 
+def test_relay_message_waits_for_clean_ack(tmp_path):
+    class FakeWeb:
+        def __init__(self):
+            self.sent = []
+
+        async def send_node(self, node):
+            self.sent.append(node)
+
+        async def receive_nodes(self, timeout=30):
+            return [BinaryNode("ack", {"id": "m1", "from": "chat@s.whatsapp.net"})]
+
+    async def scenario():
+        store = JsonCredentialStore(tmp_path / "creds.json")
+        store.save_credentials(_minimal_creds())
+        client = make_socket(AuthState.from_store(store))
+        client._web = FakeWeb()
+        node = BinaryNode("message", {"id": "m1", "to": "chat@s.whatsapp.net", "type": "text"})
+
+        result = await client.relay_message("chat@s.whatsapp.net", node, timeout=1)
+
+        assert result.acked is True
+        assert result.ack is not None
+        assert result.ack.has_error is False
+        assert result.ack_error_code is None
+
+    asyncio.run(scenario())
+
+
+def test_relay_message_reports_restricted_ack(tmp_path):
+    class FakeWeb:
+        def __init__(self):
+            self.sent = []
+
+        async def send_node(self, node):
+            self.sent.append(node)
+
+        async def receive_nodes(self, timeout=30):
+            return [
+                BinaryNode(
+                    "ack",
+                    {
+                        "id": "m1",
+                        "from": "chat@s.whatsapp.net",
+                        "error": "463",
+                        "text": "account_reachout_restricted",
+                    },
+                )
+            ]
+
+    async def scenario():
+        store = JsonCredentialStore(tmp_path / "creds.json")
+        store.save_credentials(_minimal_creds())
+        client = make_socket(AuthState.from_store(store))
+        client._web = FakeWeb()
+        updates = []
+        connection_updates = []
+        client.ev.on("messages.update", lambda payload: updates.extend(payload))
+        client.ev.on("connection.update", lambda payload: connection_updates.append(payload))
+
+        async def fake_timelock(**kwargs):
+            return {"is_active": True, "time_enforcement_ends": "1800000000"}
+
+        client.fetch_account_reachout_timelock = fake_timelock  # type: ignore[method-assign]
+        node = BinaryNode("message", {"id": "m1", "to": "chat@s.whatsapp.net", "type": "text"})
+
+        result = await client.relay_message("chat@s.whatsapp.net", node, timeout=1)
+
+        assert result.acked is False
+        assert result.is_restricted is True
+        assert result.ack_error_code == "463"
+        assert result.ack_error_text == "account_reachout_restricted"
+        assert result.reachout_timelock == {"is_active": True, "time_enforcement_ends": "1800000000"}
+        assert updates[0]["key"]["id"] == "m1"
+        assert updates[0]["update"]["status"] == proto.WebMessageInfo.Status.ERROR
+        assert connection_updates[-1]["reachoutTimeLock"]["is_active"] is True
+
+    asyncio.run(scenario())
+
+
 def test_send_message_uses_build_and_relay(tmp_path):
     async def scenario():
         store = JsonCredentialStore(tmp_path / "creds.json")

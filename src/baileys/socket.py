@@ -299,6 +299,24 @@ class SocketConfig:
 
 
 @dataclass(frozen=True)
+class MessageAckResult:
+    acked: bool
+    error_code: str | None = None
+    error_text: str | None = None
+    from_jid: str | None = None
+    node: BinaryNode | None = None
+    reachout_timelock: Any = None
+
+    @property
+    def has_error(self) -> bool:
+        return self.error_code is not None or self.error_text is not None
+
+    @property
+    def is_restricted(self) -> bool:
+        return _is_reachout_restriction(self.error_code, self.error_text)
+
+
+@dataclass(frozen=True)
 class SendMessageResult:
     message_id: str
     remote_jid: str
@@ -306,7 +324,16 @@ class SendMessageResult:
     participant_jids: list[str]
     signal_types: dict[str, str]
     acked: bool = False
+    ack: MessageAckResult | None = None
+    ack_error_code: str | None = None
+    ack_error_text: str | None = None
+    ack_from_jid: str | None = None
+    reachout_timelock: Any = None
     node: BinaryNode | None = None
+
+    @property
+    def is_restricted(self) -> bool:
+        return bool(self.ack and self.ack.is_restricted)
 
 
 @dataclass(frozen=True)
@@ -316,6 +343,22 @@ class MediaSendResult:
     media_key: bytes
     direct_path: str
     media_url: str
+
+
+REACHOUT_RESTRICTION_MARKERS = (
+    "463",
+    "account_reachout_restricted",
+    "messageaccountrestriction",
+    "senderreachouttimelocked",
+    "reachout timelock",
+    "tctoken",
+    "privacy token",
+)
+
+
+def _is_reachout_restriction(error_code: str | None, error_text: str | None) -> bool:
+    haystack = f"{error_code or ''} {error_text or ''}".lower()
+    return any(marker in haystack for marker in REACHOUT_RESTRICTION_MARKERS)
 
 
 def _normalize_session_jid(raw_jid: str) -> str:
@@ -916,14 +959,17 @@ class WhatsAppClient:
         await self.send_node(outbound.node)
         await self._commit_credentials(self.auth_state.credentials)
         self.save_recent_outbound(outbound.message_id, outbound.node)
-        acked = await self._wait_for_message_ack(outbound.message_id, timeout) if timeout > 0 else False
+        ack = await self._wait_for_message_ack(outbound.message_id, timeout, remote_jid=jid) if timeout > 0 else MessageAckResult(acked=False)
         await self.ev.emit(
             "messages.send",
             {
                 "jid": jid,
                 "message_id": outbound.message_id,
                 "participant_jids": outbound.participant_jids,
-                "acked": acked,
+                "acked": ack.acked,
+                "ack_error_code": ack.error_code,
+                "ack_error_text": ack.error_text,
+                "restricted": ack.is_restricted,
             },
         )
         return SendMessageResult(
@@ -932,7 +978,12 @@ class WhatsAppClient:
             message_type=outbound.node.attrs.get("type", message_type),
             participant_jids=outbound.participant_jids,
             signal_types=outbound.signal_types,
-            acked=acked,
+            acked=ack.acked,
+            ack=ack,
+            ack_error_code=ack.error_code,
+            ack_error_text=ack.error_text,
+            ack_from_jid=ack.from_jid,
+            reachout_timelock=ack.reachout_timelock,
             node=outbound.node,
         )
 
@@ -1178,21 +1229,66 @@ class WhatsAppClient:
                 missing.append(jid)
         return missing
 
-    async def _wait_for_message_ack(self, message_id: str, timeout: float) -> bool:
+    def _ack_result_from_node(self, node: BinaryNode) -> MessageAckResult:
+        error_code = node.attrs.get("error") or node.attrs.get("code")
+        error_text = node.attrs.get("text") or node.attrs.get("reason")
+        return MessageAckResult(
+            acked=not bool(error_code or error_text),
+            error_code=str(error_code) if error_code is not None else None,
+            error_text=str(error_text) if error_text is not None else None,
+            from_jid=node.attrs.get("from"),
+            node=node,
+        )
+
+    async def _ack_result_with_restriction_details(self, ack: MessageAckResult, *, message_id: str, remote_jid: str | None) -> MessageAckResult:
+        if not ack.has_error:
+            return ack
+        await self.ev.emit(
+            "messages.update",
+            [
+                {
+                    "key": {"remote_jid": remote_jid, "id": message_id, "from_me": True},
+                    "update": {
+                        "status": proto.WebMessageInfo.Status.ERROR,
+                        "message_stub_parameters": [value for value in (ack.error_code, ack.error_text) if value],
+                    },
+                }
+            ],
+        )
+        if not ack.is_restricted:
+            return ack
+        reachout_timelock = None
+        try:
+            reachout_timelock = await self.fetch_account_reachout_timelock(timeout=10)
+        except Exception as exc:
+            self.logger.debug("failed to fetch reachout timelock", extra={"event": "reachout_timelock.fetch_failed", "error": str(exc)})
+        else:
+            await self.ev.emit("connection.update", {"reachoutTimeLock": reachout_timelock})
+        return MessageAckResult(
+            acked=False,
+            error_code=ack.error_code,
+            error_text=ack.error_text,
+            from_jid=ack.from_jid,
+            node=ack.node,
+            reachout_timelock=reachout_timelock,
+        )
+
+    async def _wait_for_message_ack(self, message_id: str, timeout: float, *, remote_jid: str | None = None) -> MessageAckResult:
         if self._receive_loop_is_running_elsewhere():
             loop = asyncio.get_running_loop()
-            future: asyncio.Future[bool] = loop.create_future()
+            future: asyncio.Future[MessageAckResult] = loop.create_future()
 
             def on_node(node: BinaryNode) -> None:
                 if node.tag == "ack" and node.attrs.get("id") == message_id and not future.done():
-                    future.set_result(True)
+                    future.set_result(self._ack_result_from_node(node))
 
             listener = self.ev.on("node", on_node)
             try:
                 try:
-                    return await asyncio.wait_for(future, timeout=timeout)
+                    ack = await asyncio.wait_for(future, timeout=timeout)
+                    return await self._ack_result_with_restriction_details(ack, message_id=message_id, remote_jid=remote_jid)
                 except asyncio.TimeoutError:
-                    return False
+                    return MessageAckResult(acked=False)
             finally:
                 self.ev.off("node", listener)
 
@@ -1207,7 +1303,8 @@ class WhatsAppClient:
                 continue
             for node in nodes:
                 if node.tag == "ack" and node.attrs.get("id") == message_id:
-                    return True
+                    ack = self._ack_result_from_node(node)
+                    return await self._ack_result_with_restriction_details(ack, message_id=message_id, remote_jid=remote_jid)
 
     async def _get_media_conn(self, *, timeout: float) -> MediaConn:
         if self._media_conn is not None and self._media_conn_expires_at > time.time():
