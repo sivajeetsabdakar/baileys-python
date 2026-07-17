@@ -1,8 +1,8 @@
 # Release Hardening Design
 
-Phase 8 should turn the current package into a dependable core beta. Phase 9
-should close the remaining full-parity gaps and keep the project maintainable
-as WhatsApp changes.
+Release hardening should turn the current package into a dependable core beta,
+close the remaining full-parity gaps, and keep the project maintainable as
+WhatsApp changes.
 
 ## Core Beta Scope
 
@@ -25,7 +25,7 @@ Core beta should include:
 - built-in file-backed auth stores.
 - public API and migration docs.
 
-Core beta does not need every account-gated Phase 7 mutation, but it must
+Core beta does not need every account-gated advanced mutation, but it must
 report unsupported or gated cases clearly.
 
 ## Release Gates
@@ -66,7 +66,7 @@ Suggested pre-release path:
 - `0.1.0a1`: public README and documentation refresh.
 - `0.1.0b0`: core beta with release gates passing.
 - `0.1.x`: compatibility fixes and additional live proof.
-- `0.2.0`: durable storage adapters and broader Phase 7 proof.
+- `0.2.0`: durable storage adapters and broader advanced-surface proof.
 
 Do not mark a parity area as complete only because the method exists. Use the
 compatibility matrix status rules.
@@ -117,12 +117,8 @@ Secrets to avoid logging:
 
 ## Hardening Backlog
 
-Phase 8:
-
 - code hardening complete; keep release evidence current while preparing beta
   candidates.
-
-Phase 9:
 
 - implementation hardening complete; keep `scripts/release_status.py --check`
   green.

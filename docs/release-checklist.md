@@ -80,6 +80,6 @@ Follow `docs/publishing.md` after the local release gate passes.
 
 ## Core-Beta Notes
 
-Core beta can ship with account-gated Phase 7 proof marked as Todo when the
+Core beta can ship with account-gated advanced proof marked as Todo when the
 wire implementation is present, offline tests pass, and live probes report the
 server limitation clearly.

@@ -260,7 +260,7 @@ events and LID/PN mapping resolution.
 
 ## Business, Newsletters, Communities, And Edge APIs
 
-Phase 7 surfaces are exposed where the account supports them:
+Advanced surfaces are exposed where the account supports them:
 
 - business profile, catalog, collections, product, order, and cover-photo APIs
 - newsletter create/update/metadata/follow/mute/subscriber/admin/message APIs
@@ -269,5 +269,5 @@ Phase 7 surfaces are exposed where the account supports them:
 - WAM telemetry encoding and upload helpers
 - low-level USync, privacy-token, peer-data, labels, bot-list, and call helpers
 
-Some Phase 7 methods are account-gated by WhatsApp. In those cases the client
+Some advanced methods are account-gated by WhatsApp. In those cases the client
 raises a structured server error instead of hiding the rejection.

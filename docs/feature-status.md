@@ -25,7 +25,7 @@ WhatsApp behavior explicitly.
 
 - WhatsApp server behavior can vary by account, device platform, and rollout.
 - Pairing-code live completion depends on account eligibility.
-- Some Phase 7 surfaces are account-gated and may return structured server
+- Some advanced account surfaces are account-gated and may return structured server
   rejections even when the wire shape is implemented.
 - Long-run reconnect soak and live nightly evidence are still being expanded.
 - Full public API parity with every Node Baileys method is tracked but not
